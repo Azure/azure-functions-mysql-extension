@@ -7,8 +7,9 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
+
     /// <summary>
-    /// This listener class will listen for events from the MySqlClientEventSource class
+    /// This listener class will listen for events from the SqlClientEventSource class
     /// and forward them to the logger.
     /// </summary>
     public class MySqlClientListener : EventListener
@@ -23,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         protected override void OnEventSourceCreated(EventSource eventSource)
         {
             // Only enable events from MySqlClientEventSource.
-            if (string.CompareOrdinal(eventSource.Name, "Microsoft.Data.SqlClient.EventSource") == 0)
+            if (string.CompareOrdinal(eventSource.Name, "MySql.Data.MySqlClient.EventSource") == 0)
             {
                 // Use EventKeyWord 2 to capture basic application flow events.
                 // See https://docs.microsoft.com/sql/connect/ado-net/enable-eventsource-tracing for all available keywords.
@@ -55,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
             catch (Exception ex)
             {
-                this._logger.LogError($"Error logging SqlClient event {eventData.EventName}. Message={ex.Message}");
+                this._logger.LogError($"Error logging MySqlClient event {eventData.EventName}. Message={ex.Message}");
 
             }
         }

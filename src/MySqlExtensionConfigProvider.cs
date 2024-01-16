@@ -19,32 +19,32 @@ using Newtonsoft.Json;
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     /// <summary>
-    /// Exposes SQL input, output and trigger bindings
+    /// Exposes MySQL input, output and trigger bindings
     /// </summary>
     [Extension("mysql")]
     internal class MySqlExtensionConfigProvider : IExtensionConfigProvider, IDisposable
     {
         private readonly IConfiguration _configuration;
         private readonly ILoggerFactory _loggerFactory;
-        // private readonly MySqlTriggerBindingProvider _triggerProvider;
+        //private readonly MySqlTriggerBindingProvider _triggerProvider;
         private MySqlClientListener mysqlClientListener;
         public const string VerboseLoggingSettingName = "AzureFunctions_MySqlBindings_VerboseLogging";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MySqlExtensionConfigProvider"/> class.
         /// </summary>
-        /// <exception cref="ArgumentNullException">
+        /// <exception cref = "ArgumentNullException" >
         /// Thrown if either parameter is null
         /// </exception>
-        public MySqlExtensionConfigProvider(IConfiguration configuration, ILoggerFactory loggerFactory, MySqlTriggerBindingProvider triggerProvider)
+        public MySqlExtensionConfigProvider(IConfiguration configuration, ILoggerFactory loggerFactory/*, MySqlTriggerBindingProvider triggerProvider*/)
         {
             this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             this._loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            // this._triggerProvider = triggerProvider;
+            //this._triggerProvider = triggerProvider;
         }
 
         /// <summary>
-        /// Initializes the SQL binding rules
+        /// Initializes the MySQL binding rules
         /// </summary>
         /// <param name="context"> The config context </param>
         /// <exception cref="ArgumentNullException">
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             inputOutputRule.BindToCollector<MySQLObjectOpenType>(typeof(MySqlAsyncCollectorBuilder<>), this._configuration, logger);
             inputOutputRule.BindToInput<OpenType>(typeof(MySqlGenericsConverter<>), this._configuration, logger);
 
-            context.AddBindingRule<MySqlTriggerAttribute>().BindToTrigger(this._triggerProvider);
+            //context.AddBindingRule<MySqlTriggerAttribute>().BindToTrigger(this._triggerProvider);
         }
 
         private static readonly Assembly[] _dependentAssemblies = {

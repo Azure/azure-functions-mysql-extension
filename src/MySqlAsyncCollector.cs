@@ -20,12 +20,13 @@ using Newtonsoft.Json.Serialization;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Telemetry;
 using System.Diagnostics;
 using Newtonsoft.Json.Linq;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.SqlBindingConstants;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.SqlBindingUtilities;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingConstants;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingUtilities;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.Telemetry.Telemetry;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
+
     internal class PrimaryKey
     {
         public readonly string Name;
@@ -52,6 +53,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         Insert,
         Merge
     }
+
+    /// <typeparam name="T">A user-defined POCO that represents a row of the user's table</typeparam>
     internal class MySqlAsyncCollector<T> : IAsyncCollector<T>, IDisposable
     {
         private static readonly string[] UnsupportedTypes = { "NTEXT(*)", "TEXT(*)", "IMAGE(*)" };
@@ -80,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// Contains the function's configuration properties
         /// </param>
         /// <param name="attribute">
-        /// Contains as one of its attributes the SQL table that rows will be inserted into
+        /// Contains as one of its attributes the MySQL table that rows will be inserted into
         /// </param>
         /// <param name="logger">
         /// Logger Factory for creating an ILogger
@@ -93,18 +96,18 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             this._attribute = attribute ?? throw new ArgumentNullException(nameof(attribute));
             this._logger = logger;
-            TelemetryInstance.TrackCreate(CreateType.SqlAsyncCollector);
+            TelemetryInstance.TrackCreate(CreateType.MySqlAsyncCollector);
             using (MySqlConnection connection = BuildConnection(attribute.ConnectionStringSetting, configuration))
             {
-                connection.OpenAsyncWithSqlErrorHandling(CancellationToken.None).Wait();
+                connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None).Wait();
                 VerifyDatabaseSupported(connection, logger, CancellationToken.None).Wait();
             }
         }
 
         /// <summary>
         /// Adds an item to this collector that is processed in a batch along with all other items added via
-        /// AddAsync when <see cref="FlushAsync"/> is called. Each item is interpreted as a row to be added to the SQL table
-        /// specified in the SQL Binding.
+        /// AddAsync when <see cref="FlushAsync"/> is called. Each item is interpreted as a row to be added to the MySQL table
+        /// specified in the MySQL Binding.
         /// </summary>
         /// <param name="item"> The item to add to the collector </param>
         /// <param name="cancellationToken">The cancellationToken is not used in this method</param>
@@ -127,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
         /// <summary>
         /// Processes all items added to the collector via <see cref="AddAsync"/>. Each item is interpreted as a row to be added
-        /// to the SQL table specified in the SQL Binding. All rows are added in one transaction. Nothing is done
+        /// to the MySQL table specified in the MySQL Binding. All rows are added in one transaction. Nothing is done
         /// if no items were added via AddAsync.
         /// </summary>
         /// <param name="cancellationToken">The cancellationToken is not used in this method</param>
@@ -163,12 +166,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// If a new primary key is encountered in "rows", the row is simply inserted into the table.
         /// </summary>
         /// <param name="rows"> The rows to be upserted </param>
-        /// <param name="attribute"> Contains the name of the table to be modified and SQL connection information </param>
+        /// <param name="attribute"> Contains the name of the table to be modified and MySQL connection information </param>
         /// <param name="configuration"> Used to build up the connection </param>
-        private async Task UpsertRowsAsync(IList<T> rows, SqlAttribute attribute, IConfiguration configuration)
+        private async Task UpsertRowsAsync(IList<T> rows, MySqlAttribute attribute, IConfiguration configuration)
         {
             var upsertRowsAsyncSw = Stopwatch.StartNew();
-            using (SqlConnection connection = BuildConnection(attribute.ConnectionStringSetting, configuration))
+            using (MySqlConnection connection = BuildConnection(attribute.ConnectionStringSetting, configuration))
             {
                 await connection.OpenAsync();
                 this._serverProperties = await GetServerTelemetryProperties(connection, this._logger, CancellationToken.None);
@@ -176,7 +179,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                 string fullTableName = attribute.CommandText;
 
-                // Include the connection string hash as part of the key in case this customer has the same table in two different Sql Servers
+                // Include the connection string hash as part of the key in case this customer has the same table in two different MySql Servers
                 string cacheKey = $"{connection.ConnectionString.GetHashCode()}-{fullTableName}";
 
                 ObjectCache cachedTables = MemoryCache.Default;
@@ -240,19 +243,19 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     throw ex;
                 }
 
-                var table = new SqlObject(fullTableName);
+                var table = new MySqlObject(fullTableName);
                 string mergeOrInsertQuery = tableInfo.QueryType == QueryType.Insert ? TableInformation.GetInsertQuery(table, bracketedColumnNamesFromItem) :
                     TableInformation.GetMergeQuery(tableInfo.PrimaryKeys, table, bracketedColumnNamesFromItem);
 
                 var transactionSw = Stopwatch.StartNew();
                 int batchSize = 1000;
-                SqlTransaction transaction = connection.BeginTransaction();
+                MySqlTransaction transaction = connection.BeginTransaction();
                 try
                 {
-                    SqlCommand command = connection.CreateCommand();
+                    MySqlCommand command = connection.CreateCommand();
                     command.Connection = connection;
                     command.Transaction = transaction;
-                    SqlParameter par = command.Parameters.Add(RowDataParameter, SqlDbType.NVarChar, -1);
+                    MySqlParameter par = command.Parameters.Add(RowDataParameter, MySqlDbType.VarString, -1);
                     int batchCount = 0;
                     var commandSw = Stopwatch.StartNew();
                     foreach (IEnumerable<T> batch in rows.Batch(batchSize))
@@ -331,14 +334,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <summary>
-        /// Generates T-SQL for data to be upserted using Merge.
+        /// Generates T-MySQL for data to be upserted using Merge.
         /// This needs to be regenerated for every batch to upsert.
         /// </summary>
         /// <param name="table">Information about the table we will be upserting into</param>
         /// <param name="rows">Rows to be upserted</param>
-        /// <param name="newDataQuery">Generated T-SQL data query</param>
+        /// <param name="newDataQuery">Generated T-MySQL data query</param>
         /// <param name="rowData">Serialized rows to be upserted represented as JSON string</param>
-        /// <returns>T-SQL containing data for merge</returns>
+        /// <returns>T-MySQL containing data for merge</returns>
         private static void GenerateDataQueryForMerge(TableInformation table, IEnumerable<T> rows, out string newDataQuery, out string rowData)
         {
             IList<T> rowsToUpsert = new List<T>();
@@ -358,7 +361,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     }
                     else
                     {
-                        // SQL Server allows 900 bytes per primary key, so use that as a baseline
+                        // MySQL Server allows 900 bytes per primary key, so use that as a baseline
                         var combinedPrimaryKey = new StringBuilder(900 * table.PrimaryKeyProperties.Count());
                         // Look up primary key of T. Because we're going in the same order of properties every time,
                         // we can assume that if two rows with the same primary key are in the list, they will collide
@@ -402,7 +405,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             public IEnumerable<PropertyInfo> PrimaryKeyProperties { get; }
 
             /// <summary>
-            /// All of the columns, along with their data types, for SQL to use to turn JSON into a table
+            /// All of the columns, along with their data types, for MySQL to use to turn JSON into a table
             /// </summary>
             public IDictionary<string, string> Columns { get; }
 
@@ -421,8 +424,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             /// </summary>
             public bool HasIdentityColumnPrimaryKeys { get; }
             /// <summary>
-            /// Settings to use when serializing the POCO into SQL.
-            /// Only serialize properties and fields that correspond to SQL columns.
+            /// Settings to use when serializing the POCO into MySQL.
+            /// Only serialize properties and fields that correspond to MySQL columns.
             /// </summary>
             public JsonSerializerSettings JsonSerializerSettings { get; }
 
@@ -447,7 +450,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             /// <summary>
             /// Generates SQL query that can be used to retrieve the Primary Keys of a table
             /// </summary>
-            public static string GetPrimaryKeysQuery(SqlObject table)
+            public static string GetPrimaryKeysQuery(MySqlObject table)
             {
                 return $@"
                     SELECT
@@ -474,9 +477,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
 
             /// <summary>
-            /// Generates SQL query that can be used to retrieve column names and types of a table
+            /// Generates MySQL query that can be used to retrieve column names and types of a table
             /// </summary>
-            public static string GetColumnDefinitionsQuery(SqlObject table)
+            public static string GetColumnDefinitionsQuery(MySqlObject table)
             {
                 return $@"
                     select
@@ -496,15 +499,15 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         c.TABLE_SCHEMA = {table.QuotedSchema}";
             }
 
-            public static string GetInsertQuery(SqlObject table, IEnumerable<string> bracketedColumnNamesFromItem)
+            public static string GetInsertQuery(MySqlObject table, IEnumerable<string> bracketedColumnNamesFromItem)
             {
                 return $"INSERT INTO {table.BracketQuotedFullName} ({string.Join(",", bracketedColumnNamesFromItem)}) SELECT * FROM {CteName}";
             }
 
             /// <summary>
-            /// Generates reusable SQL query that will be part of every upsert command.
+            /// Generates reusable MySQL query that will be part of every upsert command.
             /// </summary>
-            public static string GetMergeQuery(IList<PrimaryKey> primaryKeys, SqlObject table, IEnumerable<string> bracketedColumnNamesFromItem)
+            public static string GetMergeQuery(IList<PrimaryKey> primaryKeys, MySqlObject table, IEnumerable<string> bracketedColumnNamesFromItem)
             {
                 IList<string> bracketedPrimaryKeys = primaryKeys.Select(p => p.Name.AsBracketQuotedString()).ToList();
                 // Generate the ON part of the merge query (compares new data against existing data)
@@ -536,66 +539,66 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
 
             /// <summary>
-            /// Retrieve (relatively) static information of SQL Table like primary keys, column names, etc.
+            /// Retrieve (relatively) static information of MySQL Table like primary keys, column names, etc.
             /// in order to generate the MERGE portion of the upsert query.
             /// This only needs to be generated once and can be reused for subsequent upserts.
             /// </summary>
-            /// <param name="sqlConnection">An open connection with which to query SQL against</param>
+            /// <param name="sqlConnection">An open connection with which to query MySQL against</param>
             /// <param name="fullName">Full name of table, including schema (if exists).</param>
             /// <param name="logger">ILogger used to log any errors or warnings.</param>
             /// <param name="objectColumnNames">Column names from the object</param>
-            /// <param name="serverProperties">EngineEdition and Edition of the target Sql Server.</param>
+            /// <param name="serverProperties">Version and Version_Comment of the target MySQL Server.</param>
             /// <returns>TableInformation object containing primary keys, column types, etc.</returns>
-            public static TableInformation RetrieveTableInformation(SqlConnection sqlConnection, string fullName, ILogger logger, IEnumerable<string> objectColumnNames, ServerProperties serverProperties)
+            public static TableInformation RetrieveTableInformation(MySqlConnection mysqlConnection, string fullName, ILogger logger, IEnumerable<string> objectColumnNames, ServerProperties serverProperties)
             {
-                Dictionary<TelemetryPropertyName, string> sqlConnProps = sqlConnection.AsConnectionProps(serverProperties);
-                var table = new SqlObject(fullName);
+                Dictionary<TelemetryPropertyName, string> mysqlConnProps = mysqlConnection.AsConnectionProps(serverProperties);
+                var table = new MySqlObject(fullName);
 
                 var tableInfoSw = Stopwatch.StartNew();
 
                 // Get all column names and types
-                var columnDefinitionsFromSQL = new Dictionary<string, string>();
+                var columnDefinitionsFromMySQL = new Dictionary<string, string>();
                 var columnDefinitionsSw = Stopwatch.StartNew();
                 try
                 {
                     string getColumnDefinitionsQuery = GetColumnDefinitionsQuery(table);
-                    var cmdColDef = new SqlCommand(getColumnDefinitionsQuery, sqlConnection);
-                    using (SqlDataReader rdr = cmdColDef.ExecuteReaderWithLogging(logger))
+                    var cmdColDef = new MySqlCommand(getColumnDefinitionsQuery, mysqlConnection);
+                    using (MySqlDataReader rdr = cmdColDef.ExecuteReaderWithLogging(logger))
                     {
                         while (rdr.Read())
                         {
                             string columnName = rdr[ColumnName].ToString();
-                            columnDefinitionsFromSQL.Add(columnName, rdr[ColumnDefinition].ToString());
+                            columnDefinitionsFromMySQL.Add(columnName, rdr[ColumnDefinition].ToString());
                         }
                         columnDefinitionsSw.Stop();
-                        TelemetryInstance.TrackDuration(TelemetryEventName.GetColumnDefinitions, columnDefinitionsSw.ElapsedMilliseconds, sqlConnProps);
+                        TelemetryInstance.TrackDuration(TelemetryEventName.GetColumnDefinitions, columnDefinitionsSw.ElapsedMilliseconds, mysqlConnProps);
                     }
 
                 }
                 catch (Exception ex)
                 {
-                    TelemetryInstance.TrackException(TelemetryErrorName.GetColumnDefinitions, ex, sqlConnProps);
+                    TelemetryInstance.TrackException(TelemetryErrorName.GetColumnDefinitions, ex, mysqlConnProps);
                     // Throw a custom error so that it's easier to decipher.
                     string message = $"Encountered exception while retrieving column names and types for table {table}. Cannot generate upsert command without them.";
                     throw new InvalidOperationException(message, ex);
                 }
 
-                if (columnDefinitionsFromSQL.Count == 0)
+                if (columnDefinitionsFromMySQL.Count == 0)
                 {
                     string message = $"Table {table} does not exist.";
                     var ex = new InvalidOperationException(message);
-                    TelemetryInstance.TrackException(TelemetryErrorName.GetColumnDefinitionsTableDoesNotExist, ex, sqlConnProps);
+                    TelemetryInstance.TrackException(TelemetryErrorName.GetColumnDefinitionsTableDoesNotExist, ex, mysqlConnProps);
                     throw ex;
                 }
 
-                // Query SQL for table Primary Keys
+                // Query MySQL for table Primary Keys
                 var primaryKeys = new List<PrimaryKey>();
                 var primaryKeysSw = Stopwatch.StartNew();
                 try
                 {
                     string getPrimaryKeysQuery = GetPrimaryKeysQuery(table);
-                    var cmd = new SqlCommand(getPrimaryKeysQuery, sqlConnection);
-                    using (SqlDataReader rdr = cmd.ExecuteReaderWithLogging(logger))
+                    var cmd = new MySqlCommand(getPrimaryKeysQuery, mysqlConnection);
+                    using (MySqlDataReader rdr = cmd.ExecuteReaderWithLogging(logger))
                     {
                         while (rdr.Read())
                         {
@@ -603,12 +606,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             primaryKeys.Add(new PrimaryKey(columnName, bool.Parse(rdr[IsIdentity].ToString()), bool.Parse(rdr[HasDefault].ToString())));
                         }
                         primaryKeysSw.Stop();
-                        TelemetryInstance.TrackDuration(TelemetryEventName.GetPrimaryKeys, primaryKeysSw.ElapsedMilliseconds, sqlConnProps);
+                        TelemetryInstance.TrackDuration(TelemetryEventName.GetPrimaryKeys, primaryKeysSw.ElapsedMilliseconds, mysqlConnProps);
                     }
                 }
                 catch (Exception ex)
                 {
-                    TelemetryInstance.TrackException(TelemetryErrorName.GetPrimaryKeys, ex, sqlConnProps);
+                    TelemetryInstance.TrackException(TelemetryErrorName.GetPrimaryKeys, ex, mysqlConnProps);
                     // Throw a custom error so that it's easier to decipher.
                     string message = $"Encountered exception while retrieving primary keys for table {table}. Cannot generate upsert command without them.";
                     throw new InvalidOperationException(message, ex);
@@ -618,11 +621,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     string message = $"Did not retrieve any primary keys for {table}. Cannot generate upsert command without them.";
                     var ex = new InvalidOperationException(message);
-                    TelemetryInstance.TrackException(TelemetryErrorName.NoPrimaryKeys, ex, sqlConnProps);
+                    TelemetryInstance.TrackException(TelemetryErrorName.NoPrimaryKeys, ex, mysqlConnProps);
                     throw ex;
                 }
 
-                // Match SQL Primary Key column names to POCO property objects. Ensure none are missing.
+                // Match MySQL Primary Key column names to POCO property objects. Ensure none are missing.
                 IEnumerable<PropertyInfo> primaryKeyProperties = typeof(T).GetProperties().Where(f => primaryKeys.Any(k => string.Equals(k.Name, f.Name, StringComparison.Ordinal)));
                 IEnumerable<string> primaryKeysFromObject = objectColumnNames.Where(f => primaryKeys.Any(k => string.Equals(k.Name, f, StringComparison.Ordinal)));
                 IEnumerable<PrimaryKey> missingPrimaryKeysFromItem = primaryKeys
@@ -633,9 +636,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 // generate the MERGE statement correctly
                 if (!hasIdentityColumnPrimaryKeys && !hasDefaultColumnPrimaryKeys && missingPrimaryKeysFromItem.Any())
                 {
-                    string message = $"All primary keys for SQL table {table} need to be found in '{typeof(T)}.' Missing primary keys: [{string.Join(",", missingPrimaryKeysFromItem)}]";
+                    string message = $"All primary keys for MySQL table {table} need to be found in '{typeof(T)}.' Missing primary keys: [{string.Join(",", missingPrimaryKeysFromItem)}]";
                     var ex = new InvalidOperationException(message);
-                    TelemetryInstance.TrackException(TelemetryErrorName.MissingPrimaryKeys, ex, sqlConnProps);
+                    TelemetryInstance.TrackException(TelemetryErrorName.MissingPrimaryKeys, ex, mysqlConnProps);
                     throw ex;
                 }
 
@@ -649,11 +652,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     { TelemetryMeasureName.GetColumnDefinitionsDurationMs, columnDefinitionsSw.ElapsedMilliseconds },
                     { TelemetryMeasureName.GetPrimaryKeysDurationMs, primaryKeysSw.ElapsedMilliseconds }
                 };
-                sqlConnProps.Add(TelemetryPropertyName.QueryType, queryType.ToString());
-                sqlConnProps.Add(TelemetryPropertyName.HasIdentityColumn, hasIdentityColumnPrimaryKeys.ToString());
-                TelemetryInstance.TrackDuration(TelemetryEventName.GetTableInfo, tableInfoSw.ElapsedMilliseconds, sqlConnProps, durations);
-                logger.LogDebug($"RetrieveTableInformation DB and Table: {sqlConnection.Database}.{fullName}. Primary keys: [{string.Join(",", primaryKeys.Select(pk => pk.Name))}].\nSQL Column and Definitions:  [{string.Join(",", columnDefinitionsFromSQL)}]\nObject columns: [{string.Join(",", objectColumnNames)}]");
-                return new TableInformation(primaryKeys, primaryKeyProperties, columnDefinitionsFromSQL, queryType, hasIdentityColumnPrimaryKeys);
+                mysqlConnProps.Add(TelemetryPropertyName.QueryType, queryType.ToString());
+                mysqlConnProps.Add(TelemetryPropertyName.HasIdentityColumn, hasIdentityColumnPrimaryKeys.ToString());
+                TelemetryInstance.TrackDuration(TelemetryEventName.GetTableInfo, tableInfoSw.ElapsedMilliseconds, mysqlConnProps, durations);
+                logger.LogDebug($"RetrieveTableInformation DB and Table: {mysqlConnection.Database}.{fullName}. Primary keys: [{string.Join(",", primaryKeys.Select(pk => pk.Name))}].\nMySQL Column and Definitions:  [{string.Join(",", columnDefinitionsFromMySQL)}]\nObject columns: [{string.Join(",", objectColumnNames)}]");
+                return new TableInformation(primaryKeys, primaryKeyProperties, columnDefinitionsFromMySQL, queryType, hasIdentityColumnPrimaryKeys);
             }
         }
 
@@ -663,7 +666,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             public DynamicPOCOContractResolver(IDictionary<string, string> sqlColumns)
             {
-                // we only want to serialize POCO properties that correspond to SQL columns
+                // we only want to serialize POCO properties that correspond to MySQL columns
                 this._propertiesToSerialize = sqlColumns;
             }
 
@@ -673,7 +676,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     .CreateProperties(type, memberSerialization)
                     .ToDictionary(p => p.PropertyName);
 
-                // Make sure the ordering of columns matches that of SQL
+                // Make sure the ordering of columns matches that of MySQL
                 // Necessary for proper matching of column names to JSON that is generated for each batch of data
                 IList<JsonProperty> propertiesToSerialize = new List<JsonProperty>(properties.Count);
                 foreach (KeyValuePair<string, string> column in this._propertiesToSerialize)

@@ -33,17 +33,17 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             public MySqlConverter(IConfiguration configuration)
             {
                 this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-                TelemetryInstance.TrackCreate(CreateType.SqlConverter);
+                TelemetryInstance.TrackCreate(CreateType.MySqlConverter);
             }
 
             /// <summary>
-            /// Creates a SqlCommand containing a SQL connection and the SQL query and parameters specified in attribute.
-            /// The user can open the connection in the SqlCommand and use it to read in the results of the query themselves.
+            /// Creates a MySqlCommand containing a MySQL connection and the MySQL query and parameters specified in attribute.
+            /// The user can open the connection in the MySqlCommand and use it to read in the results of the query themselves.
             /// </summary>
             /// <param name="attribute">
-            /// Contains the SQL query and parameters as well as the information necessary to build the SQL Connection
+            /// Contains the MySQL query and parameters as well as the information necessary to build the MySQL Connection
             /// </param>
-            /// <returns>The SqlCommand</returns>
+            /// <returns>The MySqlCommand</returns>
             public MySqlCommand Convert(MySqlAttribute attribute)
             {
                 TelemetryInstance.TrackConvert(ConvertType.MySqlCommand);
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     var props = new Dictionary<TelemetryPropertyName, string>()
                     {
-                        { TelemetryPropertyName.Type, ConvertType.SqlCommand.ToString() }
+                        { TelemetryPropertyName.Type, ConvertType.MySqlCommand.ToString() }
                     };
                     TelemetryInstance.TrackException(TelemetryErrorName.Convert, ex, props);
                     throw;
@@ -86,14 +86,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
                 this._logger = logger;
-                TelemetryInstance.TrackCreate(CreateType.SqlGenericsConverter);
+                TelemetryInstance.TrackCreate(CreateType.MySqlGenericsConverter);
             }
 
             /// <summary>
-            /// Opens a SqlConnection, reads in the data from the user's database, and returns it as a list of POCOs.
+            /// Opens a MySqlConnection, reads in the data from the user's database, and returns it as a list of POCOs.
             /// </summary>
             /// <param name="attribute">
-            /// Contains the information necessary to establish a SqlConnection, and the query to be executed on the database
+            /// Contains the information necessary to establish a MySqlConnection, and the query to be executed on the database
             /// </param>
             /// <param name="cancellationToken">The cancellationToken is not used in this method</param>
             /// <returns>An IEnumerable containing the rows read from the user's database in the form of the user-defined POCO</returns>
@@ -116,10 +116,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
 
             /// <summary>
-            /// Opens a SqlConnection, reads in the data from the user's database, and returns it as a JSON-formatted string.
+            /// Opens a MySqlConnection, reads in the data from the user's database, and returns it as a JSON-formatted string.
             /// </summary>
             /// <param name="attribute">
-            /// Contains the information necessary to establish a SqlConnection, and the query to be executed on the database
+            /// Contains the information necessary to establish a MySqlConnection, and the query to be executed on the database
             /// </param>
             /// <param name="cancellationToken">The cancellationToken is not used in this method</param>
             /// <returns>
@@ -145,8 +145,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
 
             /// <summary>
-            /// Extracts the <see cref="SqlAttribute.ConnectionStringSetting"/> in attribute and uses it to establish a connection
-            /// to the SQL database. (Must be virtual for mocking the method in unit tests)
+            /// Extracts the <see cref="MySqlAttribute.ConnectionStringSetting"/> in attribute and uses it to establish a connection
+            /// to the MySQL database. (Must be virtual for mocking the method in unit tests)
             /// </summary>
             /// <param name="attribute">
             /// The binding attribute that contains the name of the connection string app setting and query.
@@ -158,14 +158,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             public virtual async Task<string> BuildItemFromAttributeAsync(MySqlAttribute attribute, ConvertType type)
             {
                 using (MySqlConnection connection = MySqlBindingUtilities.BuildConnection(attribute.ConnectionStringSetting, this._configuration))
-                // Ideally, we would like to move away from using SqlDataAdapter both here and in the
-                // SqlAsyncCollector since it does not support asynchronous operations.
+                // Ideally, we would like to move away from using MySqlDataAdapter both here and in the
+                // MySqlAsyncCollector since it does not support asynchronous operations.
                 using (var adapter = new MySqlDataAdapter())
                 using (MySqlCommand command = MySqlBindingUtilities.BuildCommand(attribute, connection))
                 {
                     adapter.SelectCommand = command;
-                    await connection.OpenAsyncWithSqlErrorHandling(CancellationToken.None);
-                    this._serverProperties = await SqlBindingUtilities.GetServerTelemetryProperties(connection, this._logger, CancellationToken.None);
+                    await connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None);
+                    this._serverProperties = await MySqlBindingUtilities.GetServerTelemetryProperties(connection, this._logger, CancellationToken.None);
                     Dictionary<TelemetryPropertyName, string> props = connection.AsConnectionProps(this._serverProperties);
                     TelemetryInstance.TrackConvert(type, props);
                     var dataTable = new DataTable();
@@ -181,11 +181,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             }
 
-            IAsyncEnumerable<T> IConverter<SqlAttribute, IAsyncEnumerable<T>>.Convert(MySqlAttribute attribute)
+            IAsyncEnumerable<T> IConverter<MySqlAttribute, IAsyncEnumerable<T>>.Convert(MySqlAttribute attribute)
             {
                 try
                 {
-                    var asyncEnumerable = new MySqlAsyncEnumerable<T>(SqlBindingUtilities.BuildConnection(attribute.ConnectionStringSetting, this._configuration), attribute);
+                    var asyncEnumerable = new MySqlAsyncEnumerable<T>(MySqlBindingUtilities.BuildConnection(attribute.ConnectionStringSetting, this._configuration), attribute);
                     Dictionary<TelemetryPropertyName, string> props = asyncEnumerable.Connection.AsConnectionProps(this._serverProperties);
                     TelemetryInstance.TrackConvert(ConvertType.IAsyncEnumerable, props);
                     return asyncEnumerable;
@@ -202,14 +202,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
 
             /// <summary>
-            /// Opens a SqlConnection, reads in the data from the user's database, and returns it as JArray.
+            /// Opens a MySqlConnection, reads in the data from the user's database, and returns it as JArray.
             /// </summary>
             /// <param name="attribute">
-            /// Contains the information necessary to establish a SqlConnection, and the query to be executed on the database
+            /// Contains the information necessary to establish a MySqlConnection, and the query to be executed on the database
             /// </param>
             /// <param name="cancellationToken">The cancellationToken is not used in this method</param>
             /// <returns>JArray containing the rows read from the user's database in the form of the user-defined POCO</returns>
-            async Task<JArray> IAsyncConverter<MySqlAttribute, JArray>.ConvertAsync(SqlAttribute attribute, CancellationToken cancellationToken)
+            async Task<JArray> IAsyncConverter<MySqlAttribute, JArray>.ConvertAsync(MySqlAttribute attribute, CancellationToken cancellationToken)
             {
                 try
                 {
