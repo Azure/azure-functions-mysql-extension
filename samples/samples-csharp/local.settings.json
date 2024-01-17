@@ -1,7 +1,10 @@
 {
     "IsEncrypted": false,
-    "Values": {
-        "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-        "FUNCTIONS_WORKER_RUNTIME": "dotnet"
-    }
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "MySqlConnectionString": "Server='';UserID='';Password='';Database='';SslMode=Required;SslCa='path_to_ca_certificate';",
+    "Sp_SelectCost": "SelectProductsCost",
+    "ProductCost": 100
+  }
 }

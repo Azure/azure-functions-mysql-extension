@@ -3,8 +3,6 @@
 
 using System;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Common;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql

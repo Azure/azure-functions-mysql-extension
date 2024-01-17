@@ -48,11 +48,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
         /// <summary>
         /// The name of the app setting where the MySQL connection string is stored
-        /// (see https://docs.microsoft.com/dotnet/api/microsoft.data.sqlclient.sqlconnection).
+        /// (see https://dev.mysql.com/doc/dev/connector-net/latest/api/data_api/MySql.Data.MySqlClient.MySqlConnection.html).
         /// The attributes specified in the connection string are listed here
-        /// https://docs.microsoft.com/dotnet/api/microsoft.data.sqlclient.sqlconnection.connectionstring
+        /// https://dev.mysql.com/doc/dev/connector-net/latest/api/data_api/MySql.Data.MySqlClient.MySqlConnection.html#MySql_Data_MySqlClient_MySqlConnection_ConnectionString
         /// For example, to create a connection to the "TestDB" located at the URL "test.database.windows.net" using a User ID and password,
-        /// create a ConnectionStringSetting with a name like SqlServerAuthentication. The value of the SqlServerAuthentication app setting
+        /// create a ConnectionStringSetting with a name like MySqlServerAuthentication. The value of the MySqlServerAuthentication app setting
         /// would look like "Data Source=test.database.windows.net;Database=TestDB;User ID={userid};Password={password}".
         /// </summary>
         public string ConnectionStringSetting { get; }

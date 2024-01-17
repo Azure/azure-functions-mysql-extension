@@ -122,7 +122,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// commands that refer to the name of a StoredProcedure (the StoredProcedure CommandType) or are themselves
         /// raw queries (the Text CommandType).
         /// </exception>
-        /// <returns>The built SqlCommand</returns>
+        /// <returns>The built MySqlCommand</returns>
         public static MySqlCommand BuildCommand(MySqlAttribute attribute, MySqlConnection connection)
         {
             var command = new MySqlCommand
@@ -136,7 +136,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
             else if (attribute.CommandType != CommandType.Text)
             {
-                throw new ArgumentException("The type of the MySQL attribute for an input binding must be either CommandType.Text for a direct SQL query, or CommandType.StoredProcedure for a stored procedure.");
+                throw new ArgumentException("The type of the MySQL attribute for an input binding must be either CommandType.Text for a direct MySQL query, or CommandType.StoredProcedure for a stored procedure.");
             }
             ParseParameters(attribute.Parameters, command);
             return command;
@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// Verifies that the database we're connected to is supported
         /// </summary>
         /// <exception cref="InvalidOperationException">Throw if an error occurs while querying the compatibility level or if the database is not supported</exception>
-        /*public static async Task VerifyDatabaseSupported(MySqlConnection connection, ILogger logger, CancellationToken cancellationToken)
+        public static async Task VerifyDatabaseSupported(MySqlConnection connection, ILogger logger, CancellationToken cancellationToken)
         {
             // Need at least 130 for OPENJSON support
             const int MIN_SUPPORTED_COMPAT_LEVEL = 130;
@@ -194,7 +194,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             string verifyDatabaseSupportedQuery = $"SELECT compatibility_level FROM sys.databases WHERE Name = DB_NAME()";
 
             using (var verifyDatabaseSupportedCommand = new MySqlCommand(verifyDatabaseSupportedQuery, connection))
-            using (MySqlDataReader reader = verifyDatabaseSupportedCommand.ExecuteReader())
+            using (MySqlDataReader reader = verifyDatabaseSupportedCommand.ExecuteReaderWithLogging(logger))
             {
                 if (!await reader.ReadAsync(cancellationToken))
                 {
@@ -208,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     throw new InvalidOperationException($"MySQL bindings require a database compatibility level of 130 or higher to function. Current compatibility level = {compatLevel}");
                 }
             }
-        }*/
+        }
 
         /// <summary>
         /// Opens a connection and handles some specific errors if they occur.
@@ -225,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
             catch (Exception e)
             {
-                MySqlException? mysqlEx = e is AggregateException a ? a.InnerExceptions.OfType<MySqlException>().First() :
+                MySqlException mysqlEx = e is AggregateException a ? a.InnerExceptions.OfType<MySqlException>().First() :
                     e is MySqlException s ? s : null;
                 // Error number for:
                 //  A connection was successfully established with the server, but then an error occurred during the login process.
@@ -246,19 +246,32 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// for details
         /// </summary>
         /// <param name="e">The exception to check</param>
-        /// <returns>True if the exception is a fatal SqlClientException, false otherwise</returns>
-        internal static bool IsFatalMySqlException(this Exception e)
+        /// <returns>True if the exception is a fatal MySqlClientException, false otherwise</returns>
+        //internal static bool IsFatalMySqlException(this Exception e)
+        //{
+        //    string lowerMessage = e.Message.ToLowerInvariant();
+        //    // Most MySqlExceptions wrap the original error from the native driver, so make sure to check both
+        //    return (e as MySqlException)?.Class >= 20
+        //        || (e.InnerException as MySqlException)?.Class >= 20
+        //        // TEMPORARY - Not all exceptions thrown by MySqlClient are MySqlExceptions, and the current SqlClient
+        //        // does not correctly update the State property in all cases. So for now explicitly check for
+        //        // the string containing a message indicating that the connection has been closed or broken.
+        //        // This should be removed once version 5.2.0+ has been released
+        //        // https://github.com/Azure/azure-functions-sql-extension/issues/860
+        //        || (lowerMessage.Contains("connection") && (lowerMessage.Contains("broken") || lowerMessage.Contains("closed")));
+        //}
+
+        /// <summary>
+        /// Whether the exception is a MySqlClient deadlock exception (Error Number 1205)
+        /// </summary>
+        /// <param name="e"></param>
+        /// <returns></returns>
+        internal static bool IsDeadlockException(this Exception e)
         {
-            string lowerMessage = e.Message.ToLowerInvariant();
-            // Most SqlExceptions wrap the original error from the native driver, so make sure to check both
-            return (e as MySqlException)?. >= 20
-                || (e.InnerException as SqlException)?.Class >= 20
-                // TEMPORARY - Not all exceptions thrown by SqlClient are SqlExceptions, and the current SqlClient
-                // does not correctly update the State property in all cases. So for now explicitly check for
-                // the string containing a message indicating that the connection has been closed or broken.
-                // This should be removed once version 5.2.0+ has been released
-                // https://github.com/Azure/azure-functions-sql-extension/issues/860
-                || (lowerMessage.Contains("connection") && (lowerMessage.Contains("broken") || lowerMessage.Contains("closed")));
+            // See https://learn.microsoft.com/sql/relational-databases/errors-events/mssqlserver-1205-database-engine-error
+            // Transaction (Process ID %d) was deadlocked on %.*ls resources with another process and has been chosen as the deadlock victim. Rerun the transaction.
+            return (e as MySqlException)?.Number == 1205
+                || (e.InnerException as MySqlException)?.Number == 1205;
         }
 
         /// <summary>
@@ -266,7 +279,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         /// <param name="conn">The connection to check</param>
         /// <returns>True if the connection is broken or closed, false otherwise</returns>
-        internal static bool IsBrokenOrClosed(this SqlConnection conn)
+        internal static bool IsBrokenOrClosed(this MySqlConnection conn)
         {
             return conn.State == ConnectionState.Broken || conn.State == ConnectionState.Closed;
         }
@@ -281,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="connectionName">The name of the connection to display in the log messages</param>
         /// <param name="token">Cancellation token to pass to the Open call</param>
         /// <returns>True if the connection is open, either because it was able to be re-established or because it was already open. False if the connection could not be re-established.</returns>
-        internal static async Task<bool> TryEnsureConnected(this SqlConnection conn,
+        internal static async Task<bool> TryEnsureConnected(this MySqlConnection conn,
             bool forceReconnect,
             ILogger logger,
             string connectionName,
@@ -315,57 +328,21 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <summary>
         /// Get the Server Properties for the given connection.
         /// </summary>
-        /// <returns>ServerProperties (EngineEdition and Edition) of the target Sql Server.</returns>
-        public static async Task<ServerProperties> GetServerTelemetryProperties(SqlConnection connection, ILogger logger, CancellationToken cancellationToken)
+        /// <returns>ServerProperties of the target MySql Server.</returns>
+        public static async Task<ServerProperties> GetServerTelemetryProperties(MySqlConnection connection, ILogger logger, CancellationToken cancellationToken)
         {
             if (TelemetryInstance.Enabled)
             {
                 try
                 {
-                    string serverPropertiesQuery = $"SELECT SERVERPROPERTY('EngineEdition'), SERVERPROPERTY('Edition')";
+                    string serverPropertiesQuery = $"SELECT @@version, @@version_comment";
 
-                    using (var selectServerEditionCommand = new SqlCommand(serverPropertiesQuery, connection))
-                    using (SqlDataReader reader = selectServerEditionCommand.ExecuteReaderWithLogging(logger))
+                    using (var selectServerEditionCommand = new MySqlCommand(serverPropertiesQuery, connection))
+                    using (MySqlDataReader reader = selectServerEditionCommand.ExecuteReaderWithLogging(logger))
                     {
                         if (await reader.ReadAsync(cancellationToken))
                         {
-                            int engineEdition = reader.GetInt32(0);
-                            var serverProperties = new ServerProperties() { Edition = reader.GetString(1) };
-                            // Mapping information from
-                            // https://learn.microsoft.com/en-us/sql/t-sql/functions/serverproperty-transact-sql?view=sql-server-ver16
-                            switch (engineEdition)
-                            {
-                                case 1:
-                                    serverProperties.EngineEdition = SqlBindingConstants.EngineEdition.DesktopEngine.ToString();
-                                    return serverProperties;
-                                case 2:
-                                    serverProperties.EngineEdition = SqlBindingConstants.EngineEdition.Standard.ToString();
-                                    return serverProperties;
-                                case 3:
-                                    serverProperties.EngineEdition = SqlBindingConstants.EngineEdition.Enterprise.ToString();
-                                    return serverProperties;
-                                case 4:
-                                    serverProperties.EngineEdition = SqlBindingConstants.EngineEdition.Express.ToString();
-                                    return serverProperties;
-                                case 5:
-                                    serverProperties.EngineEdition = SqlBindingConstants.EngineEdition.SQLDatabase.ToString();
-                                    return serverProperties;
-                                case 6:
-                                    serverProperties.EngineEdition = SqlBindingConstants.EngineEdition.AzureSynapseAnalytics.ToString();
-                                    return serverProperties;
-                                case 8:
-                                    serverProperties.EngineEdition = SqlBindingConstants.EngineEdition.AzureSQLManagedInstance.ToString();
-                                    return serverProperties;
-                                case 9:
-                                    serverProperties.EngineEdition = SqlBindingConstants.EngineEdition.AzureSQLEdge.ToString();
-                                    return serverProperties;
-                                case 11:
-                                    serverProperties.EngineEdition = SqlBindingConstants.EngineEdition.AzureSynapseserverlessSQLpool.ToString();
-                                    return serverProperties;
-                                default:
-                                    serverProperties.EngineEdition = engineEdition.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                                    return serverProperties;
-                            }
+                            var serverProperties = new ServerProperties() { Version = reader.GetString(0), Version_Comment = reader.GetString(1) };
                         }
                     }
                 }
@@ -382,12 +359,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <summary>
         /// Calls ExecuteScalarAsync and logs an error if it fails before rethrowing.
         /// </summary>
-        /// <param name="cmd">The SqlCommand being executed</param>
+        /// <param name="cmd">The MySqlCommand being executed</param>
         /// <param name="logger">The logger</param>
         /// <param name="cancellationToken">The cancellation token to pass to the call</param>
         /// <param name="logCommand">Defaults to false and when set logs the command being executed</param>
         /// <returns>The result of the call</returns>
-        public static async Task<object> ExecuteScalarAsyncWithLogging(this SqlCommand cmd, ILogger logger, CancellationToken cancellationToken, bool logCommand = false)
+        public static async Task<object> ExecuteScalarAsyncWithLogging(this MySqlCommand cmd, ILogger logger, CancellationToken cancellationToken, bool logCommand = false)
         {
             try
             {
@@ -407,12 +384,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <summary>
         /// Calls ExecuteNonQueryAsync and logs an error if it fails before rethrowing.
         /// </summary>
-        /// <param name="cmd">The SqlCommand being executed</param>
+        /// <param name="cmd">The MySqlCommand being executed</param>
         /// <param name="logger">The logger</param>
         /// <param name="cancellationToken">The cancellation token to pass to the call</param>
         /// <param name="logCommand">Defaults to false and when set logs the command being executed</param>
         /// <returns>The result of the call</returns>
-        public static async Task<int> ExecuteNonQueryAsyncWithLogging(this SqlCommand cmd, ILogger logger, CancellationToken cancellationToken, bool logCommand = false)
+        public static async Task<int> ExecuteNonQueryAsyncWithLogging(this MySqlCommand cmd, ILogger logger, CancellationToken cancellationToken, bool logCommand = false)
         {
             try
             {
@@ -432,11 +409,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <summary>
         /// Calls ExecuteReader and logs an error if it fails before rethrowing.
         /// </summary>
-        /// <param name="cmd">The SqlCommand being executed</param>
+        /// <param name="cmd">The MySqlCommand being executed</param>
         /// <param name="logger">The logger</param>
         /// <param name="logCommand">Defaults to false and when set logs the command being executed</param>
         /// <returns>The result of the call</returns>
-        public static SqlDataReader ExecuteReaderWithLogging(this SqlCommand cmd, ILogger logger, bool logCommand = false)
+        public static MySqlDataReader ExecuteReaderWithLogging(this MySqlCommand cmd, ILogger logger, bool logCommand = false)
         {
             try
             {
@@ -453,5 +430,4 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
         }
     }
-}
 }
