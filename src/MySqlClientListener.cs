@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
 
     /// <summary>
-    /// This listener class will listen for events from the SqlClientEventSource class
+    /// This listener class will listen for events from the MySqlClientEventSource class
     /// and forward them to the logger.
     /// </summary>
     public class MySqlClientListener : EventListener
