@@ -9,8 +9,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Telemetry
 {
     public sealed class UserLevelCacheWriter
     {
-        private const string AzureFunctionsSqlBindingsProfileDirectoryName = ".azurefunctions-sqlbindings";
-        private readonly string _azureFunctionsSqlBindingsTryUserProfileFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), AzureFunctionsSqlBindingsProfileDirectoryName);
+        private const string AzureFunctionsMySqlBindingsProfileDirectoryName = ".azurefunctions-mysqlbindings";
+        private readonly string _azureFunctionsMySqlBindingsTryUserProfileFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), AzureFunctionsMySqlBindingsProfileDirectoryName);
         private readonly TelemetryClient _telemetryClient;
 
         public UserLevelCacheWriter(TelemetryClient telemetryClient)
@@ -25,9 +25,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Telemetry
             {
                 if (!File.Exists(cacheFilepath))
                 {
-                    if (!Directory.Exists(this._azureFunctionsSqlBindingsTryUserProfileFolderPath))
+                    if (!Directory.Exists(this._azureFunctionsMySqlBindingsTryUserProfileFolderPath))
                     {
-                        Directory.CreateDirectory(this._azureFunctionsSqlBindingsTryUserProfileFolderPath);
+                        Directory.CreateDirectory(this._azureFunctionsMySqlBindingsTryUserProfileFolderPath);
                     }
 
                     string runResult = getValueToCache();
@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Telemetry
         }
         private string GetCacheFilePath(string cacheKey)
         {
-            return Path.Combine(this._azureFunctionsSqlBindingsTryUserProfileFolderPath, $"{cacheKey}.azureFunctionsSqlBindingsTryUserLevelCache");
+            return Path.Combine(this._azureFunctionsMySqlBindingsTryUserProfileFolderPath, $"{cacheKey}.azureFunctionsMySqlBindingsTryUserLevelCache");
         }
     }
 }
