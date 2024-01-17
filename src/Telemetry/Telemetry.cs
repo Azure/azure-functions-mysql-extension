@@ -27,7 +27,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Telemetry
         private Task _trackEventTask;
         private ILogger _logger;
         private bool _initialized;
-        private const string InstrumentationKey = "98697a1c-1416-486a-99ac-c6c74ebe5ebd";
+        private const string InstrumentationKey = "";// ToDO : need to generate own Instrumentationkey for generating mysql telemetry
         /// <summary>
         /// The environment variable used for opting out of telemetry
         /// </summary>
@@ -49,7 +49,8 @@ To learn more about our Privacy Statement visit this link: https://go.microsoft.
         public void Initialize(IConfiguration config, ILogger logger)
         {
             this._logger = logger;
-            this.Enabled = !(Utils.GetEnvironmentVariableAsBool(TelemetryOptoutEnvVar) || Utils.GetConfigSettingAsBool(TelemetryOptoutSetting, config));
+            //this.Enabled = !(Utils.GetEnvironmentVariableAsBool(TelemetryOptoutEnvVar) || Utils.GetConfigSettingAsBool(TelemetryOptoutSetting, config));
+            this.Enabled = false;//ToDo : temporarily harcoded to disable telemetry for mysql, need to fix it
             if (!this.Enabled)
             {
                 this._logger.LogInformation("Telemetry disabled");
