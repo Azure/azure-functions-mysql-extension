@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     /// </summary>
     internal class MySqlObject
     {
-        private static readonly string SCHEMA_NAME_FUNCTION = "SCHEMA_NAME()";
+        private static readonly string SCHEMA_NAME_FUNCTION = "SCHEMA()";
 
         /// <summary>
         /// The name of the object
@@ -24,11 +24,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         public readonly string QuotedName;
         /// <summary>
-        /// The schema of the object, defaulting to the SCHEMA_NAME() function if the full name doesn't include a schema
+        /// The schema of the object, defaulting to the SCHEMA() function if the full name doesn't include a schema
         /// </summary>
         public readonly string Schema;
         /// <summary>
-        /// The name of the object, quoted and escaped with single quotes if it's not the default SCHEMA_NAME() function
+        /// The name of the object, quoted and escaped with single quotes if it's not the default SCHEMA() function
         /// </summary>
         public readonly string QuotedSchema;
         /// <summary>

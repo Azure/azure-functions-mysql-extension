@@ -3,8 +3,8 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet",
-    "MySqlConnectionString": "Server='';UserID='';Password='';Database='';SslMode=Required;SslCa='path_to_ca_certificate';",
+    "MySqlConnectionString": "Server='testserver-v5-centralus.mysql.database.azure.com';UserID='cloudsa';Password='Yukon900';Database='mysqldb1';SslMode=Required;SslCa='c:\\DigiCertGlobalRootCA.crt.pem';",
     "Sp_SelectCost": "SelectProductsCost",
-    "ProductCost": 100
+    "ProductCost": 200
   }
 }
