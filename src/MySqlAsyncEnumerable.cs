@@ -108,10 +108,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     if (this._reader == null)
                     {
-                        using (MySqlCommand command = MySqlBindingUtilities.BuildCommand(this._attribute, this._connection))
-                        {
-                            this._reader = command.ExecuteReader();
-                        }
+                        MySqlCommand command = MySqlBindingUtilities.BuildCommand(this._attribute, this._connection);
+                        this._reader = command.ExecuteReader();
                     }
                     if (this._reader.Read())
                     {

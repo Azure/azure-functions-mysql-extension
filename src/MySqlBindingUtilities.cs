@@ -188,6 +188,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <exception cref="InvalidOperationException">Throw if an error occurs while querying the compatibility level or if the database is not supported</exception>
         public static async Task VerifyDatabaseSupported(MySqlConnection connection, ILogger logger, CancellationToken cancellationToken)
         {
+            /*This kind of term 'compatibility_level', does not exist in mysql (to find databse compatibility with server)
             // Need at least 130 for OPENJSON support
             const int MIN_SUPPORTED_COMPAT_LEVEL = 130;
 
@@ -207,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     throw new InvalidOperationException($"MySQL bindings require a database compatibility level of 130 or higher to function. Current compatibility level = {compatLevel}");
                 }
-            }
+            }*/
         }
 
         /// <summary>
