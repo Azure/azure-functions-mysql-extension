@@ -45,6 +45,20 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.Common
             return false;
         }
     }
+    public class ProductCost
+    {
+        public int Cost { get; set; }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is Product)
+            {
+                var that = obj as Product;
+                return this.Cost == that.Cost;
+            }
+            return false;
+        }
+    }
 
     public class ProductWithDefaultPK
     {
