@@ -17,12 +17,11 @@ using Microsoft.Extensions.Logging;
 using MoreLinq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Telemetry;
 using System.Diagnostics;
 using Newtonsoft.Json.Linq;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingConstants;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingUtilities;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.Telemetry.Telemetry;
+using System.Runtime.CompilerServices;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
@@ -74,7 +73,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
         private readonly List<T> _rows = new List<T>();
         private readonly SemaphoreSlim _rowLock = new SemaphoreSlim(1, 1);
-        private ServerProperties _serverProperties;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MySqlAsyncCollector{T}"/> class.
@@ -96,7 +94,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             this._attribute = attribute ?? throw new ArgumentNullException(nameof(attribute));
             this._logger = logger;
-            TelemetryInstance.TrackCreate(CreateType.MySqlAsyncCollector);
             using (MySqlConnection connection = BuildConnection(attribute.ConnectionStringSetting, configuration))
             {
                 connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None).Wait();
@@ -143,14 +140,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 if (this._rows.Count != 0)
                 {
-                    TelemetryInstance.TrackEvent(TelemetryEventName.FlushAsync);
+                    this._logger.LogInformation($"Sending event Flush Async");
                     await this.UpsertRowsAsync(this._rows, this._attribute, this._configuration);
                     this._rows.Clear();
                 }
             }
             catch (Exception ex)
             {
-                TelemetryInstance.TrackException(TelemetryErrorName.FlushAsync, ex);
+                this._logger.LogError($"Error sending event Flush Async. Message={ex.Message}");
                 throw;
             }
             finally
@@ -174,9 +171,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             using (MySqlConnection connection = BuildConnection(attribute.ConnectionStringSetting, configuration))
             {
                 await connection.OpenAsync();
-                this._serverProperties = await GetServerTelemetryProperties(connection, this._logger, CancellationToken.None);
-                Dictionary<TelemetryPropertyName, string> props = connection.AsConnectionProps(this._serverProperties);
-
+                
                 string fullTableName = attribute.CommandText;
 
                 // Include the connection string hash as part of the key in case this customer has the same table in two different MySql Servers
@@ -200,9 +195,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                 if (!(cachedTables[cacheKey] is TableInformation tableInfo))
                 {
-                    TelemetryInstance.TrackEvent(TelemetryEventName.TableInfoCacheMiss, props);
+                    this._logger.LogInformation($"Sending event TableInfoCacheMiss");
                     // set the columnNames for supporting T as JObject since it doesn't have columns in the member info.
-                    tableInfo = TableInformation.RetrieveTableInformation(connection, fullTableName, this._logger, GetColumnNamesFromItem(rows.First()), this._serverProperties);
+                    tableInfo = TableInformation.RetrieveTableInformation(connection, fullTableName, this._logger, GetColumnNamesFromItem(rows.First()));
                     var policy = new CacheItemPolicy
                     {
                         // Re-look up the primary key(s) after timeout (default timeout is 10 minutes)
@@ -213,7 +208,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 }
                 else
                 {
-                    TelemetryInstance.TrackEvent(TelemetryEventName.TableInfoCacheHit, props);
+                    this._logger.LogInformation($"Sending event TableInfoCacheHit");
                 }
 
                 IEnumerable<string> extraProperties = GetExtraProperties(tableInfo.Columns, rows.First());
@@ -221,7 +216,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     string message = $"The following properties in {typeof(T)} do not exist in the table {fullTableName}: {string.Join(", ", extraProperties.ToArray())}.";
                     var ex = new InvalidOperationException(message);
-                    TelemetryInstance.TrackException(TelemetryErrorName.PropsNotExistOnTable, ex, props);
                     throw ex;
                 }
 
@@ -269,26 +263,19 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     transaction.Commit();
                     transactionSw.Stop();
                     upsertRowsAsyncSw.Stop();
-                    var measures = new Dictionary<TelemetryMeasureName, double>()
-                {
-                    { TelemetryMeasureName.BatchCount, batchCount },
-                    { TelemetryMeasureName.TransactionDurationMs, transactionSw.ElapsedMilliseconds },
-                    { TelemetryMeasureName.CommandDurationMs, commandSw.ElapsedMilliseconds },
-                    { TelemetryMeasureName.BatchSize, batchSize },
-                    { TelemetryMeasureName.NumRows, rows.Count }
-                };
-                    TelemetryInstance.TrackEvent(TelemetryEventName.Upsert, props, measures);
+                    this._logger.LogInformation($"Sending event Upsert Rows - BatchCount: {batchCount}, TransactionDurationMs: {transactionSw.ElapsedMilliseconds}," +
+                        $"CommandDurationMs: {commandSw.ElapsedMilliseconds}, BatchSize: {batchSize}, Rows: {rows.Count}");
                 }
                 catch (Exception ex)
                 {
                     try
                     {
-                        TelemetryInstance.TrackException(TelemetryErrorName.Upsert, ex, props);
+                        this._logger.LogError($"Error Upserting rows. Message:{ex.Message}");
                         transaction.Rollback();
                     }
                     catch (Exception ex2)
                     {
-                        TelemetryInstance.TrackException(TelemetryErrorName.UpsertRollback, ex2, props);
+                        this._logger.LogError($"Error Upserting rows and rollback. Message:{ex2.Message}");
                         string message2 = $"Encountered exception during upsert and rollback.";
                         throw new AggregateException(message2, new List<Exception> { ex, ex2 });
                     }
@@ -547,11 +534,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             /// <param name="fullName">Full name of table, including schema (if exists).</param>
             /// <param name="logger">ILogger used to log any errors or warnings.</param>
             /// <param name="objectColumnNames">Column names from the object</param>
-            /// <param name="serverProperties">Version and Version_Comment of the target MySQL Server.</param>
             /// <returns>TableInformation object containing primary keys, column types, etc.</returns>
-            public static TableInformation RetrieveTableInformation(MySqlConnection mysqlConnection, string fullName, ILogger logger, IEnumerable<string> objectColumnNames, ServerProperties serverProperties)
+            public static TableInformation RetrieveTableInformation(MySqlConnection mysqlConnection, string fullName, ILogger logger, IEnumerable<string> objectColumnNames)
             {
-                Dictionary<TelemetryPropertyName, string> mysqlConnProps = mysqlConnection.AsConnectionProps(serverProperties);
                 var table = new MySqlObject(fullName);
 
                 var tableInfoSw = Stopwatch.StartNew();
@@ -571,13 +556,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             columnDefinitionsFromMySQL.Add(columnName, rdr[ColumnDefinition].ToString());
                         }
                         columnDefinitionsSw.Stop();
-                        TelemetryInstance.TrackDuration(TelemetryEventName.GetColumnDefinitions, columnDefinitionsSw.ElapsedMilliseconds, mysqlConnProps);
+                        logger.LogInformation($"Time Taken to get column definitions: {columnDefinitionsSw.ElapsedMilliseconds}");
                     }
 
                 }
                 catch (Exception ex)
                 {
-                    TelemetryInstance.TrackException(TelemetryErrorName.GetColumnDefinitions, ex, mysqlConnProps);
+                    logger.LogError($"Exception encountered during GetColumnDefinitions. Message:{ex.Message}");
                     // Throw a custom error so that it's easier to decipher.
                     string message = $"Encountered exception while retrieving column names and types for table {table}. Cannot generate upsert command without them.";
                     throw new InvalidOperationException(message, ex);
@@ -587,7 +572,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     string message = $"Table {table} does not exist.";
                     var ex = new InvalidOperationException(message);
-                    TelemetryInstance.TrackException(TelemetryErrorName.GetColumnDefinitionsTableDoesNotExist, ex, mysqlConnProps);
+                    logger.LogError($"Column Definition does not exist for table: {table}");
                     throw ex;
                 }
 
@@ -606,12 +591,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             primaryKeys.Add(new PrimaryKey(columnName, bool.Parse(rdr[IsIdentity].ToString()), bool.Parse(rdr[HasDefault].ToString())));
                         }
                         primaryKeysSw.Stop();
-                        TelemetryInstance.TrackDuration(TelemetryEventName.GetPrimaryKeys, primaryKeysSw.ElapsedMilliseconds, mysqlConnProps);
+                        logger.LogInformation($"Time taken (ms) to get PrimaryKeys for table {table}: {primaryKeysSw.ElapsedMilliseconds}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    TelemetryInstance.TrackException(TelemetryErrorName.GetPrimaryKeys, ex, mysqlConnProps);
+                    logger.LogError($"Exception encountered while fetching the primary keys for table {table}. Message: {ex.Message}");
                     // Throw a custom error so that it's easier to decipher.
                     string message = $"Encountered exception while retrieving primary keys for table {table}. Cannot generate upsert command without them.";
                     throw new InvalidOperationException(message, ex);
@@ -621,7 +606,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     string message = $"Did not retrieve any primary keys for {table}. Cannot generate upsert command without them.";
                     var ex = new InvalidOperationException(message);
-                    TelemetryInstance.TrackException(TelemetryErrorName.NoPrimaryKeys, ex, mysqlConnProps);
+                    logger.LogError($"Unable to get primary keys for table {table}");
                     throw ex;
                 }
 
@@ -638,7 +623,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     string message = $"All primary keys for MySQL table {table} need to be found in '{typeof(T)}.' Missing primary keys: [{string.Join(",", missingPrimaryKeysFromItem)}]";
                     var ex = new InvalidOperationException(message);
-                    TelemetryInstance.TrackException(TelemetryErrorName.MissingPrimaryKeys, ex, mysqlConnProps);
+                    logger.LogError($"Missing Primary Keys for table: {table}");
                     throw ex;
                 }
 
@@ -647,14 +632,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 QueryType queryType = (hasIdentityColumnPrimaryKeys || hasDefaultColumnPrimaryKeys) && missingPrimaryKeysFromItem.Any() ? QueryType.Insert : QueryType.Merge;
 
                 tableInfoSw.Stop();
-                var durations = new Dictionary<TelemetryMeasureName, double>()
-                {
-                    { TelemetryMeasureName.GetColumnDefinitionsDurationMs, columnDefinitionsSw.ElapsedMilliseconds },
-                    { TelemetryMeasureName.GetPrimaryKeysDurationMs, primaryKeysSw.ElapsedMilliseconds }
-                };
-                mysqlConnProps.Add(TelemetryPropertyName.QueryType, queryType.ToString());
-                mysqlConnProps.Add(TelemetryPropertyName.HasIdentityColumn, hasIdentityColumnPrimaryKeys.ToString());
-                TelemetryInstance.TrackDuration(TelemetryEventName.GetTableInfo, tableInfoSw.ElapsedMilliseconds, mysqlConnProps, durations);
+                logger.LogInformation($"Time taken(ms) to get Table {table} information: {tableInfoSw.ElapsedMilliseconds}");
                 logger.LogDebug($"RetrieveTableInformation DB and Table: {mysqlConnection.Database}.{fullName}. Primary keys: [{string.Join(",", primaryKeys.Select(pk => pk.Name))}].\nMySQL Column and Definitions:  [{string.Join(",", columnDefinitionsFromMySQL)}]\nObject columns: [{string.Join(",", objectColumnNames)}]");
                 return new TableInformation(primaryKeys, primaryKeyProperties, columnDefinitionsFromMySQL, queryType, hasIdentityColumnPrimaryKeys);
             }
