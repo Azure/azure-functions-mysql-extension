@@ -6,8 +6,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Telemetry;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.Telemetry.Telemetry;
 using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
@@ -22,6 +20,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         internal class MySqlConverter : IConverter<MySqlAttribute, MySqlCommand>
         {
             private readonly IConfiguration _configuration;
+            private readonly ILogger _logger;
 
             /// <summary>
             /// Initializes a new instance of the <see cref="MySqlConverter"/> class.
@@ -33,7 +32,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             public MySqlConverter(IConfiguration configuration)
             {
                 this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-                TelemetryInstance.TrackCreate(CreateType.MySqlConverter);
             }
 
             /// <summary>
@@ -46,7 +44,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             /// <returns>The MySqlCommand</returns>
             public MySqlCommand Convert(MySqlAttribute attribute)
             {
-                TelemetryInstance.TrackConvert(ConvertType.MySqlCommand);
                 try
                 {
                     return MySqlBindingUtilities.BuildCommand(attribute, MySqlBindingUtilities.BuildConnection(
@@ -54,11 +51,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 }
                 catch (Exception ex)
                 {
-                    var props = new Dictionary<TelemetryPropertyName, string>()
-                    {
-                        { TelemetryPropertyName.Type, ConvertType.MySqlCommand.ToString() }
-                    };
-                    TelemetryInstance.TrackException(TelemetryErrorName.Convert, ex, props);
+                    _logger.LogError($"Exception encountered while converting to MySQL command. Message: {ex.Message}");
                     throw;
                 }
             }
@@ -69,10 +62,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         internal class MySqlGenericsConverter<T> : IAsyncConverter<MySqlAttribute, IEnumerable<T>>, IConverter<MySqlAttribute, IAsyncEnumerable<T>>,
             IAsyncConverter<MySqlAttribute, string>, IAsyncConverter<MySqlAttribute, JArray>
         {
-            private readonly IConfiguration _configuration;
+            ILogger logger;
 
-            private readonly ILogger _logger;
-            private ServerProperties _serverProperties;
+            private readonly IConfiguration _configuration;
 
             /// <summary>
             /// Initializes a new instance of the <see cref="MySqlGenericsConverter{T}"/> class.
@@ -82,11 +74,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             /// <exception cref="ArgumentNullException">
             /// Thrown if the configuration is null
             /// </exception>
-            public MySqlGenericsConverter(IConfiguration configuration, ILogger logger)
+            public MySqlGenericsConverter(IConfiguration configuration)
             {
                 this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-                this._logger = logger;
-                TelemetryInstance.TrackCreate(CreateType.MySqlGenericsConverter);
             }
 
             /// <summary>
@@ -101,16 +91,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 try
                 {
-                    string json = await this.BuildItemFromAttributeAsync(attribute, ConvertType.IEnumerable);
+                    string json = await this.BuildItemFromAttributeAsync(attribute);
                     return Utils.JsonDeserializeObject<IEnumerable<T>>(json);
                 }
                 catch (Exception ex)
                 {
-                    var props = new Dictionary<TelemetryPropertyName, string>()
-                    {
-                        { TelemetryPropertyName.Type, ConvertType.IEnumerable.ToString() }
-                    };
-                    TelemetryInstance.TrackException(TelemetryErrorName.Convert, ex, props);
+                    logger.LogError($"Exception encountered in MySqlGenerics Converter - IEnumerable. Message: {ex.Message}");
                     throw;
                 }
             }
@@ -131,15 +117,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 try
                 {
-                    return await this.BuildItemFromAttributeAsync(attribute, ConvertType.Json);
+                    return await this.BuildItemFromAttributeAsync(attribute);
                 }
                 catch (Exception ex)
                 {
-                    var props = new Dictionary<TelemetryPropertyName, string>()
-                    {
-                        { TelemetryPropertyName.Type, ConvertType.Json.ToString() }
-                    };
-                    TelemetryInstance.TrackException(TelemetryErrorName.Convert, ex, props);
+                    logger.LogError($"Exception encountered in MySqlGenerics Converter - JSON. Message: {ex.Message}");
                     throw;
                 }
             }
@@ -151,11 +133,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             /// <param name="attribute">
             /// The binding attribute that contains the name of the connection string app setting and query.
             /// </param>
-            /// <param name="type">
-            /// The type of conversion being performed by the input binding.
-            /// </param>
             /// <returns></returns>
-            public virtual async Task<string> BuildItemFromAttributeAsync(MySqlAttribute attribute, ConvertType type)
+            public virtual async Task<string> BuildItemFromAttributeAsync(MySqlAttribute attribute)
             {
                 using (MySqlConnection connection = MySqlBindingUtilities.BuildConnection(attribute.ConnectionStringSetting, this._configuration))
                 // Ideally, we would like to move away from using MySqlDataAdapter both here and in the
@@ -165,12 +144,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     adapter.SelectCommand = command;
                     await connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None);
-                    this._serverProperties = await MySqlBindingUtilities.GetServerTelemetryProperties(connection, this._logger, CancellationToken.None);
-                    Dictionary<TelemetryPropertyName, string> props = connection.AsConnectionProps(this._serverProperties);
-                    TelemetryInstance.TrackConvert(type, props);
                     var dataTable = new DataTable();
                     adapter.Fill(dataTable);
-                    this._logger.LogInformation($"{dataTable.Rows.Count} row(s) queried from database: {connection.Database} using Command: {command.CommandText}");
+                    logger.LogInformation($"{dataTable.Rows.Count} row(s) queried from database: {connection.Database} using Command: {command.CommandText}");
                     // Serialize any DateTime objects in UTC format
                     var jsonSerializerSettings = new JsonSerializerSettings()
                     {
@@ -186,17 +162,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 try
                 {
                     var asyncEnumerable = new MySqlAsyncEnumerable<T>(MySqlBindingUtilities.BuildConnection(attribute.ConnectionStringSetting, this._configuration), attribute);
-                    Dictionary<TelemetryPropertyName, string> props = asyncEnumerable.Connection.AsConnectionProps(this._serverProperties);
-                    TelemetryInstance.TrackConvert(ConvertType.IAsyncEnumerable, props);
                     return asyncEnumerable;
                 }
                 catch (Exception ex)
                 {
-                    var props = new Dictionary<TelemetryPropertyName, string>()
-                    {
-                        { TelemetryPropertyName.Type, ConvertType.IAsyncEnumerable.ToString() }
-                    };
-                    TelemetryInstance.TrackException(TelemetryErrorName.Convert, ex, props);
+                    logger.LogError($"Exception encountered in MySqlGenerics Converter - IAsyncEnumerable. Message: {ex.Message}");
                     throw;
                 }
             }
@@ -213,16 +183,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 try
                 {
-                    string json = await this.BuildItemFromAttributeAsync(attribute, ConvertType.JArray);
+                    string json = await this.BuildItemFromAttributeAsync(attribute);
                     return JArray.Parse(json);
                 }
                 catch (Exception ex)
                 {
-                    var props = new Dictionary<TelemetryPropertyName, string>()
-                    {
-                        { TelemetryPropertyName.Type, ConvertType.JArray.ToString() }
-                    };
-                    TelemetryInstance.TrackException(TelemetryErrorName.Convert, ex, props);
+                    logger.LogError($"Exception encountered in MySqlGenerics Converter - JArray. Message: {ex.Message}");
                     throw;
                 }
             }

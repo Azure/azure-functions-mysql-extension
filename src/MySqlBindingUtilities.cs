@@ -10,8 +10,6 @@ using System.Threading;
 using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.Telemetry.Telemetry;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Telemetry;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
@@ -330,7 +328,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// Get the Server Properties for the given connection.
         /// </summary>
         /// <returns>ServerProperties of the target MySql Server.</returns>
-        public static async Task<ServerProperties> GetServerTelemetryProperties(MySqlConnection connection, ILogger logger, CancellationToken cancellationToken)
+        /* public static async Task<ServerProperties> GetServerTelemetryProperties(MySqlConnection connection, ILogger logger, CancellationToken cancellationToken)
         {
             if (TelemetryInstance.Enabled)
             {
@@ -355,7 +353,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 }
             }
             return null;
-        }
+        } */
 
         /// <summary>
         /// Calls ExecuteScalarAsync and logs an error if it fails before rethrowing.
