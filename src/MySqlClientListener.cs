@@ -50,7 +50,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     if (payload != null)
                     {
-                        this._logger.LogTrace($"EventID {eventData.EventId}. Payload: {payload}");
+                        this._logger.LogInformation($"EventID {eventData.EventId}. Payload: {payload}");
                     }
                 }
             }

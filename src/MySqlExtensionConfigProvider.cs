@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Description;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlConverters;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.Telemetry.Telemetry;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Config;
 using Microsoft.Extensions.Configuration;
@@ -57,7 +56,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 throw new ArgumentNullException(nameof(context));
             }
             ILogger logger = this._loggerFactory.CreateLogger(LogCategories.Bindings);
-            TelemetryInstance.Initialize(this._configuration, logger);
             // Only enable SQL Client logging when VerboseLogging is set in the config to avoid extra overhead when the
             // detailed logging it provides isn't needed
             if (this.mysqlClientListener == null && Utils.GetConfigSettingAsBool(VerboseLoggingSettingName, this._configuration))
