@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.InputBindingSamples
 {
     public static class GetProducts
     {
-        [FunctionName("GetProducts")]
+        [FunctionName(nameof(GetProducts))]
         public static IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproducts/{cost}")]
             HttpRequest req,

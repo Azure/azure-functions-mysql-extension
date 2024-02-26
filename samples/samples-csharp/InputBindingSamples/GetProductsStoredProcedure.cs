@@ -9,10 +9,9 @@ using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.Common;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.InputBindingSamples
 {
-
     public static class GetProductsStoredProcedure
     {
-        [FunctionName("GetProductsStoredProcedure")]
+        [FunctionName(nameof(GetProductsStoredProcedure))]
         public static IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproducts-storedprocedure/{cost}")]
             HttpRequest req,

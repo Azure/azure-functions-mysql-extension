@@ -56,7 +56,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 throw new ArgumentNullException(nameof(context));
             }
             ILogger logger = this._loggerFactory.CreateLogger(LogCategories.Bindings);
-            // Only enable SQL Client logging when VerboseLogging is set in the config to avoid extra overhead when the
+            // Only enable MySQL Client logging when VerboseLogging is set in the config to avoid extra overhead when the
             // detailed logging it provides isn't needed
             if (this.mysqlClientListener == null && Utils.GetConfigSettingAsBool(VerboseLoggingSettingName, this._configuration))
             {

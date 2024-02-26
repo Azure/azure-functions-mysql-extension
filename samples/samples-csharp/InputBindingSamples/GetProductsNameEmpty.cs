@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.InputBindingSamples
     public static class GetProductsNameEmpty
     {
         // In this example, the value passed to the @Name parameter is an empty string
-        [FunctionName("GetProductsNameEmpty")]
+        [FunctionName(nameof(GetProductsNameEmpty))]
         public static IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproducts-nameempty/{cost}")]
             HttpRequest req,
