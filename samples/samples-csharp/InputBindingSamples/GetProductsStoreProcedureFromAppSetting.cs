@@ -10,12 +10,12 @@ using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.Common;
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.InputBindingSamples
 {
     /// <summary>
-    /// This shows an example of a SQL Input binding that uses a stored procedure 
+    /// This shows an example of a MySQL Input binding that uses a stored procedure 
     /// from an app setting value to query for Products with a specific cost that is also defined as an app setting value.
     /// </summary>
     public static class GetProductsStoredProcedureFromAppSetting
     {
-        [FunctionName("GetProductsStoredProcedureFromAppSetting")]
+        [FunctionName(nameof(GetProductsStoredProcedureFromAppSetting))]
         public static IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproductsbycost")]
             HttpRequest req,

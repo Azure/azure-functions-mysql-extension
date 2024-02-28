@@ -9,7 +9,7 @@ using Microsoft.SqlServer.TransactSql.ScriptDom;
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     /// <summary>
-    /// Helper class for working with SQL object names.
+    /// Helper class for working with MySQL object names.
     /// </summary>
     internal class MySqlObject
     {
