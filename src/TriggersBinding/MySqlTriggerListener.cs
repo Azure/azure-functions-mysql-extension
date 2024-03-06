@@ -252,9 +252,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                 }
                 catch (Exception ex)
                 {
-                    TelemetryInstance.TrackException(TelemetryErrorName.CreateSchema, ex, this._telemetryProps);
+                    // TelemetryInstance.TrackException(TelemetryErrorName.CreateSchema, ex, this._telemetryProps);
                     var mysqlEx = ex as MySqlException;
-                    if (mysqlEx?.Number == ObjectAlreadyExistsErrorNumber)
+                    if (mysqlEx?.Number == 1050)
                     {
                         // This generally shouldn't happen since we check for its existence in the statement but occasionally
                         // a race condition can make it so that multiple instances will try and create the schema at once.

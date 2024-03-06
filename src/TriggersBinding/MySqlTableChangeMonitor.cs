@@ -221,7 +221,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                                 await this.ReleaseLeasesAsync(connection, token);
                             }
                         }
-                        catch (Exception e) when (e.IsFatalMySqlException() || connection.IsBrokenOrClosed())
+                        catch (Exception e) when (connection.IsBrokenOrClosed())        // TODO: e.IsFatalMySqlException() || - check mysql corresponding 
                         {
                             // Retry connection if there was a fatal SQL exception or something else caused the connection to be closed
                             // since that indicates some other issue occurred (such as dropped network) and may be able to be recovered
@@ -342,7 +342,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                 this._rowsToProcess = new List<IReadOnlyDictionary<string, object>>();
                 this._logger.LogError($"Failed to check for changes in table '{this._userTable.FullName}' due to exception: {e.GetType()}. Exception message: {e.Message}");
                 
-                if (e.IsFatalSqlException() || connection.IsBrokenOrClosed())
+                if (connection.IsBrokenOrClosed())      // TODO: e.IsFatalMySqlException() || - check mysql corresponding
                 {
                     // If we get a fatal SQL Client exception or the connection is broken let it bubble up so we can try to re-establish the connection
                     throw;
@@ -438,7 +438,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                         {
                             await this.RenewLeasesAsync(connection, token);
                         }
-                        catch (Exception e) when (e.IsFatalMySqlException() || connection.IsBrokenOrClosed())
+                        catch (Exception e) when (connection.IsBrokenOrClosed())        // TODO: e.IsFatalMySqlException() || - check mysql corresponding
                         {
                             // Retry connection if there was a fatal SQL exception or something else caused the connection to be closed
                             // since that indicates some other issue occurred (such as dropped network) and may be able to be recovered
@@ -654,11 +654,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
             {
                 MySqlChangeOperation operation = GetChangeOperation(row);
 
-                // If the row has been deleted, there is no longer any data for it in the user table. The best we can do
-                // is populate the row-item with the primary key values of the row.
-                Dictionary<string, object> item = operation == SqlChangeOperation.Delete
-                    ? this._primaryKeyColumns.ToDictionary(col => col.name, col => row[col.name])
-                    : this._userTableColumns.ToDictionary(col => col, col => row[col]);
+                Dictionary<string, object> item = this._userTableColumns.ToDictionary(col => col, col => row[col]); 
 
                 changes.Add(new MySqlChange<T>(operation, Utils.JsonDeserializeObject<T>(Utils.JsonSerializeObject(item))));
             }

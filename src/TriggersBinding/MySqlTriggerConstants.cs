@@ -29,7 +29,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                     LeasesTableLeaseExpirationTimeColumnName
         };
 
+        public const string ConfigKey_MySqlTrigger_BatchSize = "MySql_Trigger_BatchSize";
+        public const string ConfigKey_MySqlTrigger_MaxBatchSize = "MySql_Trigger_MaxBatchSize";
+        public const string ConfigKey_MySqlTrigger_PollingInterval = "MySql_Trigger_PollingIntervalMs";
         public const string ConfigKey_MySqlTrigger_MaxChangesPerWorker = "MySql_Trigger_MaxChangesPerWorker";
+
 
         /// <summary>
         /// The resource name to use for getting the application lock. We use the same resource name for all instances
