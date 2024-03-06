@@ -181,35 +181,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <summary>
-        /// Verifies that the database we're connected to is supported
-        /// </summary>
-        /// <exception cref="InvalidOperationException">Throw if an error occurs while querying the compatibility level or if the database is not supported</exception>
-        public static async Task VerifyDatabaseSupported(MySqlConnection connection, ILogger logger, CancellationToken cancellationToken)
-        {
-            /*This kind of term 'compatibility_level', does not exist in mysql (to find databse compatibility with server)
-            // Need at least 130 for OPENJSON support
-            const int MIN_SUPPORTED_COMPAT_LEVEL = 130;
-
-            string verifyDatabaseSupportedQuery = $"SELECT compatibility_level FROM sys.databases WHERE Name = DB_NAME()";
-
-            using (var verifyDatabaseSupportedCommand = new MySqlCommand(verifyDatabaseSupportedQuery, connection))
-            using (MySqlDataReader reader = verifyDatabaseSupportedCommand.ExecuteReaderWithLogging(logger))
-            {
-                if (!await reader.ReadAsync(cancellationToken))
-                {
-                    throw new InvalidOperationException($"Received empty response when verifying whether the database is currently supported.");
-                }
-
-                int compatLevel = reader.GetByte(0);
-
-                if (compatLevel < MIN_SUPPORTED_COMPAT_LEVEL)
-                {
-                    throw new InvalidOperationException($"MySQL bindings require a database compatibility level of 130 or higher to function. Current compatibility level = {compatLevel}");
-                }
-            }*/
-        }
-
-        /// <summary>
         /// Opens a connection and handles some specific errors if they occur.
         /// </summary>
         /// <param name="connection">The connection to open</param>

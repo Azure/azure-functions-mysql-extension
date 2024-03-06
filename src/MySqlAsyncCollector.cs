@@ -97,7 +97,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             using (MySqlConnection connection = BuildConnection(attribute.ConnectionStringSetting, configuration))
             {
                 connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None).Wait();
-                VerifyDatabaseSupported(connection, logger, CancellationToken.None).Wait();
             }
         }
 
