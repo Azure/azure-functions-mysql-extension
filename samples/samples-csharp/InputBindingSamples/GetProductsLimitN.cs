@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.InputBindingSamples
 {
     public static class GetProductsLimitN
     {
-        [FunctionName("GetProductsLimitN")]
+        [FunctionName(nameof(GetProductsLimitN))]
         public static IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproductlimitn/{count}")]
             HttpRequest req,

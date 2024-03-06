@@ -9,18 +9,18 @@ using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.Common;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.InputBindingSamples
 {
-    public static class GetProducts
+    public static class GetProductCostByIdFunction
     {
-        [FunctionName(nameof(GetProducts))]
+        [FunctionName(nameof(GetProductCostByIdFunction))]
         public static IActionResult Run(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproducts/{cost}")]
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproductcostbyid-function/{prodid}")]
             HttpRequest req,
-            [MySql("select * from Products where Cost = @Cost",
+            [MySql("select GetProductCostById(@ProdId) as Cost",
                 "MySqlConnectionString",
-                parameters: "@Cost={cost}")]
-            IEnumerable<Product> products)
+                parameters: "@ProdId={prodid}")]
+            IEnumerable<ProductCost> productcosts)
         {
-            return new OkObjectResult(products);
+            return new OkObjectResult(productcosts);
         }
     }
 }

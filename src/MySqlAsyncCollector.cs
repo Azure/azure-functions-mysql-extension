@@ -22,6 +22,7 @@ using Newtonsoft.Json.Linq;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingConstants;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingUtilities;
 using System.Runtime.CompilerServices;
+using MySqlX.XDevAPI.Relational;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
@@ -30,14 +31,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     {
         public readonly string Name;
 
-        public readonly bool IsIdentity;
+        public readonly bool IsAutoIncrement;
 
         public readonly bool HasDefault;
 
-        public PrimaryKey(string name, bool isIdentity, bool hasDefault)
+        public PrimaryKey(string name, bool isAutoIncrement, bool hasDefault)
         {
             this.Name = name;
-            this.IsIdentity = isIdentity;
+            this.IsAutoIncrement = isAutoIncrement;
             this.HasDefault = hasDefault;
         }
 
@@ -57,12 +58,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     internal class MySqlAsyncCollector<T> : IAsyncCollector<T>, IDisposable
     {
         private static readonly string[] UnsupportedTypes = { "NTEXT(*)", "TEXT(*)", "IMAGE(*)" };
-        private const string RowDataParameter = "@rowData";
         private const string ColumnName = "COLUMN_NAME";
         private const string ColumnDefinition = "COLUMN_DEFINITION";
 
         private const string HasDefault = "has_default";
-        private const string IsIdentity = "is_identity";
+        private const string IsAutoIncrement = "is_autoincrement";
         private const string CteName = "cte";
 
         private const int AZ_FUNC_TABLE_INFO_CACHE_TIMEOUT_MINUTES = 10;
@@ -166,7 +166,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="configuration"> Used to build up the connection </param>
         private async Task UpsertRowsAsync(IList<T> rows, MySqlAttribute attribute, IConfiguration configuration)
         {
-            var upsertRowsAsyncSw = Stopwatch.StartNew();
             using (MySqlConnection connection = BuildConnection(attribute.ConnectionStringSetting, configuration))
             {
                 await connection.OpenAsync();
@@ -226,19 +225,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     throw new InvalidOperationException(message);
                 }
 
-                IEnumerable<string> bracketedColumnNamesFromItem = columnNamesFromItem
-                    .Where(prop => !tableInfo.PrimaryKeys.Any(k => k.IsIdentity && string.Equals(k.Name, prop, StringComparison.Ordinal))) // Skip any identity columns, those should never be updated
-                    .Select(prop => prop.AsBracketQuotedString());
-                if (!bracketedColumnNamesFromItem.Any())
-                {
-                    string message = $"No property values found in item to upsert. If using query parameters, ensure that the casing of the parameter names and the property names match.";
-                    var ex = new InvalidOperationException(message);
-                    throw ex;
-                }
-
                 var table = new MySqlObject(fullTableName);
-                string mergeOrInsertQuery = tableInfo.QueryType == QueryType.Insert ? TableInformation.GetInsertQuery(table, bracketedColumnNamesFromItem) :
-                    TableInformation.GetMergeQuery(tableInfo.PrimaryKeys, table, bracketedColumnNamesFromItem);
+                string insertQuery = TableInformation.GetInsertQuery(table, columnNamesFromItem);
+
+                string duplicateUpdateQuery = TableInformation.GetOnDuplicateUpdateQuery(columnNamesFromItem);
 
                 var transactionSw = Stopwatch.StartNew();
                 int batchSize = 1000;
@@ -248,20 +238,18 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     MySqlCommand command = connection.CreateCommand();
                     command.Connection = connection;
                     command.Transaction = transaction;
-                    MySqlParameter par = command.Parameters.Add(RowDataParameter, MySqlDbType.VarString, -1);
                     int batchCount = 0;
                     var commandSw = Stopwatch.StartNew();
                     foreach (IEnumerable<T> batch in rows.Batch(batchSize))
                     {
                         batchCount++;
-                        GenerateDataQueryForMerge(tableInfo, batch, out string newDataQuery, out string rowData);
-                        command.CommandText = $"{newDataQuery} {mergeOrInsertQuery};";
-                        par.Value = rowData;
+                        GenerateDataQueryForMerge(tableInfo, batch, out string newDataQuery);
+                        command.CommandText = $"{insertQuery} {newDataQuery} {duplicateUpdateQuery};";
+
                         await command.ExecuteNonQueryAsyncWithLogging(this._logger, CancellationToken.None);
                     }
                     transaction.Commit();
                     transactionSw.Stop();
-                    upsertRowsAsyncSw.Stop();
                     this._logger.LogInformation($"Sending event Upsert Rows - BatchCount: {batchCount}, TransactionDurationMs: {transactionSw.ElapsedMilliseconds}," +
                         $"CommandDurationMs: {commandSw.ElapsedMilliseconds}, BatchSize: {batchSize}, Rows: {rows.Count}");
                 }
@@ -318,6 +306,52 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
             return typeof(T).GetProperties().Select(prop => prop.Name);
         }
+        /// <summary>
+        /// Gets the column names from PropertyInfo when T is POCO
+        /// and when T is JObject, parses the data to get column names
+        /// </summary>
+        /// <param name="row"> Sample row used to get the column names when item is a JObject </param>
+        /// <returns>List of column names in the table</returns>
+        private static IEnumerable<string> GetColumnValuesFromItem(T row)
+        {
+            if (typeof(T) == typeof(JObject))
+            {
+                var jsonObj = JObject.Parse(row.ToString());
+                Dictionary<string, string> dictObj = jsonObj.ToObject<Dictionary<string, string>>();
+                return dictObj.Values;
+            }
+            return typeof(T).GetProperties().Select(prop => prop.GetConstantValue().ToString());
+        }
+        private static string GetColValuesForUpsert(T row, TableInformation table)
+        {
+            //build a string of column data
+            string jsonRowDataInString = Utils.JsonSerializeObject(row, table.JsonSerializerSettings);
+            var jsonRowData = JObject.Parse(jsonRowDataInString);
+
+            //to store temproraly, the values of each property in each row
+            IList<string> colValues = new List<string>();
+            foreach (var colDataPair in jsonRowData)
+            {
+                string colVal = colDataPair.Value.ToString();
+
+                //If column values is empty
+                if (string.IsNullOrEmpty(colVal))
+                {
+                    colVal = "null";
+                }
+                // If the value type is String
+                else if (colDataPair.Value.Type == JTokenType.String)
+                {
+                    // add single quote for string values
+                    colVal = "'" + colVal + "'";
+                }
+
+                colValues.Add(colVal);
+
+            }
+            string joinedColValues = '(' + string.Join(", ", colValues) + ")";
+            return joinedColValues;
+        }
 
         /// <summary>
         /// Generates T-MySQL for data to be upserted using Merge.
@@ -326,11 +360,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="table">Information about the table we will be upserting into</param>
         /// <param name="rows">Rows to be upserted</param>
         /// <param name="newDataQuery">Generated T-MySQL data query</param>
-        /// <param name="rowData">Serialized rows to be upserted represented as JSON string</param>
         /// <returns>T-MySQL containing data for merge</returns>
-        private static void GenerateDataQueryForMerge(TableInformation table, IEnumerable<T> rows, out string newDataQuery, out string rowData)
+        private static void GenerateDataQueryForMerge(TableInformation table, IEnumerable<T> rows, out string newDataQuery)
         {
             IList<T> rowsToUpsert = new List<T>();
+
+            // to store rows data in List of string 
+            IList<string> rowsValuesToUpsert = new List<string>();
 
             var uniqueUpdatedPrimaryKeys = new HashSet<string>();
 
@@ -343,7 +379,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     {
                         // If the table has an identity column as a primary key then
                         // all rows are guaranteed to be unique so we can insert them all
-                        rowsToUpsert.Add(row);
+                        rowsValuesToUpsert.Add(GetColValuesForUpsert(row, table));
                     }
                     else
                     {
@@ -366,8 +402,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         // If the combined key is empty that means
                         if (uniqueUpdatedPrimaryKeys.Add(combinedPrimaryKeyStr))
                         {
-                            // This is the first time we've seen this particular PK. Add this row to the upsert query.
-                            rowsToUpsert.Add(row);
+                            //add a column values of a single row
+                            rowsValuesToUpsert.Add(GetColValuesForUpsert(row, table));
                         }
                     }
                 }
@@ -375,13 +411,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     // ToDo: add check for duplicate primary keys once we find a way to get primary keys.
                     rowsToUpsert.Add(row);
+
                 }
             }
 
-            rowData = Utils.JsonSerializeObject(rowsToUpsert, table.JsonSerializerSettings);
-            IEnumerable<string> columnNamesFromItem = GetColumnNamesFromItem(rows.First());
-            IEnumerable<string> bracketColumnDefinitionsFromItem = columnNamesFromItem.Select(c => $"{c.AsBracketQuotedString()} {table.Columns[c]}");
-            newDataQuery = $"WITH {CteName} AS ( SELECT * FROM OPENJSON({RowDataParameter}) WITH ({string.Join(",", bracketColumnDefinitionsFromItem)}) )";
+            // concat\join different rows data by comma separate
+            newDataQuery = string.Join(", ", rowsValuesToUpsert);
         }
 
         public class TableInformation
@@ -434,26 +469,27 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
 
             /// <summary>
-            /// Generates SQL query that can be used to retrieve the Primary Keys of a table
+            /// Generates MySQL query that can be used to retrieve the Primary Keys of a table
             /// </summary>
             public static string GetPrimaryKeysQuery(MySqlObject table)
             {
                 return $@"
                     SELECT
-                        ccu.{ColumnName},
-                        c.is_identity,
+                        cu.{ColumnName},
                         case
-                            when isc.COLUMN_DEFAULT = NULL then 'false'
+                            when isc.EXTRA = 'auto_increment' then 'true'
+                            else 'false'
+                        end as 'is_autoincrement',
+                        case
+                            when isc.COLUMN_DEFAULT IS NULL then 'false'
                             else 'true'
                         end as {HasDefault}
                     FROM
                         INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
                     INNER JOIN
-                        INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE ccu ON ccu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME AND ccu.TABLE_NAME = tc.TABLE_NAME
+                        INFORMATION_SCHEMA.KEY_COLUMN_USAGE cu ON cu.TABLE_SCHEMA = tc.TABLE_SCHEMA AND cu.TABLE_NAME = tc.TABLE_NAME AND cu.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
                     INNER JOIN
-                        sys.columns c ON c.object_id = OBJECT_ID({table.QuotedFullName}) AND c.name = ccu.COLUMN_NAME
-                    INNER JOIN
-                        INFORMATION_SCHEMA.COLUMNS isc ON isc.TABLE_NAME = {table.QuotedName} AND isc.COLUMN_NAME = ccu.COLUMN_NAME
+                        INFORMATION_SCHEMA.COLUMNS isc ON isc.TABLE_SCHEMA = tc.TABLE_SCHEMA AND isc.TABLE_NAME = tc.TABLE_NAME AND isc.COLUMN_NAME = cu.COLUMN_NAME
                     WHERE
                         tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
                     and
@@ -469,14 +505,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 return $@"
                     select
-	                    {ColumnName}, DATA_TYPE +
+	                    {ColumnName}, CONCAT(DATA_TYPE, 
 		                    case
-			                    when CHARACTER_MAXIMUM_LENGTH = -1 then '(max)'
-			                    when CHARACTER_MAXIMUM_LENGTH <> -1 then '(' + cast(CHARACTER_MAXIMUM_LENGTH as varchar(4)) + ')'
-                                when DATETIME_PRECISION is not null and DATA_TYPE not in ('datetime', 'date', 'smalldatetime') then '(' + cast(DATETIME_PRECISION as varchar(1)) + ')'
-			                    when DATA_TYPE in ('decimal', 'numeric') then '(' + cast(NUMERIC_PRECISION as varchar(9)) + ',' + + cast(NUMERIC_SCALE as varchar(9)) + ')'
+			                    when CHARACTER_MAXIMUM_LENGTH is not null then CONCAT('(',CHARACTER_MAXIMUM_LENGTH,')')
 			                    else ''
-		                    end as {ColumnDefinition}
+		                    end) as {ColumnDefinition}
                     from
 	                    INFORMATION_SCHEMA.COLUMNS c
                     where
@@ -485,56 +518,36 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         c.TABLE_SCHEMA = {table.QuotedSchema}";
             }
 
-            public static string GetInsertQuery(MySqlObject table, IEnumerable<string> bracketedColumnNamesFromItem)
+            public static string GetInsertQuery(MySqlObject table, IEnumerable<string> columnNamesFromItem)
             {
-                return $"INSERT INTO {table.BracketQuotedFullName} ({string.Join(",", bracketedColumnNamesFromItem)}) SELECT * FROM {CteName}";
+                return $"INSERT INTO {table.FullName} ({string.Join(",", columnNamesFromItem)}) VALUES";
             }
 
-            /// <summary>
-            /// Generates reusable MySQL query that will be part of every upsert command.
-            /// </summary>
-            public static string GetMergeQuery(IList<PrimaryKey> primaryKeys, MySqlObject table, IEnumerable<string> bracketedColumnNamesFromItem)
+            public static string GetOnDuplicateUpdateQuery(IEnumerable<string> columnNamesFromItem)
             {
-                IList<string> bracketedPrimaryKeys = primaryKeys.Select(p => p.Name.AsBracketQuotedString()).ToList();
-                // Generate the ON part of the merge query (compares new data against existing data)
-                var primaryKeyMatchingQuery = new StringBuilder($"ExistingData.{bracketedPrimaryKeys[0]} = NewData.{bracketedPrimaryKeys[0]}");
-                foreach (string primaryKey in bracketedPrimaryKeys.Skip(1))
+                // to store rows data in List of string 
+                IList<string> formattedUpdateValues = new List<string>();
+                foreach (var colName in columnNamesFromItem)
                 {
-                    primaryKeyMatchingQuery.Append($" AND ExistingData.{primaryKey} = NewData.{primaryKey}");
+                    string tmpStr = String.Format("{0} = VALUES({0})", colName);
+                    formattedUpdateValues.Add(tmpStr);
                 }
 
-                // Generate the UPDATE part of the merge query (all columns that should be updated)
-                var columnMatchingQueryBuilder = new StringBuilder();
-                foreach (string column in bracketedColumnNamesFromItem)
-                {
-                    columnMatchingQueryBuilder.Append($" ExistingData.{column} = NewData.{column},");
-                }
-
-                string columnMatchingQuery = columnMatchingQueryBuilder.ToString().TrimEnd(',');
-                return $@"
-                    MERGE INTO {table.BracketQuotedFullName} WITH (HOLDLOCK)
-                        AS ExistingData
-                    USING {CteName}
-                        AS NewData
-                    ON
-                        {primaryKeyMatchingQuery}
-                    WHEN MATCHED THEN
-                        UPDATE SET {columnMatchingQuery}
-                    WHEN NOT MATCHED THEN
-                        INSERT ({string.Join(",", bracketedColumnNamesFromItem)}) VALUES ({string.Join(",", bracketedColumnNamesFromItem)})";
+                return $"ON DUPLICATE KEY UPDATE {String.Join(", ", formattedUpdateValues)}";
             }
 
-            /// <summary>
-            /// Retrieve (relatively) static information of MySQL Table like primary keys, column names, etc.
-            /// in order to generate the MERGE portion of the upsert query.
-            /// This only needs to be generated once and can be reused for subsequent upserts.
-            /// </summary>
-            /// <param name="sqlConnection">An open connection with which to query MySQL against</param>
-            /// <param name="fullName">Full name of table, including schema (if exists).</param>
-            /// <param name="logger">ILogger used to log any errors or warnings.</param>
-            /// <param name="objectColumnNames">Column names from the object</param>
-            /// <returns>TableInformation object containing primary keys, column types, etc.</returns>
-            public static TableInformation RetrieveTableInformation(MySqlConnection mysqlConnection, string fullName, ILogger logger, IEnumerable<string> objectColumnNames)
+
+/// <summary>
+/// Retrieve (relatively) static information of MySQL Table like primary keys, column names, etc.
+/// in order to generate the MERGE portion of the upsert query.
+/// This only needs to be generated once and can be reused for subsequent upserts.
+/// </summary>
+/// <param name="sqlConnection">An open connection with which to query MySQL against</param>
+/// <param name="fullName">Full name of table, including schema (if exists).</param>
+/// <param name="logger">ILogger used to log any errors or warnings.</param>
+/// <param name="objectColumnNames">Column names from the object</param>
+/// <returns>TableInformation object containing primary keys, column types, etc.</returns>
+public static TableInformation RetrieveTableInformation(MySqlConnection mysqlConnection, string fullName, ILogger logger, IEnumerable<string> objectColumnNames)
             {
                 var table = new MySqlObject(fullName);
 
@@ -587,7 +600,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         while (rdr.Read())
                         {
                             string columnName = rdr[ColumnName].ToString();
-                            primaryKeys.Add(new PrimaryKey(columnName, bool.Parse(rdr[IsIdentity].ToString()), bool.Parse(rdr[HasDefault].ToString())));
+                            primaryKeys.Add(new PrimaryKey(columnName, bool.Parse(rdr[IsAutoIncrement].ToString()), bool.Parse(rdr[HasDefault].ToString())));
                         }
                         primaryKeysSw.Stop();
                         logger.LogInformation($"Time taken (ms) to get PrimaryKeys for table {table}: {primaryKeysSw.ElapsedMilliseconds}");
@@ -614,7 +627,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 IEnumerable<string> primaryKeysFromObject = objectColumnNames.Where(f => primaryKeys.Any(k => string.Equals(k.Name, f, StringComparison.Ordinal)));
                 IEnumerable<PrimaryKey> missingPrimaryKeysFromItem = primaryKeys
                     .Where(k => !primaryKeysFromObject.Contains(k.Name));
-                bool hasIdentityColumnPrimaryKeys = primaryKeys.Any(k => k.IsIdentity);
+                bool hasIdentityColumnPrimaryKeys = primaryKeys.Any(k => k.IsAutoIncrement);
                 bool hasDefaultColumnPrimaryKeys = primaryKeys.Any(k => k.HasDefault);
                 // If none of the primary keys are an identity column or have a default value then we require that all primary keys be present in the POCO so we can
                 // generate the MERGE statement correctly
@@ -628,7 +641,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                 // If any identity columns or columns with default values aren't included in the object then we have to generate a basic insert since the merge statement expects all primary key
                 // columns to exist. (the merge statement can handle nullable columns though if those exist)
-                QueryType queryType = (hasIdentityColumnPrimaryKeys || hasDefaultColumnPrimaryKeys) && missingPrimaryKeysFromItem.Any() ? QueryType.Insert : QueryType.Merge;
+                //QueryType queryType = (hasIdentityColumnPrimaryKeys || hasDefaultColumnPrimaryKeys) && missingPrimaryKeysFromItem.Any() ? QueryType.Insert : QueryType.Merge;
+                QueryType queryType = QueryType.Insert;
 
                 tableInfoSw.Stop();
                 logger.LogInformation($"Time taken(ms) to get Table {table} information: {tableInfoSw.ElapsedMilliseconds}");
