@@ -74,8 +74,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             /// <exception cref="ArgumentNullException">
             /// Thrown if the configuration is null
             /// </exception>
-            public MySqlGenericsConverter(IConfiguration configuration)
+            public MySqlGenericsConverter(IConfiguration configuration, ILogger logger)
             {
+                this.logger = logger;
                 this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             }
 
