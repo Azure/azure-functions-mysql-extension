@@ -13,6 +13,8 @@
     <PackageReference Include="MySql.Data" Version="8.0.11" />
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="7.0.0" />
     <PackageReference Include="System.Runtime.Caching" Version="8.0.0" />
+    <InternalsVisibleTo Include="Microsoft.Azure.WebJobs.Extensions.MySql.Tests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>
 
 </Project>
