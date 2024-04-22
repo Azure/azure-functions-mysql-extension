@@ -24,6 +24,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{4437C43B-C65
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.Functions.Worker.Extensions.MySql", "Worker.Extensions.MySql\src\Microsoft.Azure.Functions.Worker.Extensions.MySql.csproj", "{9F5B9712-3D73-4031-91FE-0FCD1DD60B93}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc", "samples\samples-outofproc\Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.csproj", "{33CE0D15-8317-42FE-9FAE-F35BCADBC477}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -46,6 +48,10 @@ Global
 		{9F5B9712-3D73-4031-91FE-0FCD1DD60B93}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F5B9712-3D73-4031-91FE-0FCD1DD60B93}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F5B9712-3D73-4031-91FE-0FCD1DD60B93}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33CE0D15-8317-42FE-9FAE-F35BCADBC477}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33CE0D15-8317-42FE-9FAE-F35BCADBC477}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33CE0D15-8317-42FE-9FAE-F35BCADBC477}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33CE0D15-8317-42FE-9FAE-F35BCADBC477}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -56,6 +62,7 @@ Global
 		{01AFD7B8-AECA-4BCC-A67C-629A4E3BD278} = {302231F0-D391-4BF7-9F6C-6F98BE763916}
 		{4437C43B-C65B-40D5-95FB-BEE86BDACE2A} = {16A33BE5-709F-4ABB-8542-20ABB2A69E35}
 		{9F5B9712-3D73-4031-91FE-0FCD1DD60B93} = {4437C43B-C65B-40D5-95FB-BEE86BDACE2A}
+		{33CE0D15-8317-42FE-9FAE-F35BCADBC477} = {F668CC0F-A3DF-4BE7-93A5-ABBB0CB92844}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {38917C5A-1D6F-4894-8324-8B5B18070485}
