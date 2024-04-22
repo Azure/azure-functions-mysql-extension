@@ -2,6 +2,20 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+	  <Description>MySql binding extension for Azure Functions</Description>
+	  <Company>Microsoft</Company>
+	  <Authors>Microsoft</Authors>
+	  <Product>MySql Binding Extension</Product>
+	  <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
+	  <!-- Default Version for dev -->
+	  <Version>99.99.99</Version>
+	  <IsPackable>true</IsPackable>
+	  <PackageId>Microsoft.Azure.WebJobs.Extensions.MySql</PackageId>
+	  <PackageTags>Microsoft Azure WebJobs AzureFunctions MySql AzureMySql</PackageTags>
+	  <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+	  <PackageReadmeFile>README.md</PackageReadmeFile>
+	  <PackageIcon>pkgicon.png</PackageIcon>
+	  <PackageProjectUrl>https://github.com/Azure/azure-functions-mysql-extension</PackageProjectUrl>
   </PropertyGroup>
 
   <ItemGroup>
