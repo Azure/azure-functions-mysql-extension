@@ -22,10 +22,10 @@
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.39" />
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="8.0.0" />
-    <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="161.9109.0" />
-    <PackageReference Include="morelinq" Version="4.2.0" />
-    <PackageReference Include="MySql.Data" Version="8.3.0" />
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="8.0.1" />
+    <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="161.8910.0" />
+    <PackageReference Include="morelinq" Version="4.1.0" />
+    <PackageReference Include="MySql.Data" Version="8.0.11" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="7.0.0" />
     <PackageReference Include="System.Runtime.Caching" Version="8.0.0" />
     <InternalsVisibleTo Include="Microsoft.Azure.WebJobs.Extensions.MySql.Tests" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
