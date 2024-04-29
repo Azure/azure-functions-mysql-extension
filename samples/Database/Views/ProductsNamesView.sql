@@ -1,4 +1,4 @@
-﻿DROP VIEW IF EXISTS ProductNames;
+DROP VIEW IF EXISTS ProductNames;
 
 CREATE VIEW ProductNames
 AS
