@@ -20,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         internal class MySqlConverter : IConverter<MySqlAttribute, MySqlCommand>
         {
             private readonly IConfiguration _configuration;
-            private readonly ILogger _logger;
 
             /// <summary>
             /// Initializes a new instance of the <see cref="MySqlConverter"/> class.
@@ -49,9 +48,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     return MySqlBindingUtilities.BuildCommand(attribute, MySqlBindingUtilities.BuildConnection(
                                        attribute.ConnectionStringSetting, this._configuration));
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    _logger.LogError($"Exception encountered while converting to MySQL command. Message: {ex.Message}");
                     throw;
                 }
             }
@@ -62,7 +60,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         internal class MySqlGenericsConverter<T> : IAsyncConverter<MySqlAttribute, IEnumerable<T>>, IConverter<MySqlAttribute, IAsyncEnumerable<T>>,
             IAsyncConverter<MySqlAttribute, string>, IAsyncConverter<MySqlAttribute, JArray>
         {
-            ILogger logger;
+            private readonly ILogger logger;
 
             private readonly IConfiguration _configuration;
 
@@ -97,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError($"Exception encountered in MySqlGenerics Converter - IEnumerable. Message: {ex.Message}");
+                    this.logger.LogError($"Exception encountered in MySqlGenerics Converter - IEnumerable. Message: {ex.Message}");
                     throw;
                 }
             }
@@ -122,7 +120,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError($"Exception encountered in MySqlGenerics Converter - JSON. Message: {ex.Message}");
+                    this.logger.LogError($"Exception encountered in MySqlGenerics Converter - JSON. Message: {ex.Message}");
                     throw;
                 }
             }
@@ -147,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     await connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None);
                     var dataTable = new DataTable();
                     adapter.Fill(dataTable);
-                    logger.LogInformation($"{dataTable.Rows.Count} row(s) queried from database: {connection.Database} using Command: {command.CommandText}");
+                    this.logger.LogInformation($"{dataTable.Rows.Count} row(s) queried from database: {connection.Database} using Command: {command.CommandText}");
                     // Serialize any DateTime objects in UTC format
                     var jsonSerializerSettings = new JsonSerializerSettings()
                     {
@@ -167,7 +165,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError($"Exception encountered in MySqlGenerics Converter - IAsyncEnumerable. Message: {ex.Message}");
+                    this.logger.LogError($"Exception encountered in MySqlGenerics Converter - IAsyncEnumerable. Message: {ex.Message}");
                     throw;
                 }
             }
@@ -189,7 +187,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError($"Exception encountered in MySqlGenerics Converter - JArray. Message: {ex.Message}");
+                    this.logger.LogError($"Exception encountered in MySqlGenerics Converter - JArray. Message: {ex.Message}");
                     throw;
                 }
             }

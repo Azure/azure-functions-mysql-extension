@@ -181,35 +181,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <summary>
-        /// Verifies that the database we're connected to is supported
-        /// </summary>
-        /// <exception cref="InvalidOperationException">Throw if an error occurs while querying the compatibility level or if the database is not supported</exception>
-        public static async Task VerifyDatabaseSupported(MySqlConnection connection, ILogger logger, CancellationToken cancellationToken)
-        {
-            /*This kind of term 'compatibility_level', does not exist in mysql (to find databse compatibility with server)
-            // Need at least 130 for OPENJSON support
-            const int MIN_SUPPORTED_COMPAT_LEVEL = 130;
-
-            string verifyDatabaseSupportedQuery = $"SELECT compatibility_level FROM sys.databases WHERE Name = DB_NAME()";
-
-            using (var verifyDatabaseSupportedCommand = new MySqlCommand(verifyDatabaseSupportedQuery, connection))
-            using (MySqlDataReader reader = verifyDatabaseSupportedCommand.ExecuteReaderWithLogging(logger))
-            {
-                if (!await reader.ReadAsync(cancellationToken))
-                {
-                    throw new InvalidOperationException($"Received empty response when verifying whether the database is currently supported.");
-                }
-
-                int compatLevel = reader.GetByte(0);
-
-                if (compatLevel < MIN_SUPPORTED_COMPAT_LEVEL)
-                {
-                    throw new InvalidOperationException($"MySQL bindings require a database compatibility level of 130 or higher to function. Current compatibility level = {compatLevel}");
-                }
-            }*/
-        }
-
-        /// <summary>
         /// Opens a connection and handles some specific errors if they occur.
         /// </summary>
         /// <param name="connection">The connection to open</param>
@@ -238,14 +209,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
         }
 
-        /// <summary>
-        /// Checks whether an exception is a fatal MySqlException. It is determined to be fatal
-        /// if the Class value of the Exception is 20 or higher, see
-        /// https://learn.microsoft.com/dotnet/api/microsoft.data.sqlclient.sqlexception#remarks
-        /// for details
-        /// </summary>
-        /// <param name="e">The exception to check</param>
-        /// <returns>True if the exception is a fatal MySqlClientException, false otherwise</returns>
         //internal static bool IsFatalMySqlException(this Exception e)
         //{
         //    string lowerMessage = e.Message.ToLowerInvariant();
@@ -323,37 +286,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
             return true;
         }
-
-        /// <summary>
-        /// Get the Server Properties for the given connection.
-        /// </summary>
-        /// <returns>ServerProperties of the target MySql Server.</returns>
-        /* public static async Task<ServerProperties> GetServerTelemetryProperties(MySqlConnection connection, ILogger logger, CancellationToken cancellationToken)
-        {
-            if (TelemetryInstance.Enabled)
-            {
-                try
-                {
-                    string serverPropertiesQuery = $"SELECT @@version, @@version_comment";
-
-                    using (var selectServerEditionCommand = new MySqlCommand(serverPropertiesQuery, connection))
-                    using (MySqlDataReader reader = selectServerEditionCommand.ExecuteReaderWithLogging(logger))
-                    {
-                        if (await reader.ReadAsync(cancellationToken))
-                        {
-                            var serverProperties = new ServerProperties() { Version = reader.GetString(0), Version_Comment = reader.GetString(1) };
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError($"Exception in GetServerTelemetryProperties. Exception = {ex.Message}");
-                    TelemetryInstance.TrackException(TelemetryErrorName.GetServerTelemetryProperties, ex);
-                    return null;
-                }
-            }
-            return null;
-        } */
 
         /// <summary>
         /// Calls ExecuteScalarAsync and logs an error if it fails before rethrowing.
