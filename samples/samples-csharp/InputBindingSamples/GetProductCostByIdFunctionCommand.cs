@@ -26,8 +26,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.InputBindingSamples
                 connection.Open();
 
                 //add return parameters in command
-                var returnparam = new MySqlParameter("Cost", MySqlDbType.Int32);
-                returnparam.Direction = ParameterDirection.ReturnValue;
+                var returnparam = new MySqlParameter("Cost", MySqlDbType.Int32)
+                {
+                    Direction = ParameterDirection.ReturnValue
+                };
                 command.Parameters.Add(returnparam);
 
                 using MySqlDataReader reader = command.ExecuteReader();
