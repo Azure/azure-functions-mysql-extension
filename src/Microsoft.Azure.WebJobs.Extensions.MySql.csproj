@@ -8,7 +8,7 @@
     <Product>MySql Binding Extension</Product>
     <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
     <!-- Default Version for dev -->
-    <Version>1.1.1</Version>
+    <Version>99.99.99</Version>
     <IsPackable>true</IsPackable>
     <PackageId>Microsoft.Azure.WebJobs.Extensions.MySql</PackageId>
     <PackageTags>Microsoft Azure WebJobs AzureFunctions for AzureMySql</PackageTags>
