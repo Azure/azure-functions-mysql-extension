@@ -16,6 +16,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     {
         private readonly ILogger _logger;
 
+        /// <summary>
+        ///  Initializes a new instance of the <see cref="MySqlClientListener"/> class.
+        /// </summary>
+        /// <param name="logger"></param>
         public MySqlClientListener(ILogger logger)
         {
             this._logger = logger;

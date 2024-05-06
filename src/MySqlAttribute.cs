@@ -22,7 +22,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="commandText">For an input binding, either a MySQL query or stored procedure that will be run in the database. For an output binding, the table name to upsert the values to.</param>
         /// <param name="connectionStringSetting">The name of the app setting where the MySQL connection string is stored</param>
         /// <param name="commandType">Specifies whether <see cref="CommandText"/> refers to a stored procedure or MySQL query string. Defaults to <see cref="CommandType.Text"/></param>
-        /// <param name="parameters">Optional - Specifies the parameters that will be used to execute the MySQL query or stored procedure. See <see cref="parameters"/> for more details.</param>
+        /// <param name="parameters">Optional - Specifies the parameters that will be used to execute the MySQL query or stored procedure. See <see cref="Parameters"/> for more details.</param>
         public MySqlAttribute(string commandText, string connectionStringSetting, CommandType commandType = CommandType.Text, string parameters = null)
         {
             this.CommandText = commandText ?? throw new ArgumentNullException(nameof(commandText));
