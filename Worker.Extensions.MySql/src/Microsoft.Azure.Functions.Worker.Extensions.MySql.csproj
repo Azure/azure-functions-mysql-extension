@@ -18,7 +18,7 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Abstractions" />
 		<None Include="..\..\Images\pkgicon.png" Pack="true" PackagePath="" />
-		<None Include=".\README.md" Pack="true" PackagePath="" />
+		<None Include="..\..\README.md" Pack="true" PackagePath="" />
 	</ItemGroup>
 
 	<ItemGroup>

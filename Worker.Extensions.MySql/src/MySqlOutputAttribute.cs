@@ -24,7 +24,7 @@ namespace Microsoft.Azure.Functions.Worker.Extensions.MySql
         /// (see https://dev.mysql.com/doc/dev/connector-net/latest/api/data_api/MySql.Data.MySqlClient.MySqlConnection.html).
         /// The attributes specified in the connection string are listed here
         /// https://dev.mysql.com/doc/dev/connector-net/latest/api/data_api/MySql.Data.MySqlClient.MySqlConnection.html#MySql_Data_MySqlClient_MySqlConnection__ctor_System_String_
-       /// </summary>
+        /// </summary>
         public string ConnectionStringSetting { get; }
 
         /// <summary>
