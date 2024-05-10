@@ -135,24 +135,22 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             /// <returns></returns>
             public virtual async Task<string> BuildItemFromAttributeAsync(MySqlAttribute attribute)
             {
-                using (MySqlConnection connection = MySqlBindingUtilities.BuildConnection(attribute.ConnectionStringSetting, this._configuration))
+                using MySqlConnection connection = MySqlBindingUtilities.BuildConnection(attribute.ConnectionStringSetting, this._configuration);
                 // Ideally, we would like to move away from using MySqlDataAdapter both here and in the
                 // MySqlAsyncCollector since it does not support asynchronous operations.
-                using (var adapter = new MySqlDataAdapter())
-                using (MySqlCommand command = MySqlBindingUtilities.BuildCommand(attribute, connection))
+                using var adapter = new MySqlDataAdapter();
+                using MySqlCommand command = MySqlBindingUtilities.BuildCommand(attribute, connection);
+                adapter.SelectCommand = command;
+                await connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None);
+                var dataTable = new DataTable();
+                adapter.Fill(dataTable);
+                this.logger.LogInformation($"{dataTable.Rows.Count} row(s) queried from database: {connection.Database} using Command: {command.CommandText}");
+                // Serialize any DateTime objects in UTC format
+                var jsonSerializerSettings = new JsonSerializerSettings()
                 {
-                    adapter.SelectCommand = command;
-                    await connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None);
-                    var dataTable = new DataTable();
-                    adapter.Fill(dataTable);
-                    this.logger.LogInformation($"{dataTable.Rows.Count} row(s) queried from database: {connection.Database} using Command: {command.CommandText}");
-                    // Serialize any DateTime objects in UTC format
-                    var jsonSerializerSettings = new JsonSerializerSettings()
-                    {
-                        DateFormatString = ISO_8061_DATETIME_FORMAT
-                    };
-                    return Utils.JsonSerializeObject(dataTable, jsonSerializerSettings);
-                }
+                    DateFormatString = ISO_8061_DATETIME_FORMAT
+                };
+                return Utils.JsonSerializeObject(dataTable, jsonSerializerSettings);
 
             }
 

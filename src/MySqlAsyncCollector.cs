@@ -67,8 +67,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private readonly MySqlAttribute _attribute;
         private readonly ILogger _logger;
 
-        private readonly List<T> _rows = new List<T>();
-        private readonly SemaphoreSlim _rowLock = new SemaphoreSlim(1, 1);
+        private readonly List<T> _rows = new();
+        private readonly SemaphoreSlim _rowLock = new(1, 1);
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MySqlAsyncCollector{T}"/> class.
@@ -90,10 +90,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             this._attribute = attribute ?? throw new ArgumentNullException(nameof(attribute));
             this._logger = logger;
-            using (MySqlConnection connection = BuildConnection(attribute.ConnectionStringSetting, configuration))
-            {
-                connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None).Wait();
-            }
+            using MySqlConnection connection = BuildConnection(attribute.ConnectionStringSetting, configuration);
+            connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None).Wait();
         }
 
         /// <summary>
@@ -162,107 +160,105 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="configuration"> Used to build up the connection </param>
         private async Task UpsertRowsAsync(IList<T> rows, MySqlAttribute attribute, IConfiguration configuration)
         {
-            using (MySqlConnection connection = BuildConnection(attribute.ConnectionStringSetting, configuration))
+            using MySqlConnection connection = BuildConnection(attribute.ConnectionStringSetting, configuration);
+            await connection.OpenAsync();
+            string fullTableName = attribute.CommandText;
+
+            // Include the connection string hash as part of the key in case this customer has the same table in two different MySql Servers
+            string cacheKey = $"{connection.ConnectionString.GetHashCode()}-{fullTableName}";
+
+            ObjectCache cachedTables = MemoryCache.Default;
+
+            int timeout = AZ_FUNC_TABLE_INFO_CACHE_TIMEOUT_MINUTES;
+            string timeoutEnvVar = Environment.GetEnvironmentVariable("AZ_FUNC_TABLE_INFO_CACHE_TIMEOUT_MINUTES");
+            if (!string.IsNullOrEmpty(timeoutEnvVar))
             {
-                await connection.OpenAsync();
-                string fullTableName = attribute.CommandText;
-
-                // Include the connection string hash as part of the key in case this customer has the same table in two different MySql Servers
-                string cacheKey = $"{connection.ConnectionString.GetHashCode()}-{fullTableName}";
-
-                ObjectCache cachedTables = MemoryCache.Default;
-
-                int timeout = AZ_FUNC_TABLE_INFO_CACHE_TIMEOUT_MINUTES;
-                string timeoutEnvVar = Environment.GetEnvironmentVariable("AZ_FUNC_TABLE_INFO_CACHE_TIMEOUT_MINUTES");
-                if (!string.IsNullOrEmpty(timeoutEnvVar))
+                if (int.TryParse(timeoutEnvVar, NumberStyles.Integer, CultureInfo.InvariantCulture, out timeout))
                 {
-                    if (int.TryParse(timeoutEnvVar, NumberStyles.Integer, CultureInfo.InvariantCulture, out timeout))
-                    {
-                        this._logger.LogDebug($"Overriding default table info cache timeout with new value {timeout}");
-                    }
-                    else
-                    {
-                        timeout = AZ_FUNC_TABLE_INFO_CACHE_TIMEOUT_MINUTES;
-                    }
-                }
-
-                if (!(cachedTables[cacheKey] is TableInformation tableInfo))
-                {
-                    this._logger.LogInformation($"Sending event TableInfoCacheMiss");
-                    // set the columnNames for supporting T as JObject since it doesn't have columns in the member info.
-                    tableInfo = TableInformation.RetrieveTableInformation(connection, fullTableName, this._logger, GetColumnNamesFromItem(rows.First()));
-                    var policy = new CacheItemPolicy
-                    {
-                        // Re-look up the primary key(s) after timeout (default timeout is 10 minutes)
-                        AbsoluteExpiration = DateTimeOffset.Now.AddMinutes(timeout)
-                    };
-
-                    cachedTables.Set(cacheKey, tableInfo, policy);
+                    this._logger.LogDebug($"Overriding default table info cache timeout with new value {timeout}");
                 }
                 else
                 {
-                    this._logger.LogInformation($"Sending event TableInfoCacheHit");
+                    timeout = AZ_FUNC_TABLE_INFO_CACHE_TIMEOUT_MINUTES;
                 }
+            }
 
-                IEnumerable<string> extraProperties = GetExtraProperties(tableInfo.Columns, rows.First());
-                if (extraProperties.Any())
+            if (cachedTables[cacheKey] is not TableInformation tableInfo)
+            {
+                this._logger.LogInformation($"Sending event TableInfoCacheMiss");
+                // set the columnNames for supporting T as JObject since it doesn't have columns in the member info.
+                tableInfo = TableInformation.RetrieveTableInformation(connection, fullTableName, this._logger, GetColumnNamesFromItem(rows.First()));
+                var policy = new CacheItemPolicy
                 {
-                    string message = $"The following properties in {typeof(T)} do not exist in the table {fullTableName}: {string.Join(", ", extraProperties.ToArray())}.";
-                    var ex = new InvalidOperationException(message);
-                    throw ex;
-                }
+                    // Re-look up the primary key(s) after timeout (default timeout is 10 minutes)
+                    AbsoluteExpiration = DateTimeOffset.Now.AddMinutes(timeout)
+                };
 
-                IEnumerable<string> columnNamesFromItem = GetColumnNamesFromItem(rows.First());
-                IEnumerable<string> unsupportedColumns = columnNamesFromItem.Where(prop => UnsupportedTypes.Contains(tableInfo.Columns[prop], StringComparer.OrdinalIgnoreCase));
-                if (unsupportedColumns.Any())
+                cachedTables.Set(cacheKey, tableInfo, policy);
+            }
+            else
+            {
+                this._logger.LogInformation($"Sending event TableInfoCacheHit");
+            }
+
+            IEnumerable<string> extraProperties = GetExtraProperties(tableInfo.Columns, rows.First());
+            if (extraProperties.Any())
+            {
+                string message = $"The following properties in {typeof(T)} do not exist in the table {fullTableName}: {string.Join(", ", extraProperties.ToArray())}.";
+                var ex = new InvalidOperationException(message);
+                throw ex;
+            }
+
+            IEnumerable<string> columnNamesFromItem = GetColumnNamesFromItem(rows.First());
+            IEnumerable<string> unsupportedColumns = columnNamesFromItem.Where(prop => UnsupportedTypes.Contains(tableInfo.Columns[prop], StringComparer.OrdinalIgnoreCase));
+            if (unsupportedColumns.Any())
+            {
+                string message = $"The type(s) of the following column(s) are not supported: {string.Join(", ", unsupportedColumns.ToArray())}. See https://github.com/Azure/azure-functions-sql-extension#output-bindings for more details.";
+                throw new InvalidOperationException(message);
+            }
+
+            var table = new MySqlObject(fullTableName);
+            string insertQuery = TableInformation.GetInsertQuery(table, columnNamesFromItem);
+
+            string duplicateUpdateQuery = TableInformation.GetOnDuplicateUpdateQuery(columnNamesFromItem);
+
+            var transactionSw = Stopwatch.StartNew();
+            int batchSize = 1000;
+            MySqlTransaction transaction = connection.BeginTransaction();
+            try
+            {
+                MySqlCommand command = connection.CreateCommand();
+                command.Connection = connection;
+                command.Transaction = transaction;
+                int batchCount = 0;
+                var commandSw = Stopwatch.StartNew();
+                foreach (IEnumerable<T> batch in rows.Batch(batchSize))
                 {
-                    string message = $"The type(s) of the following column(s) are not supported: {string.Join(", ", unsupportedColumns.ToArray())}. See https://github.com/Azure/azure-functions-sql-extension#output-bindings for more details.";
-                    throw new InvalidOperationException(message);
+                    batchCount++;
+                    GenerateDataQueryForMerge(tableInfo, batch, out string newDataQuery);
+                    command.CommandText = $"{insertQuery} {newDataQuery} {duplicateUpdateQuery};";
+
+                    await command.ExecuteNonQueryAsyncWithLogging(this._logger, CancellationToken.None);
                 }
-
-                var table = new MySqlObject(fullTableName);
-                string insertQuery = TableInformation.GetInsertQuery(table, columnNamesFromItem);
-
-                string duplicateUpdateQuery = TableInformation.GetOnDuplicateUpdateQuery(columnNamesFromItem);
-
-                var transactionSw = Stopwatch.StartNew();
-                int batchSize = 1000;
-                MySqlTransaction transaction = connection.BeginTransaction();
+                transaction.Commit();
+                transactionSw.Stop();
+                this._logger.LogInformation($"Sending event Upsert Rows - BatchCount: {batchCount}, TransactionDurationMs: {transactionSw.ElapsedMilliseconds}," +
+                    $"CommandDurationMs: {commandSw.ElapsedMilliseconds}, BatchSize: {batchSize}, Rows: {rows.Count}");
+            }
+            catch (Exception ex)
+            {
                 try
                 {
-                    MySqlCommand command = connection.CreateCommand();
-                    command.Connection = connection;
-                    command.Transaction = transaction;
-                    int batchCount = 0;
-                    var commandSw = Stopwatch.StartNew();
-                    foreach (IEnumerable<T> batch in rows.Batch(batchSize))
-                    {
-                        batchCount++;
-                        GenerateDataQueryForMerge(tableInfo, batch, out string newDataQuery);
-                        command.CommandText = $"{insertQuery} {newDataQuery} {duplicateUpdateQuery};";
-
-                        await command.ExecuteNonQueryAsyncWithLogging(this._logger, CancellationToken.None);
-                    }
-                    transaction.Commit();
-                    transactionSw.Stop();
-                    this._logger.LogInformation($"Sending event Upsert Rows - BatchCount: {batchCount}, TransactionDurationMs: {transactionSw.ElapsedMilliseconds}," +
-                        $"CommandDurationMs: {commandSw.ElapsedMilliseconds}, BatchSize: {batchSize}, Rows: {rows.Count}");
+                    this._logger.LogError($"Error Upserting rows. Message:{ex.Message}");
+                    transaction.Rollback();
                 }
-                catch (Exception ex)
+                catch (Exception ex2)
                 {
-                    try
-                    {
-                        this._logger.LogError($"Error Upserting rows. Message:{ex.Message}");
-                        transaction.Rollback();
-                    }
-                    catch (Exception ex2)
-                    {
-                        this._logger.LogError($"Error Upserting rows and rollback. Message:{ex2.Message}");
-                        string message2 = $"Encountered exception during upsert and rollback.";
-                        throw new AggregateException(message2, new List<Exception> { ex, ex2 });
-                    }
-                    throw new InvalidOperationException($"Unexpected error upserting rows", ex);
+                    this._logger.LogError($"Error Upserting rows and rollback. Message:{ex2.Message}");
+                    string message2 = $"Encountered exception during upsert and rollback.";
+                    throw new AggregateException(message2, new List<Exception> { ex, ex2 });
                 }
+                throw new InvalidOperationException($"Unexpected error upserting rows", ex);
             }
         }
 
@@ -540,16 +536,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     string getColumnDefinitionsQuery = GetColumnDefinitionsQuery(table);
                     var cmdColDef = new MySqlCommand(getColumnDefinitionsQuery, mysqlConnection);
-                    using (MySqlDataReader rdr = cmdColDef.ExecuteReaderWithLogging(logger))
+                    using MySqlDataReader rdr = cmdColDef.ExecuteReaderWithLogging(logger);
+                    while (rdr.Read())
                     {
-                        while (rdr.Read())
-                        {
-                            string columnName = rdr[ColumnName].ToString();
-                            columnDefinitionsFromMySQL.Add(columnName, rdr[ColumnDefinition].ToString());
-                        }
-                        columnDefinitionsSw.Stop();
-                        logger.LogInformation($"Time Taken to get column definitions: {columnDefinitionsSw.ElapsedMilliseconds}");
+                        string columnName = rdr[ColumnName].ToString();
+                        columnDefinitionsFromMySQL.Add(columnName, rdr[ColumnDefinition].ToString());
                     }
+                    columnDefinitionsSw.Stop();
+                    logger.LogInformation($"Time Taken to get column definitions: {columnDefinitionsSw.ElapsedMilliseconds}");
 
                 }
                 catch (Exception ex)
@@ -575,16 +569,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     string getPrimaryKeysQuery = GetPrimaryKeysQuery(table);
                     var cmd = new MySqlCommand(getPrimaryKeysQuery, mysqlConnection);
-                    using (MySqlDataReader rdr = cmd.ExecuteReaderWithLogging(logger))
+                    using MySqlDataReader rdr = cmd.ExecuteReaderWithLogging(logger);
+                    while (rdr.Read())
                     {
-                        while (rdr.Read())
-                        {
-                            string columnName = rdr[ColumnName].ToString();
-                            primaryKeys.Add(new PrimaryKey(columnName, bool.Parse(rdr[IsAutoIncrement].ToString()), bool.Parse(rdr[HasDefault].ToString())));
-                        }
-                        primaryKeysSw.Stop();
-                        logger.LogInformation($"Time taken (ms) to get PrimaryKeys for table {table}: {primaryKeysSw.ElapsedMilliseconds}");
+                        string columnName = rdr[ColumnName].ToString();
+                        primaryKeys.Add(new PrimaryKey(columnName, bool.Parse(rdr[IsAutoIncrement].ToString()), bool.Parse(rdr[HasDefault].ToString())));
                     }
+                    primaryKeysSw.Stop();
+                    logger.LogInformation($"Time taken (ms) to get PrimaryKeys for table {table}: {primaryKeysSw.ElapsedMilliseconds}");
                 }
                 catch (Exception ex)
                 {

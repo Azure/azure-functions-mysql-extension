@@ -243,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>True if the connection is broken or closed, false otherwise</returns>
         internal static bool IsBrokenOrClosed(this MySqlConnection conn)
         {
-            return conn.State == ConnectionState.Broken || conn.State == ConnectionState.Closed;
+            return conn.State is ConnectionState.Broken or ConnectionState.Closed;
         }
 
         /// <summary>
