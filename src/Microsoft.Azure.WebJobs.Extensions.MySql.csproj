@@ -37,6 +37,7 @@
     <Exec Command="dotnet pack &quot;$(MSBuildProjectDirectory)\$(PackageId).csproj&quot; --configuration $(Configuration) --no-build --include-symbols -p:Version=$(Version) -p:PackageVersion=$(PackageVersion)" />
     <ItemGroup>
       <_Packages Include=".\bin\$(Configuration)\*.nupkg" />
+      <_Packages Include=".\local-packages\*.nupkg" />
     </ItemGroup>
     <Copy SourceFiles="@(_Packages)" DestinationFolder="..\local-packages" />
     <Message Text="Copied MySql .nupkg to local-packages" Importance="high" />
