@@ -21,6 +21,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Worker.Extensions.MySql", "Worker.Extensions.MySql", "{16A33BE5-709F-4ABB-8542-20ABB2A69E35}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc", "samples\samples-outofproc\Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.csproj", "{33CE0D15-8317-42FE-9FAE-F35BCADBC477}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E9B85FBB-6381-49AD-AE8B-48C9D4254A71} = {E9B85FBB-6381-49AD-AE8B-48C9D4254A71}
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.Functions.Worker.Extensions.MySql", "Worker.Extensions.MySql\src\Microsoft.Azure.Functions.Worker.Extensions.MySql.csproj", "{76C9D70C-6290-480C-A1FF-64DEB0738146}"
 EndProject
