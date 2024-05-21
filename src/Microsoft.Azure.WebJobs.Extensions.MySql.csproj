@@ -17,12 +17,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Identity" />
     <PackageReference Include="Microsoft.ApplicationInsights" />
     <PackageReference Include="Microsoft.Azure.WebJobs" />
     <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" />
     <PackageReference Include="morelinq" />
     <PackageReference Include="MySql.Data" />
     <PackageReference Include="System.Runtime.Caching" />
+	<PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
+	<PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" />
     <InternalsVisibleTo Include="Microsoft.Azure.WebJobs.Extensions.MySql.Tests" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>
