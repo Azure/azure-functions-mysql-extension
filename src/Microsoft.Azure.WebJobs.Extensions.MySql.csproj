@@ -2,19 +2,52 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+	<Description>MySql binding extension for Azure Functions</Description>
+    <Company>Microsoft</Company>
+    <Authors>Microsoft</Authors>
+    <Product>MySql Binding Extension</Product>
+    <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
+    <!-- Default Version for dev -->
+    <Version>99.99.99</Version>
+    <IsPackable>true</IsPackable>
+    <PackageId>Microsoft.Azure.WebJobs.Extensions.MySql</PackageId>
+    <PackageTags>Microsoft Azure WebJobs AzureFunctions for AzureMySql</PackageTags>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
-    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.39" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="8.0.0" />
-    <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="161.8910.0" />
-    <PackageReference Include="morelinq" Version="4.1.0" />
-    <PackageReference Include="MySql.Data" Version="8.0.11" />
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="7.0.0" />
-    <PackageReference Include="System.Runtime.Caching" Version="8.0.0" />
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Microsoft.ApplicationInsights" />
+    <PackageReference Include="Microsoft.Azure.WebJobs" />
+    <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" />
+    <PackageReference Include="morelinq" />
+    <PackageReference Include="MySql.Data" />
+    <PackageReference Include="System.Runtime.Caching" />
+	<PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
+	<PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" />
     <InternalsVisibleTo Include="Microsoft.Azure.WebJobs.Extensions.MySql.Tests" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>
+  
+    <ItemGroup>
+    <None Include="..\Images\pkgicon.png" Pack="true" PackagePath="" />
+    <None Include="..\README.md" Pack="true" PackagePath="" />
+  </ItemGroup>  
+  <Target Name="PackAndCopyNupkg" AfterTargets="Build">
+    <!-- Removed the GeneratePackageOnBuild and adding this explicit Pack command to run post build
+    and also adding the copy package to local-packages to be available for the worker extension project. -->
+    <Exec Command="dotnet pack &quot;$(MSBuildProjectDirectory)\$(PackageId).csproj&quot; --configuration $(Configuration) --no-build --include-symbols -p:Version=$(Version) -p:PackageVersion=$(PackageVersion)" />
+    <ItemGroup>
+      <_Packages Include=".\bin\$(Configuration)\*.nupkg" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_Packages)" DestinationFolder="..\local-packages" />
+    <Message Text="Copied sql .nupkg to local-packages" Importance="high" />
+  </Target>
+  <Target Name="RemoveNugetPackageCache" BeforeTargets="Build">
+    <RemoveDir Directories="$(NugetPackageRoot)\$(PackageId.ToLower())\$(PackageVersion)"></RemoveDir>
+    <Message Text="Deleted nuget cache for $(PackageId.ToLower())\$(PackageVersion)" Importance="high" />
+  </Target>
 
 </Project>

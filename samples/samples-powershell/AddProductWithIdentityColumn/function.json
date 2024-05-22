@@ -1,0 +1,28 @@
+{
+  "bindings": [
+    {
+      "authLevel": "function",
+      "name": "Request",
+      "direction": "in",
+      "type": "httpTrigger",
+      "methods": [
+        "get",
+        "post"
+      ],
+      "route": "addproductwithidentitycolumn"
+    },
+    {
+      "name": "response",
+      "type": "http",
+      "direction": "out"
+    },
+    {
+      "name": "product",
+      "type": "mysql",
+      "direction": "out",
+      "commandText": "[dbo].[ProductsWithIdentity]",
+      "connectionStringSetting": "MySqlConnectionString"
+    }
+  ],
+  "disabled": false
+}

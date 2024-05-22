@@ -4,7 +4,6 @@
 using System;
 using System.Globalization;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Caching;
@@ -21,8 +20,6 @@ using System.Diagnostics;
 using Newtonsoft.Json.Linq;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingConstants;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingUtilities;
-using System.Runtime.CompilerServices;
-using MySqlX.XDevAPI.Relational;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
@@ -63,7 +60,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
         private const string HasDefault = "has_default";
         private const string IsAutoIncrement = "is_autoincrement";
-        private const string CteName = "cte";
 
         private const int AZ_FUNC_TABLE_INFO_CACHE_TIMEOUT_MINUTES = 10;
 
@@ -169,7 +165,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             using (MySqlConnection connection = BuildConnection(attribute.ConnectionStringSetting, configuration))
             {
                 await connection.OpenAsync();
-                
                 string fullTableName = attribute.CommandText;
 
                 // Include the connection string hash as part of the key in case this customer has the same table in two different MySql Servers
@@ -306,22 +301,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
             return typeof(T).GetProperties().Select(prop => prop.Name);
         }
-        /// <summary>
-        /// Gets the column names from PropertyInfo when T is POCO
-        /// and when T is JObject, parses the data to get column names
-        /// </summary>
-        /// <param name="row"> Sample row used to get the column names when item is a JObject </param>
-        /// <returns>List of column names in the table</returns>
-        private static IEnumerable<string> GetColumnValuesFromItem(T row)
-        {
-            if (typeof(T) == typeof(JObject))
-            {
-                var jsonObj = JObject.Parse(row.ToString());
-                Dictionary<string, string> dictObj = jsonObj.ToObject<Dictionary<string, string>>();
-                return dictObj.Values;
-            }
-            return typeof(T).GetProperties().Select(prop => prop.GetConstantValue().ToString());
-        }
+
         private static string GetColValuesForUpsert(T row, TableInformation table)
         {
             //build a string of column data
@@ -329,8 +309,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             var jsonRowData = JObject.Parse(jsonRowDataInString);
 
             //to store temproraly, the values of each property in each row
-            IList<string> colValues = new List<string>();
-            foreach (var colDataPair in jsonRowData)
+            var colValues = new List<string>();
+            foreach (KeyValuePair<string, JToken> colDataPair in jsonRowData)
             {
                 string colVal = colDataPair.Value.ToString();
 
@@ -527,27 +507,27 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 // to store rows data in List of string 
                 IList<string> formattedUpdateValues = new List<string>();
-                foreach (var colName in columnNamesFromItem)
+                foreach (string colName in columnNamesFromItem)
                 {
-                    string tmpStr = String.Format("{0} = VALUES({0})", colName);
+                    string tmpStr = $"{colName} = VALUES({colName})";
                     formattedUpdateValues.Add(tmpStr);
                 }
 
-                return $"ON DUPLICATE KEY UPDATE {String.Join(", ", formattedUpdateValues)}";
+                return $"ON DUPLICATE KEY UPDATE {string.Join(", ", formattedUpdateValues)}";
             }
 
 
-/// <summary>
-/// Retrieve (relatively) static information of MySQL Table like primary keys, column names, etc.
-/// in order to generate the MERGE portion of the upsert query.
-/// This only needs to be generated once and can be reused for subsequent upserts.
-/// </summary>
-/// <param name="sqlConnection">An open connection with which to query MySQL against</param>
-/// <param name="fullName">Full name of table, including schema (if exists).</param>
-/// <param name="logger">ILogger used to log any errors or warnings.</param>
-/// <param name="objectColumnNames">Column names from the object</param>
-/// <returns>TableInformation object containing primary keys, column types, etc.</returns>
-public static TableInformation RetrieveTableInformation(MySqlConnection mysqlConnection, string fullName, ILogger logger, IEnumerable<string> objectColumnNames)
+            /// <summary>
+            /// Retrieve (relatively) static information of MySQL Table like primary keys, column names, etc.
+            /// in order to generate the MERGE portion of the upsert query.
+            /// This only needs to be generated once and can be reused for subsequent upserts.
+            /// </summary>
+            /// <param name="mysqlConnection">An open connection with which to query MySQL against</param>
+            /// <param name="fullName">Full name of table, including schema (if exists).</param>
+            /// <param name="logger">ILogger used to log any errors or warnings.</param>
+            /// <param name="objectColumnNames">Column names from the object</param>
+            /// <returns>TableInformation object containing primary keys, column types, etc.</returns>
+            public static TableInformation RetrieveTableInformation(MySqlConnection mysqlConnection, string fullName, ILogger logger, IEnumerable<string> objectColumnNames)
             {
                 var table = new MySqlObject(fullName);
 
