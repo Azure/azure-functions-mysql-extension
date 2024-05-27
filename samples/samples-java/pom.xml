@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.function</groupId>
-    <artifactId>samples-java</artifactId>
+    <artifactId>azure-functions-java-library-mysql-samples</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
@@ -14,7 +14,7 @@
         <java.version>1.8</java.version>
         <azure.functions.maven.plugin.version>1.21.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>2.0.1</azure.functions.java.library.version>
-        <functionAppName>samples-java-mysql-extension</functionAppName>
+        <functionAppName>azure-functions-java-library-mysql-samples</functionAppName>
     </properties>
 
     <dependencies>
