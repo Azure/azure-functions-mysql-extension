@@ -18,6 +18,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{302231F0-D
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.WebJobs.Extensions.MySql.Tests", "test\Microsoft.Azure.WebJobs.Extensions.MySql.Tests.csproj", "{01AFD7B8-AECA-4BCC-A67C-629A4E3BD278}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Worker.Extensions.MySql", "Worker.Extensions.MySql", "{5736B00F-1CD3-4B12-85E2-44C7E90823D5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.Azure.Functions.Worker.Extensions.MySql", "Worker.Extensions.MySql\src\Microsoft.Azure.Functions.Worker.Extensions.MySql.csproj", "{42973809-CD47-4965-9FD0-9BF9B8794670}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,6 +40,10 @@ Global
 		{01AFD7B8-AECA-4BCC-A67C-629A4E3BD278}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{01AFD7B8-AECA-4BCC-A67C-629A4E3BD278}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{01AFD7B8-AECA-4BCC-A67C-629A4E3BD278}.Release|Any CPU.Build.0 = Release|Any CPU
+		{42973809-CD47-4965-9FD0-9BF9B8794670}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{42973809-CD47-4965-9FD0-9BF9B8794670}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{42973809-CD47-4965-9FD0-9BF9B8794670}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{42973809-CD47-4965-9FD0-9BF9B8794670}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -44,6 +52,7 @@ Global
 		{E9B85FBB-6381-49AD-AE8B-48C9D4254A71} = {69B7471A-8C37-4BED-A353-0071EE0C7E35}
 		{E4D38E2D-3E3A-4A72-9025-04C6E82B14F0} = {F668CC0F-A3DF-4BE7-93A5-ABBB0CB92844}
 		{01AFD7B8-AECA-4BCC-A67C-629A4E3BD278} = {302231F0-D391-4BF7-9F6C-6F98BE763916}
+		{42973809-CD47-4965-9FD0-9BF9B8794670} = {5736B00F-1CD3-4B12-85E2-44C7E90823D5}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {38917C5A-1D6F-4894-8324-8B5B18070485}
