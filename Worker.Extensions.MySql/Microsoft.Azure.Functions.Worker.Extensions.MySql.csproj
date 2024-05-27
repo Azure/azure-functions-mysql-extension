@@ -18,14 +18,14 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Abstractions" />
-		<None Include="..\..\Images\pkgicon.png" Pack="true" PackagePath="" />
-		<None Include="..\..\README.md" Pack="true" PackagePath="" />
+		<None Include="..\Images\pkgicon.png" Pack="true" PackagePath="" />
+		<None Include="..\README.md" Pack="true" PackagePath="" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<!-- We want to build the extension project first since the Out of Proc sample project references the package produced
 			 by building that. But we don't want it as an actual runtime depdendency -->
-		<ProjectReference Include="..\..\src\Microsoft.Azure.WebJobs.Extensions.MySql.csproj">
+		<ProjectReference Include="..\src\Microsoft.Azure.WebJobs.Extensions.MySql.csproj">
 			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
 		</ProjectReference>
 	</ItemGroup>
