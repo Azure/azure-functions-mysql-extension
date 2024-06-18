@@ -16,15 +16,13 @@
   </ItemGroup>
 	
   <ItemGroup>
-      <ProjectReference Include="..\..\Worker.Extensions.MySql\Microsoft.Azure.Functions.Worker.Extensions.MySql.csproj" />
-	  <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <ProjectReference Include="..\..\Worker.Extensions.MySql\Microsoft.Azure.Functions.Worker.Extensions.MySql.csproj">
+	  </ProjectReference>
   </ItemGroup>
 
     <ItemGroup>
-	    <!-- We want to build the extension project first since the Out of Proc sample project references the package produced
-			    by building that. But we don't want it as an actual runtime depdendency -->
-	    <ProjectReference Include="..\src\Microsoft.Azure.WebJobs.Extensions.MySql.csproj">
-		    <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+	    <ProjectReference Include="..\..\src\Microsoft.Azure.WebJobs.Extensions.MySql.csproj">
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
 	    </ProjectReference>
     </ItemGroup>
 
