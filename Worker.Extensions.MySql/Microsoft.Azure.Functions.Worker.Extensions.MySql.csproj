@@ -30,10 +30,6 @@
 		</ProjectReference>
 	</ItemGroup>
 
-	<Target Name="AddLocalPackage">
-		<Exec Command="dotnet nuget add source .\local-packages" />
-	</Target>
-
 	<ItemGroup>
 		<AssemblyAttribute Include="Microsoft.Azure.Functions.Worker.Extensions.Abstractions.ExtensionInformationAttribute">
 			<_Parameter1>Microsoft.Azure.WebJobs.Extensions.MySql</_Parameter1>
