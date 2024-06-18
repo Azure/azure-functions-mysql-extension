@@ -44,7 +44,6 @@
     </ItemGroup>
     <Copy SourceFiles="@(_Packages)" DestinationFolder="..\local-packages" />
     <Message Text="Copied mysql .nupkg to local-packages" Importance="high" />
-	<Exec Command="dotnet nuget add source &quot;..\local-packages&quot;" />
   </Target>
   <Target Name="RemoveNugetPackageCache" BeforeTargets="Build">
     <RemoveDir Directories="$(NugetPackageRoot)\$(PackageId.ToLower())\$(Version)"></RemoveDir>
