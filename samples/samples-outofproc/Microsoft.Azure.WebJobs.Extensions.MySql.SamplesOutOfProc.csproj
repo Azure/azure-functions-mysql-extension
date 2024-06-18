@@ -21,7 +21,6 @@
 	<ProjectReference Include="..\..\src\Microsoft.Azure.WebJobs.Extensions.MySql.csproj">
 		<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
 		<Private>false</Private>
-		<NoWarn>NU1101</NoWarn>
 	</ProjectReference>
   </ItemGroup>
   <ItemGroup>
