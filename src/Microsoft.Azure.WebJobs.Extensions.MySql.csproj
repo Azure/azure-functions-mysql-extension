@@ -46,8 +46,8 @@
     <Message Text="Copied mysql .nupkg to local-packages" Importance="high" />
   </Target>
   <Target Name="RemoveNugetPackageCache" BeforeTargets="Build">
-    <RemoveDir Directories="$(NugetPackageRoot)\$(PackageId.ToLower())\$(Version)"></RemoveDir>
-    <Message Text="Deleted nuget cache for $(PackageId.ToLower())\$(Version)" Importance="high" />
+    <RemoveDir Directories="$(NugetPackageRoot)\$(PackageId.ToLower())\$(PackageVersion)"></RemoveDir>
+    <Message Text="Deleted nuget cache for $(PackageId.ToLower())\$(PackageVersion)" Importance="high" />
   </Target>
 
 </Project>
