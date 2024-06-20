@@ -16,7 +16,9 @@
   </ItemGroup>
 	
   <ItemGroup>
-      <ProjectReference Include="..\..\Worker.Extensions.MySql\Microsoft.Azure.Functions.Worker.Extensions.MySql.csproj">
+      <ProjectReference Include="..\..\Worker.Extensions.MySql\Microsoft.Azure.Functions.Worker.Extensions.MySql.csproj" />
+	  <ProjectReference Include="..\..\src\Microsoft.Azure.WebJobs.Extensions.MySql.csproj">
+		  <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
 	  </ProjectReference>
   </ItemGroup>
 	
