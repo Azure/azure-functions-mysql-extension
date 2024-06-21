@@ -35,9 +35,6 @@
     <None Include="..\Images\pkgicon.png" Pack="true" PackagePath="" />
     <None Include="..\README.md" Pack="true" PackagePath="" />
   </ItemGroup>
-	<Target Name="AddPackageSourceNugetLocal" BeforeTargets="Build">
-		<Exec Command="dotnet nuget add source &quot;$(SolutionDir)local-packages&quot; --name nuget.local" />
-	</Target>
   <Target Name="PackAndCopyNupkg" AfterTargets="Build">
     <!-- Removed the GeneratePackageOnBuild and adding this explicit Pack command to run post build
     and also adding the copy package to local-packages to be available for the worker extension project. -->
@@ -47,6 +44,7 @@
     </ItemGroup>
     <Copy SourceFiles="@(_Packages)" DestinationFolder="..\local-packages" />
     <Message Text="Copied mysql .nupkg to local-packages" Importance="high" />
+	<Exec Command="dotnet nuget add source &quot;$(SolutionDir)local-packages&quot; --name nuget.local" />
   </Target>
   <Target Name="RemoveNugetPackageCache" BeforeTargets="Build">
     <RemoveDir Directories="$(NugetPackageRoot)\$(PackageId.ToLower())\$(PackageVersion)"></RemoveDir>
