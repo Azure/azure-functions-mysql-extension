@@ -19,7 +19,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.InputBinding
         public static IEnumerable<Product> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproducts-namenull/{name}")]
             HttpRequestData req,
-            [MySqlInput("if @Name is null select * from Products where Name is null else select * from Products where @Name = name",
+            [MySqlInput("select * from Products where IF(@Name is null, Name is null, IF(Name = @Name, true, false))",
                 "MySqlConnectionString",
                 parameters: "@Name={name}")]
             IEnumerable<Product> products)
