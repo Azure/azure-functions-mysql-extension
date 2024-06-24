@@ -36,4 +36,11 @@
 			<_Parameter2>$(OOPWorkerSupportedExtensionVersion)</_Parameter2>
 		</AssemblyAttribute>
 	</ItemGroup>
+
+	<!-- To fix a build issue. When we create above assembly for WorkerExtensions, the assemebly created in User Temp Location, and from there it's unable to locate "Microsoft.Azure.WebJobs.Extensions.MySql" nuget package
+	So, to fix this we need to add nuget source in User Nuget Config File-->
+	<Target Name="AddNugetSourceInUserNugetConfig" BeforeTargets="Build">
+		<Exec Command="dotnet nuget add source &quot;$(SolutionDir)local-packages&quot; --name nuget.azure-func-mysql-local --configfile &quot;%appdata%\NuGet\NuGet.Config&quot;" IgnoreExitCode="true"/>
+	</Target>
+
 </Project>
