@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.InputBinding
         public static IEnumerable<Product> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproductstopn/{count}")]
             HttpRequestData req,
-            [MySqlInput("SELECT TOP(CAST(@Count AS INT)) * FROM Products",
+            [MySqlInput("SELECT * FROM Products LIMIT {Count}",
                 "MySqlConnectionString",
                 parameters: "@Count={count}")]
             IEnumerable<Product> products)
