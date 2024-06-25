@@ -41,7 +41,8 @@
 	So, to fix this we need to add nuget source in User Nuget Config File-->
 	<Target Name="AddNugetSourceInUserNugetConfig" BeforeTargets="Build">
 		<Exec Command="dotnet nuget add source &quot;$(SolutionDir)local-packages&quot; --name nuget.azure-func-mysql-local --configfile &quot;%appdata%\NuGet\NuGet.Config&quot;" IgnoreExitCode="true"/>
-		<Exec Command="dotnet nuget add source &quot;$(SolutionDir)local-packages&quot; --name nuget.azure-func-mysql-local --configfile &quot;%HOME%\NuGet\NuGet.Config&quot;" IgnoreExitCode="true"/>
+		<Exec Command="dotnet nuget add source &quot;$(SolutionDir)local-packages&quot; --name nuget.azure-func-mysql-local --configfile &quot;~\.nuget\NuGet\NuGet.Config&quot;" IgnoreExitCode="true"/>
+		<Exec Command="dotnet nuget add source &quot;$(SolutionDir)local-packages&quot; --name nuget.azure-func-mysql-local --configfile &quot;~\.config\NuGet\NuGet.Config&quot;" IgnoreExitCode="true"/>
 	</Target>
 
 </Project>
