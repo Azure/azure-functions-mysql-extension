@@ -20,7 +20,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.OutputBindin
         /// <param name="req">The original request that triggered the function</param>
         /// <returns>The new product object that will be upserted</returns>
         [Function(nameof(AddProductWithDefaultPK))]
-        [MySqlOutput("dbo.ProductsWithDefaultPK", "MySqlConnectionString")]
+        [MySqlOutput("ProductsWithDefaultPK", "MySqlConnectionString")]
         public static async Task<ProductWithDefaultPK> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "addproductwithdefaultpk")]
             HttpRequestData req)

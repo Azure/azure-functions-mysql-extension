@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.OutputBindin
         /// <param name="req">The original request that triggered the function</param>
         /// <returns>The product object containing the new object that will be upserted</returns>
         [Function(nameof(AddProductWithIdentityColumn))]
-        [MySqlOutput("dbo.ProductsWithIdentity", "MySqlConnectionString")]
+        [MySqlOutput("ProductsWithIdentity", "MySqlConnectionString")]
         public static ProductWithoutId Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "addproductwithidentitycolumn")]
             HttpRequestData req)

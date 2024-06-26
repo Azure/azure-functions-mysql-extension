@@ -9,11 +9,11 @@ using Microsoft.Azure.Functions.Worker;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.InputBindingSamples
 {
-    public static class GetProductsTopN
+    public static class GetProductsLimitN
     {
-        [Function("GetProductsTopN")]
+        [Function(nameof(GetProductsLimitN))]
         public static IEnumerable<Product> Run(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproductstopn/{count}")]
+            [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproductslimitn/{count}")]
             HttpRequestData req,
             [MySqlInput("SELECT * FROM Products LIMIT {Count}",
                 "MySqlConnectionString",
