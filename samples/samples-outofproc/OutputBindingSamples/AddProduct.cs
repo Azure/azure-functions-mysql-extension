@@ -11,8 +11,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.OutputBindin
 {
     public static class AddProduct
     {
-        [Function("AddProduct")]
-        [MySqlOutput("dbo.Products", "MySqlConnectionString")]
+        [Function(nameof(AddProduct))]
+        [MySqlOutput("Products", "MySqlConnectionString")]
         public static async Task<Product> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "addproduct")]
             HttpRequestData req)
