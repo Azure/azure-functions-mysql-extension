@@ -343,8 +343,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>T-MySQL containing data for merge</returns>
         private static void GenerateDataQueryForMerge(TableInformation table, IEnumerable<T> rows, out string newDataQuery)
         {
-            IList<T> rowsToUpsert = new List<T>();
-
             // to store rows data in List of string 
             IList<string> rowsValuesToUpsert = new List<string>();
 
@@ -390,7 +388,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 else
                 {
                     // ToDo: add check for duplicate primary keys once we find a way to get primary keys.
-                    rowsToUpsert.Add(row);
+                    //add column values of a single row
+                    rowsValuesToUpsert.Add(GetColValuesForUpsert(row, table));
 
                 }
             }
