@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.MultipleBind
         public static IEnumerable<Product> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getandaddproducts/{cost}")]
             HttpRequestData req,
-            [MySqlInput("SELECT * FROM Products",
+            [MySqlInput("SELECT * FROM Products where Cost = @Cost",
                 "MySqlConnectionString",
                 parameters: "@Cost={cost}")]
             IEnumerable<Product> products)
