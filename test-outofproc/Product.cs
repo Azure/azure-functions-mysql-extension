@@ -16,33 +16,6 @@ namespace DotnetIsolatedTests.Common
         public int Cost { get; set; }
     }
 
-    public class ProductWithOptionalId
-    {
-        public int? ProductId { get; set; }
-
-        public string Name { get; set; }
-
-        public int Cost { get; set; }
-    }
-
-    public class ProductName
-    {
-        public string Name { get; set; }
-    }
-
-    public class ProductWithoutId
-    {
-        public string Name { get; set; }
-
-        public int Cost { get; set; }
-    }
-    public class ProductWithDefaultPK
-    {
-        public string Name { get; set; }
-
-        public int Cost { get; set; }
-    }
-
     public class ProductIncorrectCasing
     {
         public int ProductID { get; set; }
@@ -171,14 +144,6 @@ namespace DotnetIsolatedTests.Common
         public string ExtraString { get; set; }
     }
 
-    public class ProductIncludeIdentity
-    {
-        public int ProductId { get; set; }
-
-        public string Name { get; set; }
-
-        public int Cost { get; set; }
-    }
     public class ProductMissingColumns
     {
         public int ProductId { get; set; }
