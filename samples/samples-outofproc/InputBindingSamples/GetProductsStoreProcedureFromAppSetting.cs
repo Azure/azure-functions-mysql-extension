@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.InputBinding
     /// </summary>
     public static class GetProductsStoredProcedureFromAppSetting
     {
-        [Function("GetProductsStoredProcedureFromAppSetting")]
+        [Function(nameof(GetProductsStoredProcedureFromAppSetting))]
         public static IEnumerable<Product> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproductsbycost")]
             HttpRequestData req,

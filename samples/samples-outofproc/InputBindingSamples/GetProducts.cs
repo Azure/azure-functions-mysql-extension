@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.InputBinding
 {
     public static class GetProducts
     {
-        [Function("GetProducts")]
+        [Function(nameof(GetProducts))]
         public static IEnumerable<Product> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproducts/{cost}")]
             HttpRequestData req,

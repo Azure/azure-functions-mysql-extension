@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.MultipleBind
     /// </summary>
     public static class GetAndAddProducts
     {
-        [Function("GetAndAddProducts")]
+        [Function(nameof(GetAndAddProducts))]
         [MySqlOutput("ProductsWithIdentity", "MySqlConnectionString")]
         public static IEnumerable<Product> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getandaddproducts/{cost}")]

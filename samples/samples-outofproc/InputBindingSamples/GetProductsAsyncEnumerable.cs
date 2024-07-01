@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.InputBinding
 {
     public static class GetProductsAsyncEnumerable
     {
-        [Function("GetProductsAsyncEnumerable")]
+        [Function(nameof(GetProductsAsyncEnumerable))]
         public static async Task<List<Product>> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproducts-async/{cost}")]
             HttpRequestData req,

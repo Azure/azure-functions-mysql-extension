@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.OutputBindin
         /// <summary>
         /// This timer function runs evyery 5 seconds, each time it upserts 1000 rows of data.
         /// </summary>
-        [Function("TimerTriggerProducts")]
+        [Function(nameof(TimerTriggerProducts))]
         [MySqlOutput("Products", "MySqlConnectionString")]
         public static List<Product> Run(
             [TimerTrigger("*/5 * * * * *")] TimerInfo req, FunctionContext context)

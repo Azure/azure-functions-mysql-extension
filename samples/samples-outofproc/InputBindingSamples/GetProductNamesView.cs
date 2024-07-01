@@ -14,7 +14,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.InputBinding
     /// </summary>
     public static class GetProductNamesView
     {
-        [Function("GetProductNamesView")]
+        [Function(nameof(GetProductNamesView))]
         public static IEnumerable<ProductName> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproduct-namesview/")]
             HttpRequestData req,

@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.InputBinding
         // This means the input binding returns all products for which the Name column is null.
         // Otherwise, {name} is interpreted as a string, and the input binding returns all products
         // for which the Name column is equal to that string value
-        [Function("GetProductsNameNull")]
+        [Function(nameof(GetProductsNameNull))]
         public static IEnumerable<Product> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproducts-namenull/{name}")]
             HttpRequestData req,
