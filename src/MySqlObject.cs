@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         public readonly string BracketQuotedFullName;
 
         /// <summary>
-        /// A SqlObject which contains information about the name and schema of the given object full name.
+        /// A MySqlObject which contains information about the name and schema of the given object full name.
         /// </summary>
         /// <param name="fullName">Full name of object, including schema (if it exists).</param>
         /// <exception cref="InvalidOperationException">If the name can't be parsed</exception>

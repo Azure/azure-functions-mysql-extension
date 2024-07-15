@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
             _ = context ?? throw new ArgumentNullException(nameof(context), "Missing listener context");
 
             string userFunctionId = await this.GetUserFunctionIdAsync();
-            return new MySqlTriggerListener<T>(this._connectionString, this._tableName, this._leasesTableName, userFunctionId, context.Executor, this._mysqlOptions, this._logger, this._configuration);
+            return new MySqlTriggerListener<T>(this._connectionString, this._tableName, userFunctionId, context.Executor, this._mysqlOptions, this._logger, this._configuration);
         }
 
         public ParameterDescriptor ToParameterDescriptor()

@@ -49,19 +49,17 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         /// <summary>
         /// Initializes a new instance of the <see cref="MySqlTriggerListener{T}"/> class.
         /// </summary>
-        /// <param name="connectionString">SQL connection string used to connect to user database</param>
+        /// <param name="connectionString">MySQL connection string used to connect to user database</param>
         /// <param name="tableName">Name of the user table</param>
-        /// <param name="userDefinedLeasesTableName">Optional - Name of the leases table</param>
         /// <param name="userFunctionId">Unique identifier for the user function</param>
         /// <param name="executor">Defines contract for triggering user function</param>
         /// <param name="mysqlOptions"></param>
         /// <param name="logger">Facilitates logging of messages</param>
         /// <param name="configuration">Provides configuration values</param>
-        public MySqlTriggerListener(string connectionString, string tableName, string userDefinedLeasesTableName, string userFunctionId, ITriggeredFunctionExecutor executor, MySqlOptions mysqlOptions, ILogger logger, IConfiguration configuration)
+        public MySqlTriggerListener(string connectionString, string tableName, string userFunctionId, ITriggeredFunctionExecutor executor, MySqlOptions mysqlOptions, ILogger logger, IConfiguration configuration)
         {
             this._connectionString = !string.IsNullOrEmpty(connectionString) ? connectionString : throw new ArgumentNullException(nameof(connectionString));
             this._userTable = !string.IsNullOrEmpty(tableName) ? new MySqlObject(tableName) : throw new ArgumentNullException(nameof(tableName));
-            this._userDefinedLeasesTableName = userDefinedLeasesTableName;
             this._userFunctionId = !string.IsNullOrEmpty(userFunctionId) ? userFunctionId : throw new ArgumentNullException(nameof(userFunctionId));
             this._executor = executor ?? throw new ArgumentNullException(nameof(executor));
             this._mysqlOptions = mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions));
@@ -108,32 +106,28 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                 {
                     await connection.OpenAsyncWithMySqlErrorHandling(cancellationToken);
 
-                    int userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, cancellationToken);
+                    await VerifyTableForTriggerSupported(connection, this._userTable.FullName, this._logger, cancellationToken);
+
+                    /*int userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, cancellationToken);
                     IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, userTableId, this._logger, this._userTable.FullName, cancellationToken);
                     IReadOnlyList<string> userTableColumns = this.GetUserTableColumns(connection, userTableId, cancellationToken);
 
-                    string bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
-                    
+                    string bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId); */
                     var transactionSw = Stopwatch.StartNew();
-                    long createdSchemaDurationMs = 0L, createGlobalStateTableDurationMs = 0L, insertGlobalStateTableRowDurationMs = 0L, createLeasesTableDurationMs = 0L;
+                    long createdSchemaDurationMs = 0L, createGlobalStateTableDurationMs = 0L, insertGlobalStateTableRowDurationMs = 0L;
 
                     using (MySqlTransaction transaction = connection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead))
                     {
                         createdSchemaDurationMs = await this.CreateSchemaAsync(connection, transaction, cancellationToken);
                         createGlobalStateTableDurationMs = await this.CreateGlobalStateTableAsync(connection, transaction, cancellationToken);
                         insertGlobalStateTableRowDurationMs = await this.InsertGlobalStateTableRowAsync(connection, transaction, userTableId, cancellationToken);
-                        createLeasesTableDurationMs = await this.CreateLeasesTableAsync(connection, transaction, bracketedLeasesTableName, primaryKeyColumns, cancellationToken);
                         transaction.Commit();
                     }
 
                     this._changeMonitor = new MySqlTableChangeMonitor<T>(
                         this._connectionString,
-                        userTableId,
                         this._userTable,
                         this._userFunctionId,
-                        bracketedLeasesTableName,
-                        userTableColumns,
-                        primaryKeyColumns,
                         this._executor,
                         this._mysqlOptions,
                         this._logger,
@@ -148,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
             {
                 this._listenerState = ListenerNotStarted;
                 this._logger.LogError($"Failed to start MySQL trigger listener for table: '{this._userTable.FullName}', function ID: '{this._userFunctionId}'. Exception: {ex}");
-                throw ex;
+                throw;
             }
         }
 
@@ -235,12 +229,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         /// <returns>The time taken in ms to execute the command</returns>
         private async Task<long> CreateSchemaAsync(MySqlConnection connection, MySqlTransaction transaction, CancellationToken cancellationToken)
         {
-            string createSchemaQuery = $@"
-                {AppLockStatements}
-
-                IF SCHEMA_ID(N'{SchemaName}') IS NULL
-                    EXEC ('CREATE SCHEMA {SchemaName}');
-            ";
+            string createSchemaQuery = $@"CREATE DATABASE IF NOT EXISTS {SchemaName};";
 
             using (var createSchemaCommand = new MySqlCommand(createSchemaQuery, connection, transaction))
             {
@@ -254,7 +243,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                 {
                     // TelemetryInstance.TrackException(TelemetryErrorName.CreateSchema, ex, this._telemetryProps);
                     var mysqlEx = ex as MySqlException;
-                    if (mysqlEx?.Number == 1050)
+                    if (mysqlEx?.Number == 1007)        // https://mysqlconnector.net/api/mysqlconnector/mysqlerrorcodetype/
                     {
                         // This generally shouldn't happen since we check for its existence in the statement but occasionally
                         // a race condition can make it so that multiple instances will try and create the schema at once.
@@ -263,7 +252,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                     }
                     else
                     {
-                        this._logger.LogError($"Exception encountered while creating leases table. Message: {ex.Message}");
+                        this._logger.LogError($"Exception encountered while creating schema for global state table and leases tables. Message: {ex.Message}");
                         throw;
                     }
                 }
@@ -282,19 +271,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         private async Task<long> CreateGlobalStateTableAsync(MySqlConnection connection, MySqlTransaction transaction, CancellationToken cancellationToken)
         {
             string createGlobalStateTableQuery = $@"
-                {AppLockStatements}
-
-                IF OBJECT_ID(N'{GlobalStateTableName}', 'U') IS NULL
-                    CREATE TABLE {GlobalStateTableName} (
+                    CREATE TABLE IF NOT EXISTS {GlobalStateTableName} (
                         UserFunctionID char(16) NOT NULL,
                         UserTableID int NOT NULL,
-                        LastSyncVersion bigint NOT NULL,
-                        LastAccessTime Datetime NOT NULL DEFAULT GETUTCDATE(),
+                        LastPolledTime Datetime NOT NULL DEFAULT GETUTCDATE(),
                         PRIMARY KEY (UserFunctionID, UserTableID)
                     );
-                ELSE IF NOT EXISTS(SELECT 1 FROM sys.columns WHERE Name = N'LastAccessTime'
-                    AND Object_ID = Object_ID(N'{GlobalStateTableName}'))
-                        ALTER TABLE {GlobalStateTableName} ADD LastAccessTime Datetime NOT NULL DEFAULT GETUTCDATE();
             ";
 
             using (var createGlobalStateTableCommand = new MySqlCommand(createGlobalStateTableQuery, connection, transaction))
@@ -317,7 +299,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                     else
                     {
                         this._logger.LogError($"Exception encountered while creating Global State table. Message: {ex.Message}");
-                        throw ex;
+                        throw;
                     }
                 }
                 return stopwatch.ElapsedMilliseconds;
@@ -425,7 +407,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                     else
                     {
                         this._logger.LogError($"Exception encountered while creating leases table. Message: {ex.Message}");
-                        throw ex;
+                        throw;
                     }
                 }
                 long durationMs = stopwatch.ElapsedMilliseconds;

@@ -5,7 +5,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
 {
     internal static class MySqlTriggerConstants
     {
-        public const string SchemaName = "az_func";
+        public const string SchemaName = "az_func_mysql";
 
         public const string GlobalStateTableName = "[" + SchemaName + "].[GlobalState]";
 

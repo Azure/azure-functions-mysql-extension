@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         private State _state = State.CheckingForChanges;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SqlTableChangeMonitor{T}" />> class.
+        /// Initializes a new instance of the <see cref="MySqlTableChangeMonitor{T}" />> class.
         /// </summary>
         /// <param name="connectionString">SQL connection string used to connect to user database</param>
         /// <param name="userTableId">SQL object ID of the user table</param>
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         /// <param name="userTableColumns">List of all column names in the user table</param>
         /// <param name="primaryKeyColumns">List of primary key column names in the user table</param>
         /// <param name="executor">Defines contract for triggering user function</param>
-        /// <param name="sqlOptions"></param>
+        /// <param name="mysqlOptions"></param>
         /// <param name="logger">Facilitates logging of messages</param>
         /// <param name="configuration">Provides configuration values</param>
         /// <param name="telemetryProps">Properties passed in telemetry events</param>
@@ -643,7 +643,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
 
         /// <summary>
         /// Builds up the list of <see cref="MySqlChange{T}"/> passed to the user's triggered function based on the data
-        /// stored in "_rows". If any of the changes correspond to a deleted row, then the <see cref="SqlChange{T}.Item" />
+        /// stored in "_rows". If any of the changes correspond to a deleted row, then the <see cref="MySqlChange{T}.Item" />
         /// will be populated with only the primary key values of the deleted row.
         /// </summary>
         /// <returns>The list of changes</returns>
@@ -654,7 +654,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
             {
                 MySqlChangeOperation operation = GetChangeOperation(row);
 
-                Dictionary<string, object> item = this._userTableColumns.ToDictionary(col => col, col => row[col]); 
+                Dictionary<string, object> item = this._userTableColumns.ToDictionary(col => col, col => row[col]);
 
                 changes.Add(new MySqlChange<T>(operation, Utils.JsonDeserializeObject<T>(Utils.JsonSerializeObject(item))));
             }
