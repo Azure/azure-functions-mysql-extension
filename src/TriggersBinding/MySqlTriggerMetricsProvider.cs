@@ -5,12 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding.MySqlTriggerConstants;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding.MySqlTriggerUtils;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
@@ -24,15 +22,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         private readonly ILogger _logger;
         private readonly MySqlObject _userTable;
         private readonly string _userFunctionId;
-        private readonly string _userDefinedLeasesTableName;
 
-        public MySqlTriggerMetricsProvider(string connectionString, ILogger logger, MySqlObject userTable, string userFunctionId, string userDefinedLeasesTableName)
+        public MySqlTriggerMetricsProvider(string connectionString, ILogger logger, MySqlObject userTable, string userFunctionId)
         {
             this._connectionString = !string.IsNullOrEmpty(connectionString) ? connectionString : throw new ArgumentNullException(nameof(connectionString));
             this._logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this._userTable = userTable ?? throw new ArgumentNullException(nameof(userTable));
             this._userFunctionId = !string.IsNullOrEmpty(userFunctionId) ? userFunctionId : throw new ArgumentNullException(nameof(userFunctionId));
-            this._userDefinedLeasesTableName = userDefinedLeasesTableName;
         }
         public async Task<MySqlTriggerMetrics> GetMetricsAsync()
         {
@@ -45,7 +41,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         private async Task<long> GetUnprocessedChangeCountAsync()
         {
             long unprocessedChangeCount = 0L;
-            long getUnprocessedChangesDurationMs = 0L;
 
             try
             {
@@ -61,11 +56,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                     {
                         try
                         {
-                            using (MySqlCommand getUnprocessedChangesCommand = this.BuildGetUnprocessedChangesCommand(connection, transaction, primaryKeyColumns, userTableId))
+                            using (MySqlCommand getUnprocessedChangesCommand = this.BuildGetUnprocessedChangesCommand(connection, transaction))
                             {
                                 var commandSw = Stopwatch.StartNew();
                                 unprocessedChangeCount = (long)await getUnprocessedChangesCommand.ExecuteScalarAsyncWithLogging(this._logger, CancellationToken.None, true);
-                                getUnprocessedChangesDurationMs = commandSw.ElapsedMilliseconds;
+                                long getUnprocessedChangesDurationMs = commandSw.ElapsedMilliseconds;
                             }
 
                             transaction.Commit();
@@ -93,27 +88,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
 
             return unprocessedChangeCount;
         }
-        private MySqlCommand BuildGetUnprocessedChangesCommand(MySqlConnection connection, MySqlTransaction transaction, IReadOnlyList<(string name, string type)> primaryKeyColumns, int userTableId)
+        private MySqlCommand BuildGetUnprocessedChangesCommand(MySqlConnection connection, MySqlTransaction transaction)
         {
-            string leasesTableJoinCondition = string.Join(" AND ", primaryKeyColumns.Select(col => $"c.{col.name.AsBracketQuotedString()} = l.{col.name.AsBracketQuotedString()}"));
-            string bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
-            string getUnprocessedChangesQuery = $@"
-                {AppLockStatements}
-
-                DECLARE @last_sync_version bigint;
-                SELECT @last_sync_version = LastSyncVersion
-                FROM {GlobalStateTableName}
-                WHERE UserFunctionID = '{this._userFunctionId}' AND UserTableID = {userTableId};
-
-                SELECT COUNT_BIG(*)
-                FROM CHANGETABLE(CHANGES {this._userTable.BracketQuotedFullName}, @last_sync_version) AS c
-                LEFT OUTER JOIN {bracketedLeasesTableName} AS l ON {leasesTableJoinCondition}
-                WHERE
-                    (l.{LeasesTableLeaseExpirationTimeColumnName} IS NULL AND
-                       (l.{LeasesTableChangeVersionColumnName} IS NULL OR l.{LeasesTableChangeVersionColumnName} < c.{SysChangeVersionColumnName}) OR
-                        l.{LeasesTableLeaseExpirationTimeColumnName} < SYSDATETIME()) AND
-                    (l.{LeasesTableAttemptCountColumnName} IS NULL OR l.{LeasesTableAttemptCountColumnName} < {5});
-            ";
+            string getUnprocessedChangesQuery = $@"";
 
             return new MySqlCommand(getUnprocessedChangesQuery, connection, transaction);
         }

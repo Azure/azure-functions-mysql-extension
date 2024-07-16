@@ -21,7 +21,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         private readonly MySqlTriggerMetricsProvider _metricsProvider;
         private readonly int _maxChangesPerWorker;
 
-        public MySqlTriggerScaleMonitor(string userFunctionId, MySqlObject userTable, string userDefinedLeasesTableName, string connectionString, int maxChangesPerWorker, ILogger logger)
+        public MySqlTriggerScaleMonitor(string userFunctionId, MySqlObject userTable, string connectionString, int maxChangesPerWorker, ILogger logger)
         {
             _ = !string.IsNullOrEmpty(userFunctionId) ? true : throw new ArgumentNullException(userFunctionId);
             _ = userTable != null ? true : throw new ArgumentNullException(nameof(userTable));
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
             // Do not convert the scale-monitor ID to lower-case string since SQL table names can be case-sensitive
             // depending on the collation of the current database.
             this.Descriptor = new ScaleMonitorDescriptor($"{userFunctionId}-MySqlTrigger-{this._userTable.FullName}", userFunctionId);
-            this._metricsProvider = new MySqlTriggerMetricsProvider(connectionString, logger, this._userTable, userFunctionId, userDefinedLeasesTableName);
+            this._metricsProvider = new MySqlTriggerMetricsProvider(connectionString, logger, this._userTable, userFunctionId);
             this._logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this._maxChangesPerWorker = maxChangesPerWorker;
         }

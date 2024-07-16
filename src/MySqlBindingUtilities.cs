@@ -10,7 +10,6 @@ using System.Threading;
 using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {

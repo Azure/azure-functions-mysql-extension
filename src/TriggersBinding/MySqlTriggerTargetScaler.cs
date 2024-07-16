@@ -13,9 +13,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         private readonly MySqlTriggerMetricsProvider _metricsProvider;
         private readonly int _maxChangesPerWorker;
 
-        public MySqlTriggerTargetScaler(string userFunctionId, MySqlObject userTable, string userDefinedLeasesTableName, string connectionString, int maxChangesPerWorker, ILogger logger)
+        public MySqlTriggerTargetScaler(string userFunctionId, MySqlObject userTable, string connectionString, int maxChangesPerWorker, ILogger logger)
         {
-            this._metricsProvider = new MySqlTriggerMetricsProvider(connectionString, logger, userTable, userFunctionId, userDefinedLeasesTableName);
+            this._metricsProvider = new MySqlTriggerMetricsProvider(connectionString, logger, userTable, userFunctionId);
             this.TargetScalerDescriptor = new TargetScalerDescriptor(userFunctionId);
             this._maxChangesPerWorker = maxChangesPerWorker;
         }

@@ -2,15 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Common;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingUtilities;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding.MySqlTriggerConstants;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding.MySqlTriggerUtils;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Scale;
@@ -29,7 +26,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         private const int ListenerStopped = 4;
         private readonly MySqlObject _userTable;
         private readonly string _connectionString;
-        private readonly string _userDefinedLeasesTableName;
         private readonly string _userFunctionId;
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly MySqlOptions _mysqlOptions;
@@ -37,7 +33,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         private readonly IConfiguration _configuration;
 
         private readonly int _maxChangesPerWorker;
-        private readonly bool _hasConfiguredMaxChangesPerWorker = false;
+        // private readonly bool _hasConfiguredMaxChangesPerWorker = false;
 
         private MySqlTableChangeMonitor<T> _changeMonitor;
         private readonly IScaleMonitor<MySqlTriggerMetrics> _scaleMonitor;
@@ -73,10 +69,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
             {
                 throw new InvalidOperationException($"Invalid value for configuration setting '{ConfigKey_MySqlTrigger_MaxChangesPerWorker}'. Ensure that the value is a positive integer.");
             }
-            this._hasConfiguredMaxChangesPerWorker = configuredMaxChangesPerWorker != null;
+            // this._hasConfiguredMaxChangesPerWorker = configuredMaxChangesPerWorker != null;
 
-            this._scaleMonitor = new MySqlTriggerScaleMonitor(this._userFunctionId, this._userTable, this._userDefinedLeasesTableName, this._connectionString, this._maxChangesPerWorker, this._logger);
-            this._targetScaler = new MySqlTriggerTargetScaler(this._userFunctionId, this._userTable, this._userDefinedLeasesTableName, this._connectionString, this._maxChangesPerWorker, this._logger);
+            this._scaleMonitor = new MySqlTriggerScaleMonitor(this._userFunctionId, this._userTable, this._connectionString, this._maxChangesPerWorker, this._logger);
+            this._targetScaler = new MySqlTriggerTargetScaler(this._userFunctionId, this._userTable, this._connectionString, this._maxChangesPerWorker, this._logger);
         }
 
         public void Cancel()
@@ -120,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                     {
                         createdSchemaDurationMs = await this.CreateSchemaAsync(connection, transaction, cancellationToken);
                         createGlobalStateTableDurationMs = await this.CreateGlobalStateTableAsync(connection, transaction, cancellationToken);
-                        insertGlobalStateTableRowDurationMs = await this.InsertGlobalStateTableRowAsync(connection, transaction, userTableId, cancellationToken);
+                        insertGlobalStateTableRowDurationMs = await this.InsertGlobalStateTableRowAsync(connection, transaction, cancellationToken);
                         transaction.Commit();
                     }
 
@@ -134,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                         this._configuration);
 
                     this._listenerState = ListenerStarted;
-                    this._logger.LogDebug($"Started MySQL trigger listener for table: '{this._userTable.FullName}' (object ID: {userTableId}), function ID: {this._userFunctionId}, leases table: {bracketedLeasesTableName}");
+                    this._logger.LogDebug($"Started MySQL trigger listener for table: '{this._userTable.FullName}', function ID: {this._userFunctionId}");
 
                 }
             }
@@ -158,11 +154,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                 this._listenerState = ListenerStopped;
             }
 
-            this._logger.LogInformation($"Listener stopped. Duration(ms): { stopwatch.ElapsedMilliseconds}");
-                                    
+            this._logger.LogInformation($"Listener stopped. Duration(ms): {stopwatch.ElapsedMilliseconds}");
             return Task.CompletedTask;
         }
 
+        /*
         /// <summary>
         /// Gets the column names of the user table.
         /// </summary>
@@ -218,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                 this._logger.LogDebug($"GetUserTableColumns ColumnNames = {string.Join(", ", userTableColumns.Select(col => $"'{col}'"))}.");
                 return userTableColumns;
             }
-        }
+        } */
 
         /// <summary>
         /// Creates the schema for global state table and leases tables, if it does not already exist.
@@ -311,14 +307,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         /// </summary>
         /// <param name="connection">The already-opened connection to use for executing the command</param>
         /// <param name="transaction">The transaction wrapping this command</param>
-        /// <param name="userTableId">The ID of the table being watched</param>
         /// <param name="cancellationToken">Cancellation token to pass to the command</param>
         /// <returns>The time taken in ms to execute the command</returns>
-        private async Task<long> InsertGlobalStateTableRowAsync(MySqlConnection connection, MySqlTransaction transaction, int userTableId, CancellationToken cancellationToken)
+        private async Task<long> InsertGlobalStateTableRowAsync(MySqlConnection connection, MySqlTransaction transaction, CancellationToken cancellationToken)
         {
             object minValidVersion;
 
-            string getMinValidVersionQuery = $"SELECT CHANGE_TRACKING_MIN_VALID_VERSION({userTableId});";
+            string getMinValidVersionQuery = $"";
 
             using (var getMinValidVersionCommand = new MySqlCommand(getMinValidVersionQuery, connection, transaction))
             using (MySqlDataReader reader = getMinValidVersionCommand.ExecuteReaderWithLogging(this._logger))
@@ -341,10 +336,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
 
                 IF NOT EXISTS (
                     SELECT * FROM {GlobalStateTableName}
-                    WHERE UserFunctionID = '{this._userFunctionId}' AND UserTableID = {userTableId}
+                    WHERE UserFunctionID = '{this._userFunctionId}'
                 )
                     INSERT INTO {GlobalStateTableName}
-                    VALUES ('{this._userFunctionId}', {userTableId}, {(long)minValidVersion}, GETUTCDATE());
+                    VALUES ('{this._userFunctionId}', {(long)minValidVersion}, GETUTCDATE());
             ";
 
             using (var insertRowGlobalStateTableCommand = new MySqlCommand(insertRowGlobalStateTableQuery, connection, transaction))
@@ -352,66 +347,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                 var stopwatch = Stopwatch.StartNew();
                 await insertRowGlobalStateTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
                 return stopwatch.ElapsedMilliseconds;
-            }
-        }
-
-        /// <summary>
-        /// Creates the leases table for the 'user function and table', if one does not already exist.
-        /// </summary>
-        /// <param name="connection">The already-opened connection to use for executing the command</param>
-        /// <param name="transaction">The transaction wrapping this command</param>
-        /// <param name="leasesTableName">The name of the leases table to create</param>
-        /// <param name="primaryKeyColumns">The primary keys of the user table this leases table is for</param>
-        /// <param name="cancellationToken">Cancellation token to pass to the command</param>
-        /// <returns>The time taken in ms to execute the command</returns>
-        private async Task<long> CreateLeasesTableAsync(
-        MySqlConnection connection,
-            MySqlTransaction transaction,
-            string leasesTableName,
-            IReadOnlyList<(string name, string type)> primaryKeyColumns,
-            CancellationToken cancellationToken)
-        {
-            string primaryKeysWithTypes = string.Join(", ", primaryKeyColumns.Select(col => $"{col.name.AsBracketQuotedString()} {col.type}"));
-            string primaryKeys = string.Join(", ", primaryKeyColumns.Select(col => col.name.AsBracketQuotedString()));
-
-            string createLeasesTableQuery = $@"
-                {AppLockStatements}
-
-                IF OBJECT_ID(N'{leasesTableName}', 'U') IS NULL
-                    CREATE TABLE {leasesTableName} (
-                        {primaryKeysWithTypes},
-                        {LeasesTableChangeVersionColumnName} bigint NOT NULL,
-                        {LeasesTableAttemptCountColumnName} int NOT NULL,
-                        {LeasesTableLeaseExpirationTimeColumnName} datetime2,
-                        PRIMARY KEY ({primaryKeys})
-                    );
-            ";
-
-            using (var createLeasesTableCommand = new MySqlCommand(createLeasesTableQuery, connection, transaction))
-            {
-                var stopwatch = Stopwatch.StartNew();
-                try
-                {
-                    await createLeasesTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    var sqlEx = ex as MySqlException;
-                    if (sqlEx?.Number == 1050)      // ER_TABLE_EXISTS_ERROR
-                    {
-                        // This generally shouldn't happen since we check for its existence in the statement but occasionally
-                        // a race condition can make it so that multiple instances will try and create the schema at once.
-                        // In that case we can just ignore the error since all we care about is that the schema exists at all.
-                        this._logger.LogWarning($"Failed to create global state table '{leasesTableName}'. Exception message: {ex.Message} This is informational only, function startup will continue as normal.");
-                    }
-                    else
-                    {
-                        this._logger.LogError($"Exception encountered while creating leases table. Message: {ex.Message}");
-                        throw;
-                    }
-                }
-                long durationMs = stopwatch.ElapsedMilliseconds;
-                return durationMs;
             }
         }
 

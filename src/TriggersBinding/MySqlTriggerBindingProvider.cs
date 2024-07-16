@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         }
 
         /// <summary>
-        /// Checks if the type of trigger parameter in the user function is of form string or <see cref="IReadOnlyList{K}" /> whose generic type argument is <see cref="SqlChange{T}" />.
+        /// Checks if the type of trigger parameter in the user function is of form string or <see cref="IReadOnlyList{K}" /> whose generic type argument is <see cref="MySqlChange{T}" />.
         /// </summary>
         private static bool IsValidTriggerParameterType(Type type)
         {

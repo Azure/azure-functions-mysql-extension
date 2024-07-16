@@ -21,15 +21,15 @@ using Microsoft.Extensions.Options;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
 {
-    // <summary>
+    /// <summary>
     /// Represents the MySQL trigger parameter binding.
     /// </summary>
     /// <typeparam name="T">POCO class representing the row in the user table</typeparam>
+
     internal sealed class MySqlTriggerBinding<T> : ITriggerBinding
     {
         private readonly string _connectionString;
         private readonly string _tableName;
-        private readonly string _leasesTableName;
         private readonly ParameterInfo _parameter;
         private readonly IHostIdProvider _hostIdProvider;
         private readonly MySqlOptions _mysqlOptions;
@@ -40,21 +40,19 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
         private static readonly IReadOnlyDictionary<string, object> _emptyBindingData = new Dictionary<string, object>();
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="SqlTriggerBinding{T}"/> class.
+        /// Initializes a new instance of the <see cref="MySqlTriggerBinding{T}"/> class.
         /// </summary>
         /// <param name="connectionString">MySQL connection string used to connect to user database</param>
         /// <param name="tableName">Name of the user table</param>
-        /// <param name="leasesTableName">Optional - Name of the leases table</param>
         /// <param name="parameter">Trigger binding parameter information</param>
         /// <param name="hostIdProvider">Provider of unique host identifier</param>
         /// <param name="mysqlOptions"></param>
         /// <param name="logger">Facilitates logging of messages</param>
         /// <param name="configuration">Provides configuration values</param>
-        public MySqlTriggerBinding(string connectionString, string tableName, string leasesTableName, ParameterInfo parameter, IOptions<MySqlOptions> mysqlOptions, IHostIdProvider hostIdProvider, ILogger logger, IConfiguration configuration)
+        public MySqlTriggerBinding(string connectionString, string tableName, ParameterInfo parameter, IOptions<MySqlOptions> mysqlOptions, IHostIdProvider hostIdProvider, ILogger logger, IConfiguration configuration)
         {
             this._connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
             this._tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
-            this._leasesTableName = leasesTableName;
             this._parameter = parameter ?? throw new ArgumentNullException(nameof(parameter));
             this._hostIdProvider = hostIdProvider ?? throw new ArgumentNullException(nameof(hostIdProvider));
             this._mysqlOptions = (mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions))).Value;

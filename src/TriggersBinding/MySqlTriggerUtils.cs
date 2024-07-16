@@ -3,13 +3,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding.MySqlTriggerConstants;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
 {
@@ -112,18 +110,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                 logger.LogDebug($"GetUserTableId TableId={userTableId}");
                 return (int)userTableId;
             }
-        }
-
-        /// <summary>
-        /// Returns the formatted leases table name. If userDefinedLeasesTableName is null, the default name Leases_{FunctionId}_{TableId} is used.
-        /// </summary>
-        /// <param name="userDefinedLeasesTableName">Leases table name defined by the user</param>
-        /// <param name="userTableId">MySQL object ID of the user table</param>
-        /// <param name="userFunctionId">Unique identifier for the user function</param>
-        internal static string GetBracketedLeasesTableName(string userDefinedLeasesTableName, string userFunctionId, int userTableId)
-        {
-            return string.IsNullOrEmpty(userDefinedLeasesTableName) ? string.Format(CultureInfo.InvariantCulture, LeasesTableNameFormat, $"{userFunctionId}_{userTableId}") :
-                string.Format(CultureInfo.InvariantCulture, UserDefinedLeasesTableNameFormat, $"{userDefinedLeasesTableName.AsBracketQuotedString()}");
         }
     }
 
