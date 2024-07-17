@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Host.Protocols;
 
-namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
+namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     /// <summary>
     /// Trigger parameter descriptor for <see cref="MySqlTriggerBinding{T}" />.

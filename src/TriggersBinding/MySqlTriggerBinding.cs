@@ -9,7 +9,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Common;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
@@ -19,7 +18,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 
-namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
+namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     /// <summary>
     /// Represents the MySQL trigger parameter binding.

@@ -3,7 +3,6 @@
 
 using Newtonsoft.Json.Linq;
 using Xunit;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Common;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
 {

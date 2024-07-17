@@ -9,15 +9,14 @@ using System.IO;
 using System.Linq;*/
 using System.Threading;
 using System.Threading.Tasks;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding.MySqlTriggerConstants;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using System.Data;
 using MySql.Data.MySqlClient;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Common;
 
-namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
+namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     /// <summary>
     /// Watches for changes in the user table, invokes user function if changes are found, and manages leases.

@@ -3,7 +3,7 @@
 
 using Microsoft.Azure.WebJobs.Host.Scale;
 
-namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
+namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     internal sealed class MySqlTriggerMetrics : ScaleMetrics
     {

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Extensions.Logging;
 
-namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
+namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     internal class MySqlTriggerTargetScaler : ITargetScaler
     {

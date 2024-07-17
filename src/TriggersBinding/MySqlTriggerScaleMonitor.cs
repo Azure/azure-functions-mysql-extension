@@ -8,7 +8,7 @@ using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Extensions.Logging;
 using MoreLinq;
 
-namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
+namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     /// <summary>
     /// Makes the scale decision for incremental scaling(+1, 0, -1) for workers required based on unprocessed changes.

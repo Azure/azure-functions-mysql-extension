@@ -3,7 +3,6 @@
 
 using System.Collections.Generic;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.Common;
-using Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 

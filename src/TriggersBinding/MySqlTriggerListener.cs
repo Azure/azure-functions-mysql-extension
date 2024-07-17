@@ -5,9 +5,8 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Common;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingUtilities;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding.MySqlTriggerConstants;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Scale;
@@ -15,7 +14,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using MySql.Data.MySqlClient;
 
-namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
+namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     internal sealed class MySqlTriggerListener<T> : IListener, IScaleMonitorProvider, ITargetScalerProvider
     {

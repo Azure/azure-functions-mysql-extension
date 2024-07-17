@@ -4,7 +4,7 @@
 using System;
 using Microsoft.Azure.WebJobs.Description;
 
-namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
+namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     /// <summary>
     /// Attribute used to bind a parameter to MySQL trigger message.

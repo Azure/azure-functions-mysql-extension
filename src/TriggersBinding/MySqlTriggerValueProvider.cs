@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
+namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     /// <summary>
     /// Provider for value that will be passed as argument to the triggered function.

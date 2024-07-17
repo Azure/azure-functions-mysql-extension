@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Common;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Azure.WebJobs.Logging;
@@ -14,7 +13,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
+namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     /// <summary>
     /// Provider class for MySQL trigger parameter binding.
@@ -38,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
             this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             this._hostIdProvider = hostIdProvider ?? throw new ArgumentNullException(nameof(hostIdProvider));
             this._mysqlOptions = mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions));
-            this._logger = loggerFactory?.CreateLogger(LogCategories.CreateTriggerCategory("Sql")) ?? throw new ArgumentNullException(nameof(loggerFactory));
+            this._logger = loggerFactory?.CreateLogger(LogCategories.CreateTriggerCategory("MySql")) ?? throw new ArgumentNullException(nameof(loggerFactory));
         }
 
         /// <summary>
@@ -91,10 +90,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
                 bindingType = typeof(MySqlTriggerBinding<>).MakeGenericType(userType);
             }
 
-            var constructorParameterTypes = new Type[] { typeof(string), typeof(string), typeof(string), typeof(ParameterInfo), typeof(IOptions<MySqlOptions>), typeof(IHostIdProvider), typeof(ILogger), typeof(IConfiguration) };
+            var constructorParameterTypes = new Type[] { typeof(string), typeof(string),/* typeof(string),*/ typeof(ParameterInfo), typeof(IOptions<MySqlOptions>), typeof(IHostIdProvider), typeof(ILogger), typeof(IConfiguration) };
             ConstructorInfo bindingConstructor = bindingType.GetConstructor(constructorParameterTypes);
 
-            object[] constructorParameterValues = new object[] { connectionString, attribute.TableName, attribute.LeasesTableName, parameter, this._mysqlOptions, this._hostIdProvider, this._logger, this._configuration };
+            object[] constructorParameterValues = new object[] { connectionString, attribute.TableName,/* attribute.LeasesTableName,*/ parameter, this._mysqlOptions, this._hostIdProvider, this._logger, this._configuration };
             var triggerBinding = (ITriggerBinding)bindingConstructor.Invoke(constructorParameterValues);
 
             return Task.FromResult(triggerBinding);

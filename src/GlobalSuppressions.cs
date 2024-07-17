@@ -8,5 +8,5 @@
 
 using System.Diagnostics.CodeAnalysis;
 
-[assembly: SuppressMessage("CodeQuality", "IDE0052:Remove unread private members", Justification = "<Pending>", Scope = "member", Target = "~F:Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding.MySqlTriggerMetricsProvider._userFunctionId")]
-[assembly: SuppressMessage("CodeQuality", "IDE0052:Remove unread private members", Justification = "<Pending>", Scope = "member", Target = "~F:Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding.MySqlTableChangeMonitor`1._userFunctionId")]
+[assembly: SuppressMessage("CodeQuality", "IDE0052:Remove unread private members", Justification = "<Pending>", Scope = "member", Target = "~F:Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerMetricsProvider._userFunctionId")]
+[assembly: SuppressMessage("CodeQuality", "IDE0052:Remove unread private members", Justification = "<Pending>", Scope = "member", Target = "~F:Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTableChangeMonitor`1._userFunctionId")]

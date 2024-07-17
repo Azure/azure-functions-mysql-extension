@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
 
-namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
+namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     internal static class MySqlTriggerUtils
     {

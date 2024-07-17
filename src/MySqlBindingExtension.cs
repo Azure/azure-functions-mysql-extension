@@ -3,7 +3,7 @@
 
 using System;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Common;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
@@ -16,7 +16,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 throw new ArgumentNullException(nameof(builder));
             }
 
-            // builder.Services.TryAddSingleton<MySqlTriggerBindingProvider>();
+            builder.Services.TryAddSingleton<MySqlTriggerBindingProvider>();
 
             builder.AddExtension<MySqlExtensionConfigProvider>().BindOptions<MySqlOptions>();
 

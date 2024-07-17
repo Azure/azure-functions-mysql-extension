@@ -7,7 +7,7 @@ using Microsoft.Azure.WebJobs.Hosting;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Microsoft.Azure.WebJobs.Extensions.MySql.Common
+namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     /// <summary>
     /// Represents configuration for <see cref="MySqlBindingExtension"/>.

@@ -9,9 +9,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding.MySqlTriggerUtils;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerUtils;
 
-namespace Microsoft.Azure.WebJobs.Extensions.MySql.TriggersBinding
+namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     /// <summary>
     /// Provider class for unprocessed changes metrics for MySql trigger scaling.

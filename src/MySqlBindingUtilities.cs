@@ -52,6 +52,15 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             return connectionString;
         }
 
+        public static string GetWebSiteName(IConfiguration configuration)
+        {
+            if (configuration == null)
+            {
+                throw new ArgumentNullException(nameof(configuration));
+            }
+            return configuration.GetConnectionStringOrSetting(MySqlBindingConstants.WEBSITENAME);
+        }
+
         /// <summary>
         /// Verifies that the table we are trying to initialize trigger on is supported
         /// </summary>
