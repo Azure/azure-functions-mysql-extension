@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingUtilities;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerUtils;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Scale;
@@ -103,8 +104,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                     await VerifyTableForTriggerSupported(connection, this._userTable.FullName, this._logger, cancellationToken);
 
-                    /*int userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, cancellationToken);
-                    IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, userTableId, this._logger, this._userTable.FullName, cancellationToken);
+                    ulong userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
+
+                    /*IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, userTableId, this._logger, this._userTable.FullName, cancellationToken);
                     IReadOnlyList<string> userTableColumns = this.GetUserTableColumns(connection, userTableId, cancellationToken);
 
                     string bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId); */
@@ -115,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     {
                         createdSchemaDurationMs = await this.CreateSchemaAsync(connection, transaction, cancellationToken);
                         createGlobalStateTableDurationMs = await this.CreateGlobalStateTableAsync(connection, transaction, cancellationToken);
-                        insertGlobalStateTableRowDurationMs = await this.InsertGlobalStateTableRowAsync(connection, transaction, cancellationToken);
+                        insertGlobalStateTableRowDurationMs = await this.InsertGlobalStateTableRowAsync(connection, transaction, userTableId, cancellationToken);
                         transaction.Commit();
                     }
 
@@ -269,7 +271,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     CREATE TABLE IF NOT EXISTS {GlobalStateTableName} (
                         UserFunctionID char(16) NOT NULL,
                         UserTableID int NOT NULL,
-                        LastPolledTime Datetime NOT NULL DEFAULT GETUTCDATE(),
+                        LastPolledTime Datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         PRIMARY KEY (UserFunctionID, UserTableID)
                     );
             ";
@@ -306,40 +308,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         /// <param name="connection">The already-opened connection to use for executing the command</param>
         /// <param name="transaction">The transaction wrapping this command</param>
+        /// <param name="userTableId">The ID of the table being watched</param>
         /// <param name="cancellationToken">Cancellation token to pass to the command</param>
         /// <returns>The time taken in ms to execute the command</returns>
-        private async Task<long> InsertGlobalStateTableRowAsync(MySqlConnection connection, MySqlTransaction transaction, CancellationToken cancellationToken)
+        private async Task<long> InsertGlobalStateTableRowAsync(MySqlConnection connection, MySqlTransaction transaction, ulong userTableId, CancellationToken cancellationToken)
         {
-            object minValidVersion;
 
-            string getMinValidVersionQuery = $"";
-
-            using (var getMinValidVersionCommand = new MySqlCommand(getMinValidVersionQuery, connection, transaction))
-            using (MySqlDataReader reader = getMinValidVersionCommand.ExecuteReaderWithLogging(this._logger))
-            {
-                if (!await reader.ReadAsync(cancellationToken))
-                {
-                    throw new InvalidOperationException($"Received empty response when querying the 'change tracking min valid version' for table: '{this._userTable.FullName}'.");
-                }
-
-                minValidVersion = reader.GetValue(0);
-
-                if (minValidVersion is DBNull)
-                {
-                    throw new InvalidOperationException($"Could not find change tracking enabled for table: '{this._userTable.FullName}'.");
-                }
-            }
-
-            string insertRowGlobalStateTableQuery = $@"
-                {AppLockStatements}
-
-                IF NOT EXISTS (
-                    SELECT * FROM {GlobalStateTableName}
-                    WHERE UserFunctionID = '{this._userFunctionId}'
-                )
-                    INSERT INTO {GlobalStateTableName}
-                    VALUES ('{this._userFunctionId}', {(long)minValidVersion}, GETUTCDATE());
-            ";
+            string insertRowGlobalStateTableQuery = $"INSERT IGNORE INTO {GlobalStateTableName} (UserFunctionID, UserTableID) VALUES ('{this._userFunctionId}', {userTableId})";
 
             using (var insertRowGlobalStateTableCommand = new MySqlCommand(insertRowGlobalStateTableQuery, connection, transaction))
             {

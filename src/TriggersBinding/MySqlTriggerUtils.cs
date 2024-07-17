@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <exception cref="InvalidOperationException">
         /// Thrown if there are no primary key columns present in the user table or if their names conflict with columns in leases table.
         /// </exception>
-        public static IReadOnlyList<(string name, string type)> GetPrimaryKeyColumnsAsync(MySqlConnection connection, int userTableId, ILogger logger, string userTableName, CancellationToken cancellationToken)
+        public static IReadOnlyList<(string name, string type)> GetPrimaryKeyColumnsAsync(MySqlConnection connection, ulong userTableId, ILogger logger, string userTableName, CancellationToken cancellationToken)
         {
             const int NameIndex = 0, TypeIndex = 1, LengthIndex = 2, PrecisionIndex = 3, ScaleIndex = 4;
             string getPrimaryKeyColumnsQuery = $@"
@@ -89,16 +89,16 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="logger">Facilitates logging of messages</param>
         /// <param name="cancellationToken">Cancellation token to pass to the command</param>
         /// <exception cref="InvalidOperationException">Thrown in case of error when querying the object ID for the user table</exception>
-        internal static async Task<int> GetUserTableIdAsync(MySqlConnection connection, MySqlObject userTable, ILogger logger, CancellationToken cancellationToken)
+        internal static async Task<ulong> GetUserTableIdAsync(MySqlConnection connection, MySqlObject userTable, ILogger logger, CancellationToken cancellationToken)
         {
-            string getObjectIdQuery = $"SELECT OBJECT_ID(N{userTable.QuotedFullName}, 'U');";
+            string getObjectIdQuery = $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_sys_tables where NAME = CONCAT(DATABASE(), '/', {userTable.QuotedName})";
 
             using (var getObjectIdCommand = new MySqlCommand(getObjectIdQuery, connection))
             using (MySqlDataReader reader = getObjectIdCommand.ExecuteReaderWithLogging(logger))
             {
                 if (!await reader.ReadAsync(cancellationToken))
                 {
-                    throw new InvalidOperationException($"Received empty response when querying the object ID for table: '{userTable.FullName}'.");
+                    throw new InvalidOperationException($"Received empty response when querying the Table ID for table: '{userTable.FullName}'.");
                 }
 
                 object userTableId = reader.GetValue(0);
@@ -108,7 +108,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     throw new InvalidOperationException($"Could not find table: '{userTable.FullName}'.");
                 }
                 logger.LogDebug($"GetUserTableId TableId={userTableId}");
-                return (int)userTableId;
+                return (ulong)userTableId;
             }
         }
     }

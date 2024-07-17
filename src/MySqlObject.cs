@@ -36,15 +36,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         public readonly string FullName;
         /// <summary>
-        /// The full name of the object in the format '[SCHEMA].[NAME]' (or just '[NAME]' if there is no specified schema), quoted and escaped with single quotes
+        /// The full name of the object in the format 'SCHEMA.NAME' (or just 'NAME' if there is no specified schema), quoted and escaped with single quotes
         /// </summary>
         /// <remarks>The schema and name are also bracket quoted to avoid issues when there are .'s in the object names</remarks>
         public readonly string QuotedFullName;
-
-        /// <summary>
-        /// The full name of the objected in the format [SCHEMA].[NAME] (or just [NAME] if there is no specified schema), quoted and escaped with square brackets.
-        /// </summary>
-        public readonly string BracketQuotedFullName;
 
         /// <summary>
         /// A MySqlObject which contains information about the name and schema of the given object full name.
@@ -74,8 +69,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             this.Name = visitor.objectName;
             this.QuotedName = this.Name.AsSingleQuotedString();
             this.FullName = this.Schema == SCHEMA_NAME_FUNCTION ? this.Name : $"{this.Schema}.{this.Name}";
-            this.BracketQuotedFullName = this.Schema == SCHEMA_NAME_FUNCTION ? this.Name.AsBracketQuotedString() : $"{this.Schema.AsBracketQuotedString()}.{this.Name.AsBracketQuotedString()}";
-            this.QuotedFullName = this.BracketQuotedFullName.AsSingleQuotedString();
+            this.QuotedFullName = this.FullName.AsSingleQuotedString();
         }
 
         /// <summary>

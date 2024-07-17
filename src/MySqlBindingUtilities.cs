@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         public static async Task VerifyTableForTriggerSupported(MySqlConnection connection, string tableName, ILogger logger, CancellationToken cancellationToken)
         {
 
-            string verifyTableSupportedQuery = $"SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = {tableName} AND COLUMN_NAME = 'updated_at'";
+            string verifyTableSupportedQuery = $"SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{tableName}' AND COLUMN_NAME = 'updated_at'";
 
             using (var verifyTableSupportedCommand = new MySqlCommand(verifyTableSupportedQuery, connection))
             using (MySqlDataReader reader = verifyTableSupportedCommand.ExecuteReaderWithLogging(logger))

@@ -48,7 +48,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     await connection.OpenAsync();
 
-                    int userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
+                    ulong userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
                     IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, userTableId, this._logger, this._userTable.FullName, CancellationToken.None);
 
                     // Use a transaction to automatically release the app lock when we're done executing the query
