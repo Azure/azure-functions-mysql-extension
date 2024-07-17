@@ -91,7 +91,29 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <exception cref="InvalidOperationException">Thrown in case of error when querying the object ID for the user table</exception>
         internal static async Task<ulong> GetUserTableIdAsync(MySqlConnection connection, MySqlObject userTable, ILogger logger, CancellationToken cancellationToken)
         {
-            string getObjectIdQuery = $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_sys_tables where NAME = CONCAT(DATABASE(), '/', {userTable.QuotedName})";
+            string getObjectIdQuery = string.Empty;
+            string getDbVersion = $"SELECT VERSION()";
+            using (var getDbVersionCmd = new MySqlCommand(getDbVersion, connection))
+            using (MySqlDataReader reader = getDbVersionCmd.ExecuteReaderWithLogging(logger))
+            {
+                if (!await reader.ReadAsync(cancellationToken))
+                {
+                    throw new InvalidOperationException($"Received empty response when querying for the database version");
+                }
+
+                object dbVersion = reader.GetValue(0);
+
+                if (dbVersion is DBNull)
+                {
+                    throw new InvalidOperationException($"Could not find database.");
+                }
+                logger.LogDebug($"Database version: {dbVersion}");
+
+                getObjectIdQuery = dbVersion.ToString().StartsWith("5.7", StringComparison.InvariantCulture)
+                    ? $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_sys_tables where NAME = CONCAT(DATABASE(), '/', {userTable.QuotedName})"
+                    : $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_tables where NAME = CONCAT(DATABASE(), '/', {userTable.QuotedName})";
+            }
+
 
             using (var getObjectIdCommand = new MySqlCommand(getObjectIdQuery, connection))
             using (MySqlDataReader reader = getObjectIdCommand.ExecuteReaderWithLogging(logger))

@@ -50,15 +50,5 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// More information on how this is generated can be found here
         /// </summary>
         public string LeasesTableName { get; }
-
-        ///<summary>
-        /// Time when the row was created.
-        ///</summary>
-        public DateTime RowCreatedAt { get; }
-
-        ///<summary>
-        /// Time when the row was updated.
-        ///</summary>
-        public DateTime RowUpdatedAt { get; }
     }
 }
