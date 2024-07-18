@@ -13,6 +13,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
         // public const string UserDefinedLeasesTableNameFormat = SchemaName + ".{0}";
 
+        public const string GlobalStateTableVersionColumnName = "LastPolledTime";
+        public const string UpdateAtColumnName = "updated_at";
+
         public const string LeasesTableChangeVersionColumnName = "_az_func_ChangeVersion";
         public const string LeasesTableAttemptCountColumnName = "_az_func_AttemptCount";
         public const string LeasesTableLeaseExpirationTimeColumnName = "_az_func_LeaseExpirationTime";

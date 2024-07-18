@@ -123,6 +123,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                     this._changeMonitor = new MySqlTableChangeMonitor<T>(
                         this._connectionString,
+                        userTableId,
                         this._userTable,
                         this._userFunctionId,
                         this._executor,
