@@ -21,10 +21,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private const int DefaultMinimumPollingIntervalMs = 100;
         public const int DefaultMaxChangesPerWorker = 1000;
         /// <summary>
-        /// Maximum number of changes to process in each iteration of the loop
-        /// </summary>
-        private int _maxBatchSize = DefaultMaxBatchSize;
-        /// <summary>
         /// Delay in ms between processing each batch of changes
         /// </summary>
         private int _pollingIntervalMs = DefaultPollingIntervalMs;
@@ -37,25 +33,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         public MySqlOptions()
         {
 
-        }
-
-        /// <summary>
-        /// Gets or sets the number of changes per batch to retrieve from the server.
-        /// The default is 100.
-        /// </summary>
-        public int MaxBatchSize
-        {
-            get => this._maxBatchSize;
-
-            set
-            {
-                if (value <= 0)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(value), "MaxBatchSize must not be less than 1.");
-                }
-
-                this._maxBatchSize = value;
-            }
         }
 
         /// <summary>
@@ -103,7 +80,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         {
             var options = new JObject
             {
-                { nameof(this.MaxBatchSize), this.MaxBatchSize },
                 { nameof(this.PollingIntervalMs), this.PollingIntervalMs },
                 { nameof(this.MaxChangesPerWorker), this.MaxChangesPerWorker }
             };
@@ -115,7 +91,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         {
             var copy = new MySqlOptions
             {
-                _maxBatchSize = this._maxBatchSize,
                 _pollingIntervalMs = this._pollingIntervalMs,
                 _maxChangesPerWorker = this._maxChangesPerWorker
             };

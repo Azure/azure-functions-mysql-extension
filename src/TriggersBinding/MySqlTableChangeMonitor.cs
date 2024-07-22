@@ -46,16 +46,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private readonly ulong _userTableId;
         private readonly MySqlObject _userTable;
         private readonly string _userFunctionId;
-        // private readonly IReadOnlyList<string> _rowMatchConditions;
-        // private readonly List<IReadOnlyDictionary<string, object>> _rowChangedItems;
-
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly MySqlOptions _mysqlOptions;
         private readonly ILogger _logger;
-        /// <summary>
-        /// Maximum number of changes to process in each iteration of the loop
-        /// </summary>
-        private readonly int _maxBatchSize;
         /// <summary>
         /// Delay in ms between processing each batch of changes
         /// </summary>
@@ -112,31 +105,17 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             this._executor = executor ?? throw new ArgumentNullException(nameof(executor));
             this._logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-            // TODO: when we move to reading them exclusively from the host options, remove reading from settings.(https://github.com/Azure/azure-functions-sql-extension/issues/961)
-            // Check if there's config settings to override the default max batch size/polling interval values
-            int? configuredMaxBatchSize = configuration.GetValue<int?>(ConfigKey_MySqlTrigger_MaxBatchSize) ?? configuration.GetValue<int?>(ConfigKey_MySqlTrigger_BatchSize);
             int? configuredPollingInterval = configuration.GetValue<int?>(ConfigKey_MySqlTrigger_PollingInterval);
-            this._maxBatchSize = configuredMaxBatchSize ?? this._mysqlOptions.MaxBatchSize;
-            if (this._maxBatchSize <= 0)
-            {
-                throw new InvalidOperationException($"Invalid value for configuration setting '{ConfigKey_MySqlTrigger_MaxBatchSize}'. Ensure that the value is a positive integer.");
-            }
             this._pollingIntervalInMs = configuredPollingInterval ?? this._mysqlOptions.PollingIntervalMs;
             if (this._pollingIntervalInMs <= 0)
             {
                 throw new InvalidOperationException($"Invalid value for configuration setting '{ConfigKey_MySqlTrigger_PollingInterval}'. Ensure that the value is a positive integer.");
             }
 
-            // Prep search-conditions that will be used besides WHERE clause to match table rows.
-            /* this._rowMatchConditions = Enumerable.Range(0, this._maxBatchSize)
-                .Select(rowIndex => string.Join(" AND ", this._primaryKeyColumns.Select((col, colIndex) => $"{col.name.AsBracketQuotedString()} = @{rowIndex}_{colIndex}")))
-                .ToList(); */
-
 #pragma warning disable CS4014 // Queue the below tasks and exit. Do not wait for their completion.
             _ = Task.Run(() =>
             {
                 this.RunChangeConsumptionLoopAsync();
-                // this.RunLeaseRenewalLoopAsync();
             });
 #pragma warning restore CS4014
         }
@@ -161,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         private async Task RunChangeConsumptionLoopAsync()
         {
-            this._logger.LogDebug($"Starting change consumption loop. MaxBatchSize: {this._maxBatchSize} PollingIntervalMs: {this._pollingIntervalInMs}");
+            this._logger.LogDebug($"Starting change consumption loop. PollingIntervalMs: {this._pollingIntervalInMs}");
 
             try
             {
@@ -322,9 +301,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <summary>
         /// Update LastPollingTime of GlobalStateTable for the requested table
         /// </summary>
-#pragma warning disable CS1998 // Queue the below tasks and exit. Do not wait for their completion.
         private async Task UpdateGlobalStateTablePollingTime(MySqlConnection connection, DateTime currentPolledTimeInUTC, CancellationToken token)
-#pragma warning restore CS1998
         {
             try
             {

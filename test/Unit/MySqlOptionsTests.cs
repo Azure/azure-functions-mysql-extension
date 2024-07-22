@@ -13,7 +13,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         {
             var options = new MySqlOptions();
 
-            Assert.Equal(100, options.MaxBatchSize);
             Assert.Equal(1000, options.PollingIntervalMs);
             Assert.Equal(1000, options.MaxChangesPerWorker);
         }
@@ -22,10 +21,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         public void NewOptions_CanGetAndSetValue()
         {
             var options = new MySqlOptions();
-
-            Assert.Equal(100, options.MaxBatchSize);
-            options.MaxBatchSize = 200;
-            Assert.Equal(200, options.MaxBatchSize);
 
             Assert.Equal(1000, options.PollingIntervalMs);
             options.PollingIntervalMs = 2000;
@@ -47,7 +42,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
             };
             MySqlOptions options = jo.ToObject<MySqlOptions>();
 
-            Assert.Equal(10, options.MaxBatchSize);
             Assert.Equal(2000, options.PollingIntervalMs);
             Assert.Equal(10, options.MaxChangesPerWorker);
         }
