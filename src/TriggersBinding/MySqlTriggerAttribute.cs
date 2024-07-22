@@ -18,20 +18,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         /// <param name="tableName">Name of the table to watch for changes.</param>
         /// <param name="connectionStringSetting">The name of the app setting where the SQL connection string is stored</param>
-        /// <param name="leasesTableName">Optional - The name of the table used to store leases. If not specified, the leases table name will be Leases_{FunctionId}_{TableId}</param>
-        public MySqlTriggerAttribute(string tableName, string connectionStringSetting, string leasesTableName = null)
+        public MySqlTriggerAttribute(string tableName, string connectionStringSetting)
         {
             this.TableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
             this.ConnectionStringSetting = connectionStringSetting ?? throw new ArgumentNullException(nameof(connectionStringSetting));
-            this.LeasesTableName = leasesTableName;
         }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MySqlTriggerAttribute"/> class with null value for LeasesTableName.
-        /// </summary>
-        /// <param name="tableName">Name of the table to watch for changes.</param>
-        /// <param name="connectionStringSetting">The name of the app setting where the SQL connection string is stored</param>
-        public MySqlTriggerAttribute(string tableName, string connectionStringSetting) : this(tableName, connectionStringSetting, null) { }
 
         /// <summary>
         /// Name of the app setting containing the MySQL connection string.
@@ -43,12 +34,5 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// Name of the table to watch for changes.
         /// </summary>
         public string TableName { get; }
-
-        /// <summary>
-        /// Name of the table used to store leases.
-        /// If not specified, the leases table name will be Leases_{FunctionId}_{TableId}
-        /// More information on how this is generated can be found here
-        /// </summary>
-        public string LeasesTableName { get; }
     }
 }
