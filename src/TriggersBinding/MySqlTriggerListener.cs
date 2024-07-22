@@ -10,14 +10,13 @@ using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerUtils;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
-using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using MySql.Data.MySqlClient;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
-    internal sealed class MySqlTriggerListener<T> : IListener, IScaleMonitorProvider, ITargetScalerProvider
+    internal sealed class MySqlTriggerListener<T> : IListener
     {
         private const int ListenerNotStarted = 0;
         private const int ListenerStarting = 1;
@@ -32,15 +31,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private readonly ILogger _logger;
         private readonly IConfiguration _configuration;
 
-        private readonly int _maxChangesPerWorker;
-        // private readonly bool _hasConfiguredMaxChangesPerWorker = false;
-
         private MySqlTableChangeMonitor<T> _changeMonitor;
-        private readonly IScaleMonitor<MySqlTriggerMetrics> _scaleMonitor;
-        private readonly ITargetScaler _targetScaler;
-
         private int _listenerState = ListenerNotStarted;
-
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MySqlTriggerListener{T}"/> class.
@@ -61,18 +53,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             this._mysqlOptions = mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions));
             this._logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            int? configuredMaxChangesPerWorker;
-            // TODO: when we move to reading them exclusively from the host options, remove reading from settings.(https://github.com/Azure/azure-functions-sql-extension/issues/961)
-            configuredMaxChangesPerWorker = configuration.GetValue<int?>(ConfigKey_MySqlTrigger_MaxChangesPerWorker);
-            this._maxChangesPerWorker = configuredMaxChangesPerWorker ?? this._mysqlOptions.MaxChangesPerWorker;
-            if (this._maxChangesPerWorker <= 0)
-            {
-                throw new InvalidOperationException($"Invalid value for configuration setting '{ConfigKey_MySqlTrigger_MaxChangesPerWorker}'. Ensure that the value is a positive integer.");
-            }
-            // this._hasConfiguredMaxChangesPerWorker = configuredMaxChangesPerWorker != null;
-
-            this._scaleMonitor = new MySqlTriggerScaleMonitor(this._userFunctionId, this._userTable, this._connectionString, this._maxChangesPerWorker, this._logger);
-            this._targetScaler = new MySqlTriggerTargetScaler(this._userFunctionId, this._userTable, this._connectionString, this._maxChangesPerWorker, this._logger);
         }
 
         public void Cancel()
@@ -103,14 +83,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     await connection.OpenAsyncWithMySqlErrorHandling(cancellationToken);
 
                     await VerifyTableForTriggerSupported(connection, this._userTable.FullName, this._logger, cancellationToken);
-
                     ulong userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
 
-                    /*IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, userTableId, this._logger, this._userTable.FullName, cancellationToken);
-                    IReadOnlyList<string> userTableColumns = this.GetUserTableColumns(connection, userTableId, cancellationToken);
-
-                    string bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId); */
-                    var transactionSw = Stopwatch.StartNew();
                     long createdSchemaDurationMs = 0L, createGlobalStateTableDurationMs = 0L, insertGlobalStateTableRowDurationMs = 0L;
 
                     using (MySqlTransaction transaction = connection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead))
@@ -134,6 +108,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     this._listenerState = ListenerStarted;
                     this._logger.LogDebug($"Started MySQL trigger listener for table: '{this._userTable.FullName}', function ID: {this._userFunctionId}");
 
+                    this._logger.LogInformation($"CreatedSchemaDurationMs {createdSchemaDurationMs}. CreateGlobalStateTableDurationMs: {createGlobalStateTableDurationMs}. " +
+                        $"InsertGlobalStateTableRowDurationMs: {insertGlobalStateTableRowDurationMs}");
                 }
             }
             catch (Exception ex)
@@ -149,74 +125,41 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             var stopwatch = Stopwatch.StartNew();
 
             int previousState = Interlocked.CompareExchange(ref this._listenerState, ListenerStopping, ListenerStarted);
+
             if (previousState == ListenerStarted)
             {
-                this._changeMonitor.Dispose();
+                // Clean a record from GlobalStateTableName
+                try
+                {
+                    long deleteGlobalStateTableRowDurationMs = 0L;
+                    using (var connection = new MySqlConnection(this._connectionString))
+                    {
+                        Task conTask = connection.OpenAsyncWithMySqlErrorHandling(cancellationToken);
+                        using (MySqlTransaction transaction = connection.BeginTransaction())
+                        {
+                            ulong userTableId = GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None).Result;
+                            // Call the async method and wait for the result
+                            deleteGlobalStateTableRowDurationMs = this.DeleteGlobalStateTableRowAsync(connection, transaction, userTableId, cancellationToken).Result;
+                            transaction.Commit();
 
+                            this._logger.LogInformation($"Cleaned a record from {GlobalStateTableName}, for a Function Id: {this._userFunctionId} and the Table: '{this._userTable.FullName}'.");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    this._logger.LogError($"Failed to clean records for MySQL table: '{this._userTable.FullName}' from {GlobalStateTableName}. Exception: {ex}");
+                    throw;
+                }
+
+                this._changeMonitor.Dispose();
                 this._listenerState = ListenerStopped;
+
             }
 
             this._logger.LogInformation($"Listener stopped. Duration(ms): {stopwatch.ElapsedMilliseconds}");
             return Task.CompletedTask;
         }
-
-        /*
-        /// <summary>
-        /// Gets the column names of the user table.
-        /// </summary>
-        private IReadOnlyList<string> GetUserTableColumns(MySqlConnection connection, int userTableId, CancellationToken cancellationToken)
-        {
-            const int NameIndex = 0, TypeIndex = 1, IsAssemblyTypeIndex = 2;
-            string getUserTableColumnsQuery = $@"
-                SELECT
-                    c.name,
-                    t.name,
-                    t.is_assembly_type
-                FROM sys.columns AS c
-                INNER JOIN sys.types AS t ON c.user_type_id = t.user_type_id
-                WHERE c.object_id = {userTableId};
-            ";
-
-            using (var getUserTableColumnsCommand = new MySqlCommand(getUserTableColumnsQuery, connection))
-            using (MySqlDataReader reader = getUserTableColumnsCommand.ExecuteReaderWithLogging(this._logger))
-            {
-                var userTableColumns = new List<string>();
-                var userDefinedTypeColumns = new List<(string name, string type)>();
-
-                while (reader.Read())
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    string columnName = reader.GetString(NameIndex);
-                    string columnType = reader.GetString(TypeIndex);
-                    bool isAssemblyType = reader.GetBoolean(IsAssemblyTypeIndex);
-
-                    userTableColumns.Add(columnName);
-
-                    if (isAssemblyType)
-                    {
-                        userDefinedTypeColumns.Add((columnName, columnType));
-                    }
-                }
-
-                if (userDefinedTypeColumns.Count > 0)
-                {
-                    string columnNamesAndTypes = string.Join(", ", userDefinedTypeColumns.Select(col => $"'{col.name}' (type: {col.type})"));
-                    throw new InvalidOperationException($"Found column(s) with unsupported type(s): {columnNamesAndTypes} in table: '{this._userTable.FullName}'.");
-                }
-
-                var conflictingColumnNames = userTableColumns.Intersect(ReservedColumnNames).ToList();
-
-                if (conflictingColumnNames.Count > 0)
-                {
-                    string columnNames = string.Join(", ", conflictingColumnNames.Select(col => $"'{col}'"));
-                    throw new InvalidOperationException($"Found reserved column name(s): {columnNames} in table: '{this._userTable.FullName}'." +
-                        " Please rename them to be able to use trigger binding.");
-                }
-
-                this._logger.LogDebug($"GetUserTableColumns ColumnNames = {string.Join(", ", userTableColumns.Select(col => $"'{col}'"))}.");
-                return userTableColumns;
-            }
-        } */
 
         /// <summary>
         /// Creates the schema for global state table and leases tables, if it does not already exist.
@@ -325,14 +268,24 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
         }
 
-        public IScaleMonitor GetMonitor()
+        /// <summary>
+        /// Delete a row for the 'user function and table' inside the global state table, if one does already exist.
+        /// </summary>
+        /// <param name="connection">The already-opened connection to use for executing the command</param>
+        /// <param name="transaction">The transaction wrapping this command</param>
+        /// <param name="userTableId">The ID of the table being watched</param>
+        /// <param name="cancellationToken">Cancellation token to pass to the command</param>
+        /// <returns>The time taken in ms to execute the command</returns>
+        private async Task<long> DeleteGlobalStateTableRowAsync(MySqlConnection connection, MySqlTransaction transaction, ulong userTableId, CancellationToken cancellationToken)
         {
-            return this._scaleMonitor;
-        }
+            string deleteRowGlobalStateTableQuery = $"DELETE FROM {GlobalStateTableName} WHERE UserFunctionID = '{this._userFunctionId}' AND UserTableID = {userTableId}";
 
-        public ITargetScaler GetTargetScaler()
-        {
-            return this._targetScaler;
+            using (var deleteRowGlobalStateTableCommand = new MySqlCommand(deleteRowGlobalStateTableQuery, connection, transaction))
+            {
+                var stopwatch = Stopwatch.StartNew();
+                await deleteRowGlobalStateTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
+                return stopwatch.ElapsedMilliseconds;
+            }
         }
     }
 }
