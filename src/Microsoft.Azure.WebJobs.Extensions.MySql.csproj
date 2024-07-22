@@ -17,11 +17,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="TriggersBinding\MySqlTriggerScaleMonitor.cs" />
-    <Compile Remove="TriggersBinding\MySqlTriggerTargetScaler.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Azure.Identity" />
     <PackageReference Include="Microsoft.ApplicationInsights" />
     <PackageReference Include="Microsoft.Azure.WebJobs" />

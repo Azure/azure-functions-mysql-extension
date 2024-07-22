@@ -17,31 +17,11 @@ using System.Linq;
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     /// <summary>
-    /// Watches for changes in the user table, invokes user function if changes are found, and manages leases.
+    /// Watches for changes in the user table, invokes user function if changes are found.
     /// </summary>
     /// <typeparam name="T">POCO class representing the row in the user table</typeparam>
     internal class MySqlTableChangeMonitor<T> : IDisposable
     {
-        #region Constants
-        /*/// <summary>
-        /// The maximum number of times we'll attempt to process a change before giving up
-        /// </summary>
-        private const int MaxChangeProcessAttemptCount = 5;*/
-        /// <summary>
-        /// The maximum number of times that we'll attempt to renew a lease be
-        /// </summary>
-        /// <remarks>
-        /// Leases are held for approximately (LeaseRenewalIntervalInSeconds * MaxLeaseRenewalCount) seconds. It is
-        /// required to have at least one of (LeaseIntervalInSeconds / LeaseRenewalIntervalInSeconds) attempts to
-        /// renew the lease succeed to prevent it from expiring.
-        /// </remarks>
-        // private const int MaxLeaseRenewalCount = 10;
-        public const int LeaseIntervalInSeconds = 60;
-        // private const int LeaseRenewalIntervalInSeconds = 15;
-        // private const int MaxRetryReleaseLeases = 3;
-
-        #endregion Constants
-
         private readonly string _connectionString;
         private readonly ulong _userTableId;
         private readonly MySqlObject _userTable;
@@ -55,7 +35,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private readonly int _pollingIntervalInMs;
 
         private readonly CancellationTokenSource _cancellationTokenSourceCheckForChanges = new CancellationTokenSource();
-        private readonly CancellationTokenSource _cancellationTokenSourceRenewLeases = new CancellationTokenSource();
         private readonly CancellationTokenSource _cancellationTokenSourceExecutor = new CancellationTokenSource();
 
         // The semaphore gets used by lease-renewal loop to ensure that '_state' stays set to 'ProcessingChanges' while
@@ -190,7 +169,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             }
                             if (this._state == State.Cleanup)
                             {
-                                // await this.ReleaseLeasesAsync(connection, token);
                                 await this.ClearRowsAsync();
                             }
                         }
@@ -219,7 +197,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 // If this thread exits due to any reason, then the lease renewal thread should exit as well. Otherwise,
                 // it will keep looping perpetually.
-                this._cancellationTokenSourceRenewLeases.Cancel();
                 this._cancellationTokenSourceCheckForChanges.Dispose();
                 this._cancellationTokenSourceExecutor.Dispose();
             }
@@ -256,16 +233,15 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             }
                         }
 
-                        // If changes were found, acquire leases on them.
+                        // If changes were found
                         if (rows.Count > 0)
                         {
-
                             this._logger.LogInformation($"Getting Table changes for {this._userTable.FullName}");
                         }
 
                         transaction.Commit();
 
-                        // Set the rows for processing, now since the leases are acquired.
+                        // Set the rows for processing
                         this._rowsToProcess = rows;
                         this._state = State.ProcessingChanges;
                     }
@@ -420,7 +396,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         {
             await this._rowsLock.WaitAsync();
 
-            // this._leaseRenewalCount = 0;
             this._state = State.CheckingForChanges;
             this._rowsToProcess = new List<IReadOnlyDictionary<string, object>>();
 
