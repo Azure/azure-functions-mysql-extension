@@ -25,8 +25,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         [Fact]
         public void TestNullConfiguration()
         {
-            Assert.Throws<ArgumentNullException>(() => new MySqlExtensionConfigProvider(null, loggerFactory.Object));
-            Assert.Throws<ArgumentNullException>(() => new MySqlExtensionConfigProvider(config.Object, null));
+            Assert.Throws<ArgumentNullException>(() => new MySqlExtensionConfigProvider(null, loggerFactory.Object, null));
+            Assert.Throws<ArgumentNullException>(() => new MySqlExtensionConfigProvider(config.Object, null, null));
 
             Assert.Throws<ArgumentNullException>(() => new MySqlConverter(null));
             Assert.Throws<ArgumentNullException>(() => new MySqlGenericsConverter<string>(null, logger.Object));
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         [Fact]
         public void TestNullContext()
         {
-            var configProvider = new MySqlExtensionConfigProvider(config.Object, loggerFactory.Object/*, null*/);
+            var configProvider = new MySqlExtensionConfigProvider(config.Object, loggerFactory.Object, null);
             Assert.Throws<ArgumentNullException>(() => configProvider.Initialize(null));
         }
 

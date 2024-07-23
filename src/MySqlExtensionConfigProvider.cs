@@ -25,7 +25,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     {
         private readonly IConfiguration _configuration;
         private readonly ILoggerFactory _loggerFactory;
-        //private readonly MySqlTriggerBindingProvider _triggerProvider;
+        private readonly MySqlTriggerBindingProvider _triggerProvider;
         private MySqlClientListener mysqlClientListener;
         public const string VerboseLoggingSettingName = "AzureFunctions_MySqlBindings_VerboseLogging";
 
@@ -35,11 +35,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <exception cref = "ArgumentNullException" >
         /// Thrown if either parameter is null
         /// </exception>
-        public MySqlExtensionConfigProvider(IConfiguration configuration, ILoggerFactory loggerFactory/*, MySqlTriggerBindingProvider triggerProvider*/)
+        public MySqlExtensionConfigProvider(IConfiguration configuration, ILoggerFactory loggerFactory, MySqlTriggerBindingProvider triggerProvider)
         {
             this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             this._loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
-            //this._triggerProvider = triggerProvider;
+            this._triggerProvider = triggerProvider;
         }
 
         /// <summary>
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             inputOutputRule.BindToCollector<MySQLObjectOpenType>(typeof(MySqlAsyncCollectorBuilder<>), this._configuration, logger);
             inputOutputRule.BindToInput<OpenType>(typeof(MySqlGenericsConverter<>), this._configuration, logger);
 
-            //context.AddBindingRule<MySqlTriggerAttribute>().BindToTrigger(this._triggerProvider);
+            context.AddBindingRule<MySqlTriggerAttribute>().BindToTrigger(this._triggerProvider);
         }
 
         private static readonly Assembly[] _dependentAssemblies = {

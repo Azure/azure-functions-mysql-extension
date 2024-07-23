@@ -10,6 +10,7 @@ using System.Threading;
 using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
@@ -50,6 +51,34 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 $"ConnectionStringSetting '{connectionStringSetting}' is empty in your function app settings, please update the setting with a valid MySQL connection string.");
             }
             return connectionString;
+        }
+
+        public static string GetWebSiteName(IConfiguration configuration)
+        {
+            if (configuration == null)
+            {
+                throw new ArgumentNullException(nameof(configuration));
+            }
+            return configuration.GetConnectionStringOrSetting(MySqlBindingConstants.WEBSITENAME);
+        }
+
+        /// <summary>
+        /// Verifies that the table we are trying to initialize trigger on is supported
+        /// </summary>
+        /// <exception cref="InvalidOperationException">Throw if an error occurs while checking the column_name 'UpdateAtColumnName' in table does not existed</exception>
+        public static async Task VerifyTableForTriggerSupported(MySqlConnection connection, string tableName, ILogger logger, CancellationToken cancellationToken)
+        {
+
+            string verifyTableSupportedQuery = $"SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{tableName}' AND COLUMN_NAME = '{UpdateAtColumnName}'";
+
+            using (var verifyTableSupportedCommand = new MySqlCommand(verifyTableSupportedQuery, connection))
+            using (MySqlDataReader reader = verifyTableSupportedCommand.ExecuteReaderWithLogging(logger))
+            {
+                if (!await reader.ReadAsync(cancellationToken))
+                {
+                    throw new InvalidOperationException($"The Table doesnot contain the column '{UpdateAtColumnName}', hence a trigger cannot be created on this table.");
+                }
+            }
         }
 
         /// <summary>
