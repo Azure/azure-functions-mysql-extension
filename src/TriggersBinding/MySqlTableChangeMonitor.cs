@@ -26,6 +26,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private readonly ulong _userTableId;
         private readonly MySqlObject _userTable;
         private readonly string _userFunctionId;
+        private readonly string _bracketedLeasesTableName;
+        private readonly IReadOnlyList<(string name, string type)> _primaryKeyColumns;
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly MySqlOptions _mysqlOptions;
         private readonly ILogger _logger;
@@ -62,6 +64,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="userTableId">SQL object ID of the user table</param>
         /// <param name="userTable"><see cref="MySqlObject" /> instance created with user table name</param>
         /// <param name="userFunctionId">Unique identifier for the user function</param>
+        /// <param name="bracketedLeasesTableName">Name of the leases table</param>
+        /// <param name="primaryKeyColumns">List of primary key column names in the user table</param>
         /// <param name="executor">Defines contract for triggering user function</param>
         /// <param name="mysqlOptions"></param>
         /// <param name="logger">Facilitates logging of messages</param>
@@ -71,6 +75,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             ulong userTableId,
             MySqlObject userTable,
             string userFunctionId,
+            string bracketedLeasesTableName,
+            IReadOnlyList<(string name, string type)> primaryKeyColumns,
             ITriggeredFunctionExecutor executor,
             MySqlOptions mysqlOptions,
             ILogger logger,
@@ -80,6 +86,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             this._userTableId = userTableId;
             this._userTable = !string.IsNullOrEmpty(userTable?.FullName) ? userTable : throw new ArgumentNullException(nameof(userTable));
             this._userFunctionId = !string.IsNullOrEmpty(userFunctionId) ? userFunctionId : throw new ArgumentNullException(nameof(userFunctionId));
+            this._bracketedLeasesTableName = !string.IsNullOrEmpty(bracketedLeasesTableName) ? bracketedLeasesTableName : throw new ArgumentNullException(nameof(bracketedLeasesTableName));
+            this._primaryKeyColumns = primaryKeyColumns ?? throw new ArgumentNullException(nameof(primaryKeyColumns));
             this._mysqlOptions = mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions));
             this._executor = executor ?? throw new ArgumentNullException(nameof(executor));
             this._logger = logger ?? throw new ArgumentNullException(nameof(logger));

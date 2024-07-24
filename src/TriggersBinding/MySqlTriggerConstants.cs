@@ -12,5 +12,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         public const string SysChangeVersionColumnName = "SYS_CHANGE_VERSION";
         public const string LastAccessTimeColumnName = "LastAccessTime";
         public const string ConfigKey_MySqlTrigger_PollingInterval = "MySql_Trigger_PollingIntervalMs";
+
+        public const string LeasesTableNameFormat = SchemaName + ".Leases_{0}";
+        public const string UserDefinedLeasesTableNameFormat = SchemaName + ".{0}";
     }
 }

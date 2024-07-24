@@ -13,6 +13,7 @@ using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using MySql.Data.MySqlClient;
+using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
@@ -25,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private const int ListenerStopped = 4;
         private readonly MySqlObject _userTable;
         private readonly string _connectionString;
+        private readonly string _userDefinedLeasesTableName;
         private readonly string _userFunctionId;
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly MySqlOptions _mysqlOptions;
@@ -38,16 +40,18 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// Initializes a new instance of the <see cref="MySqlTriggerListener{T}"/> class.
         /// </summary>
         /// <param name="connectionString">MySQL connection string used to connect to user database</param>
+        /// <param name="userDefinedLeasesTableName">Optional - Name of the leases table</param>
         /// <param name="tableName">Name of the user table</param>
         /// <param name="userFunctionId">Unique identifier for the user function</param>
         /// <param name="executor">Defines contract for triggering user function</param>
         /// <param name="mysqlOptions"></param>
         /// <param name="logger">Facilitates logging of messages</param>
         /// <param name="configuration">Provides configuration values</param>
-        public MySqlTriggerListener(string connectionString, string tableName, string userFunctionId, ITriggeredFunctionExecutor executor, MySqlOptions mysqlOptions, ILogger logger, IConfiguration configuration)
+        public MySqlTriggerListener(string connectionString, string userDefinedLeasesTableName, string tableName, string userFunctionId, ITriggeredFunctionExecutor executor, MySqlOptions mysqlOptions, ILogger logger, IConfiguration configuration)
         {
             this._connectionString = !string.IsNullOrEmpty(connectionString) ? connectionString : throw new ArgumentNullException(nameof(connectionString));
             this._userTable = !string.IsNullOrEmpty(tableName) ? new MySqlObject(tableName) : throw new ArgumentNullException(nameof(tableName));
+            this._userDefinedLeasesTableName = userDefinedLeasesTableName;
             this._userFunctionId = !string.IsNullOrEmpty(userFunctionId) ? userFunctionId : throw new ArgumentNullException(nameof(userFunctionId));
             this._executor = executor ?? throw new ArgumentNullException(nameof(executor));
             this._mysqlOptions = mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions));
@@ -84,6 +88,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                     await VerifyTableForTriggerSupported(connection, this._userTable.FullName, this._logger, cancellationToken);
                     ulong userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
+                    IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, userTableId, this._logger, this._userTable.FullName, cancellationToken);
+
+                    string bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
 
                     long createdSchemaDurationMs = 0L, createGlobalStateTableDurationMs = 0L, insertGlobalStateTableRowDurationMs = 0L;
 
@@ -100,6 +107,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         userTableId,
                         this._userTable,
                         this._userFunctionId,
+                        bracketedLeasesTableName,
+                        primaryKeyColumns,
                         this._executor,
                         this._mysqlOptions,
                         this._logger,
