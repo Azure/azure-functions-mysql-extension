@@ -22,6 +22,21 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     /// <typeparam name="T">POCO class representing the row in the user table</typeparam>
     internal class MySqlTableChangeMonitor<T> : IDisposable
     {
+        #region Constants
+        /// <summary>
+        /// The maximum number of times that we'll attempt to renew a lease be
+        /// </summary>
+        /// <remarks>
+        /// Leases are held for approximately (LeaseRenewalIntervalInSeconds * MaxLeaseRenewalCount) seconds. It is
+        /// required to have at least one of (LeaseIntervalInSeconds / LeaseRenewalIntervalInSeconds) attempts to
+        /// renew the lease succeed to prevent it from expiring.
+        /// </remarks>
+        private const int MaxLeaseRenewalCount = 10;
+        public const int LeaseIntervalInSeconds = 60;
+        private const int LeaseRenewalIntervalInSeconds = 15;
+        private const int MaxRetryReleaseLeases = 3;
+        #endregion Constants
+
         private readonly string _connectionString;
         private readonly ulong _userTableId;
         private readonly MySqlObject _userTable;
@@ -37,6 +52,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private readonly int _pollingIntervalInMs;
 
         private readonly CancellationTokenSource _cancellationTokenSourceCheckForChanges = new CancellationTokenSource();
+        private readonly CancellationTokenSource _cancellationTokenSourceRenewLeases = new CancellationTokenSource();
         private readonly CancellationTokenSource _cancellationTokenSourceExecutor = new CancellationTokenSource();
 
         // The semaphore gets used by lease-renewal loop to ensure that '_state' stays set to 'ProcessingChanges' while
@@ -54,7 +70,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// Rows that have been processed and now need to have their leases released
         /// </summary>
         // private IReadOnlyList<IReadOnlyDictionary<string, object>> _rowsToRelease = new List<IReadOnlyDictionary<string, object>>();
-        // private int _leaseRenewalCount = 0;
+        private int _leaseRenewalCount = 0;
         private State _state = State.CheckingForChanges;
 
         /// <summary>
@@ -103,6 +119,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             _ = Task.Run(() =>
             {
                 this.RunChangeConsumptionLoopAsync();
+                this.RunLeaseRenewalLoopAsync();
             });
 #pragma warning restore CS4014
         }
@@ -398,6 +415,138 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <summary>
+        /// Executed once every <see cref="LeaseRenewalIntervalInSeconds"/> seconds. If the state of the change monitor is
+        /// <see cref="State.ProcessingChanges"/>, then we will renew the leases held by the change monitor on "_rows".
+        /// </summary>
+        private async void RunLeaseRenewalLoopAsync()
+        {
+            this._logger.LogDebug("Starting lease renewal loop.");
+
+            try
+            {
+                CancellationToken token = this._cancellationTokenSourceRenewLeases.Token;
+
+                using (var connection = new MySqlConnection(this._connectionString))
+                {
+                    await connection.OpenAsync(token);
+
+                    bool forceReconnect = false;
+                    while (!token.IsCancellationRequested)
+                    {
+                        bool isConnected = await connection.TryEnsureConnected(forceReconnect, this._logger, "LeaseRenewalLoopConnection", token);
+                        if (!isConnected)
+                        {
+                            // If we couldn't reconnect then wait our delay and try again
+                            await Task.Delay(TimeSpan.FromSeconds(LeaseRenewalIntervalInSeconds), token);
+                            continue;
+                        }
+                        else
+                        {
+                            forceReconnect = false;
+                        }
+                        try
+                        {
+                            await this.RenewLeasesAsync(connection, token);
+                        }
+                        catch (Exception e) when (/*e.IsFatalSqlException() || */connection.IsBrokenOrClosed())
+                        {
+                            // Retry connection if there was a fatal SQL exception or something else caused the connection to be closed
+                            // since that indicates some other issue occurred (such as dropped network) and may be able to be recovered
+                            forceReconnect = true;
+                        }
+
+                        await Task.Delay(TimeSpan.FromSeconds(LeaseRenewalIntervalInSeconds), token);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                // Only want to log the exception if it wasn't caused by StopAsync being called, since Task.Delay throws
+                // an exception if it's cancelled.
+                if (e.GetType() != typeof(TaskCanceledException))
+                {
+                    this._logger.LogError($"Exiting lease renewal loop due to exception: {e.GetType()}. Exception message: {e.Message}");
+                }
+            }
+            finally
+            {
+                this._cancellationTokenSourceRenewLeases.Dispose();
+            }
+        }
+
+        private async Task RenewLeasesAsync(MySqlConnection connection, CancellationToken token)
+        {
+            await this._rowsLock.WaitAsync(token);
+
+            if (this._state == State.ProcessingChanges && this._rowsToProcess.Count > 0)
+            {
+                // Use a transaction to automatically release the app lock when we're done executing the query
+                using (MySqlTransaction transaction = connection.BeginTransaction(IsolationLevel.RepeatableRead))
+                {
+                    try
+                    {
+                        using (MySqlCommand renewLeasesCommand = this.BuildRenewLeasesCommand(connection, transaction))
+                        {
+                            var stopwatch = Stopwatch.StartNew();
+
+                            int rowsAffected = await renewLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
+
+                            long durationMs = stopwatch.ElapsedMilliseconds;
+
+                            if (rowsAffected > 0)
+                            {
+                                // Only send an event if we actually updated rows to reduce the overall number of events we send
+                            }
+
+
+                            transaction.Commit();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        // This catch block is necessary so that the finally block is executed even in the case of an exception
+                        // (see https://docs.microsoft.com/dotnet/csharp/language-reference/keywords/try-finally, third
+                        // paragraph). If we fail to renew the leases, multiple workers could be processing the same change
+                        // data, but we have functionality in place to deal with this (see design doc).
+                        this._logger.LogError($"Failed to renew leases due to exception: {e.GetType()}. Exception message: {e.Message}");
+
+                        try
+                        {
+                            transaction.Rollback();
+                        }
+                        catch (Exception e2)
+                        {
+                            this._logger.LogError($"RenewLeases - Failed to rollback transaction due to exception: {e2.GetType()}. Exception message: {e2.Message}");
+                        }
+                    }
+                    finally
+                    {
+                        // Do we want to update this count even in the case of a failure to renew the leases? Probably,
+                        // because the count is simply meant to indicate how much time the other thread has spent processing
+                        // changes essentially.
+                        this._leaseRenewalCount += 1;
+
+                        // If this thread has been cancelled, then the _cancellationTokenSourceExecutor could have already
+                        // been disposed so shouldn't cancel it.
+                        if (this._leaseRenewalCount == MaxLeaseRenewalCount && !token.IsCancellationRequested)
+                        {
+                            this._logger.LogWarning("Call to execute the function (TryExecuteAsync) seems to be stuck, so it is being cancelled");
+
+                            // If we keep renewing the leases, the thread responsible for processing the changes is stuck.
+                            // If it's stuck, it has to be stuck in the function execution call (I think), so we should
+                            // cancel the call.
+                            this._cancellationTokenSourceExecutor.Cancel();
+                            //this._cancellationTokenSourceExecutor = new CancellationTokenSource();
+                        }
+                    }
+                }
+            }
+
+            // Want to always release the lock at the end, even if renewing the leases failed.
+            this._rowsLock.Release();
+        }
+
+        /// <summary>
         /// Resets the in-memory state of the change monitor and sets it to start polling for changes again.
         /// </summary>
         private async Task ClearRowsAsync()
@@ -458,6 +607,20 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 $" where UserFunctionID = '{this._userFunctionId}' AND UserTableID = {this._userTableId}";
 
             return new MySqlCommand(getChangesQuery, connection, transaction);
+        }
+
+        /// <summary>
+        /// Builds the query to renew leases on the rows in "_rows" (<see cref="RenewLeasesAsync(MySqlConnection,CancellationToken)"/>).
+        /// </summary>
+        /// <param name="connection">The connection to add to the returned SqlCommand</param>
+        /// <param name="transaction">The transaction to add to the returned SqlCommand</param>
+        /// <returns>The SqlCommand populated with the query and appropriate parameters</returns>
+        private MySqlCommand BuildRenewLeasesCommand(MySqlConnection connection, MySqlTransaction transaction)
+        {
+            string renewLeasesQuery = $@"
+            ";
+
+            return new MySqlCommand(renewLeasesQuery, connection, transaction);
         }
 
         private enum State
