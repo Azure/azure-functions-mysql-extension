@@ -88,7 +88,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                     await VerifyTableForTriggerSupported(connection, this._userTable.FullName, this._logger, cancellationToken);
                     ulong userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
-                    IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, userTableId, this._logger, this._userTable.FullName, cancellationToken);
+                    IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, this._userTable.FullName, this._logger, cancellationToken);
 
                     string bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
 
