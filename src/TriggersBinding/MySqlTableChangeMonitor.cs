@@ -23,6 +23,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     internal class MySqlTableChangeMonitor<T> : IDisposable
     {
         #region Constants
+
         /// <summary>
         /// The maximum number of times that we'll attempt to renew a lease be
         /// </summary>
@@ -34,7 +35,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private const int MaxLeaseRenewalCount = 10;
         public const int LeaseIntervalInSeconds = 60;
         private const int LeaseRenewalIntervalInSeconds = 15;
-        private const int MaxRetryReleaseLeases = 3;
+        //private const int MaxRetryReleaseLeases = 3;
         #endregion Constants
 
         private readonly string _connectionString;
@@ -448,7 +449,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         {
                             await this.RenewLeasesAsync(connection, token);
                         }
-                        catch (Exception e) when (/*e.IsFatalSqlException() || */connection.IsBrokenOrClosed())
+                        catch (Exception e) when (e.IsDeadlockException() || /*e.IsFatalSqlException() || */connection.IsBrokenOrClosed())
                         {
                             // Retry connection if there was a fatal SQL exception or something else caused the connection to be closed
                             // since that indicates some other issue occurred (such as dropped network) and may be able to be recovered
@@ -617,7 +618,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The SqlCommand populated with the query and appropriate parameters</returns>
         private MySqlCommand BuildRenewLeasesCommand(MySqlConnection connection, MySqlTransaction transaction)
         {
-            string renewLeasesQuery = $@"
+            string renewLeasesQuery = $@" {this._bracketedLeasesTableName} {this._primaryKeyColumns.Count}
             ";
 
             return new MySqlCommand(renewLeasesQuery, connection, transaction);
