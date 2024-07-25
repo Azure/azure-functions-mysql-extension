@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using MySql.Data.MySqlClient;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
@@ -92,13 +93,15 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                     string bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
 
-                    long createdSchemaDurationMs = 0L, createGlobalStateTableDurationMs = 0L, insertGlobalStateTableRowDurationMs = 0L;
+                    long createdSchemaDurationMs = 0L, createGlobalStateTableDurationMs = 0L, insertGlobalStateTableRowDurationMs = 0L, createLeasesTableDurationMs = 0L;
 
                     using (MySqlTransaction transaction = connection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead))
                     {
                         createdSchemaDurationMs = await this.CreateSchemaAsync(connection, transaction, cancellationToken);
                         createGlobalStateTableDurationMs = await this.CreateGlobalStateTableAsync(connection, transaction, cancellationToken);
                         insertGlobalStateTableRowDurationMs = await this.InsertGlobalStateTableRowAsync(connection, transaction, userTableId, cancellationToken);
+                        createLeasesTableDurationMs = await this.CreateLeasesTableAsync(connection, transaction, bracketedLeasesTableName, primaryKeyColumns, cancellationToken);
+
                         transaction.Commit();
                     }
 
@@ -294,6 +297,53 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 var stopwatch = Stopwatch.StartNew();
                 await deleteRowGlobalStateTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
                 return stopwatch.ElapsedMilliseconds;
+            }
+        }
+
+        /// <summary>
+        /// Creates the leases table for the 'user function and table', if one does not already exist.
+        /// </summary>
+        /// <param name="connection">The already-opened connection to use for executing the command</param>
+        /// <param name="transaction">The transaction wrapping this command</param>
+        /// <param name="leasesTableName">The name of the leases table to create</param>
+        /// <param name="primaryKeyColumns">The primary keys of the user table this leases table is for</param>
+        /// <param name="cancellationToken">Cancellation token to pass to the command</param>
+        /// <returns>The time taken in ms to execute the command</returns>
+        private async Task<long> CreateLeasesTableAsync(
+            MySqlConnection connection,
+            MySqlTransaction transaction,
+            string leasesTableName,
+            IReadOnlyList<(string name, string type)> primaryKeyColumns,
+            CancellationToken cancellationToken)
+        {
+            string primaryKeysWithTypes = string.Join(", ", primaryKeyColumns.Select(col => $"{col.name} {col.type}"));
+            string primaryKeys = string.Join(", ", primaryKeyColumns.Select(col => col.name));
+
+            string createLeasesTableQuery = $@"
+                    CREATE TABLE IF NOT EXISTS {leasesTableName} (
+                        {primaryKeysWithTypes},
+                        {LeasesTableChangeVersionColumnName} bigint NOT NULL,
+                        {LeasesTableAttemptCountColumnName} int NOT NULL,
+                        {LeasesTableLeaseExpirationTimeColumnName} datetime,
+                        PRIMARY KEY ({primaryKeys})
+                    );
+            ";
+
+            using (var createLeasesTableCommand = new MySqlCommand(createLeasesTableQuery, connection, transaction))
+            {
+                var stopwatch = Stopwatch.StartNew();
+                try
+                {
+                    await createLeasesTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    this._logger.LogWarning($"Failed to create leases table '{leasesTableName}'. Exception message: {ex.Message}");
+                    throw;
+
+                }
+                long durationMs = stopwatch.ElapsedMilliseconds;
+                return durationMs;
             }
         }
     }
