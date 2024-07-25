@@ -40,14 +40,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// Initializes a new instance of the <see cref="MySqlTriggerListener{T}"/> class.
         /// </summary>
         /// <param name="connectionString">MySQL connection string used to connect to user database</param>
-        /// <param name="userDefinedLeasesTableName">Optional - Name of the leases table</param>
         /// <param name="tableName">Name of the user table</param>
+        /// <param name="userDefinedLeasesTableName">Optional - Name of the leases table</param>
         /// <param name="userFunctionId">Unique identifier for the user function</param>
         /// <param name="executor">Defines contract for triggering user function</param>
         /// <param name="mysqlOptions"></param>
         /// <param name="logger">Facilitates logging of messages</param>
         /// <param name="configuration">Provides configuration values</param>
-        public MySqlTriggerListener(string connectionString, string userDefinedLeasesTableName, string tableName, string userFunctionId, ITriggeredFunctionExecutor executor, MySqlOptions mysqlOptions, ILogger logger, IConfiguration configuration)
+        public MySqlTriggerListener(string connectionString, string tableName, string userDefinedLeasesTableName, string userFunctionId, ITriggeredFunctionExecutor executor, MySqlOptions mysqlOptions, ILogger logger, IConfiguration configuration)
         {
             this._connectionString = !string.IsNullOrEmpty(connectionString) ? connectionString : throw new ArgumentNullException(nameof(connectionString));
             this._userTable = !string.IsNullOrEmpty(tableName) ? new MySqlObject(tableName) : throw new ArgumentNullException(nameof(tableName));
