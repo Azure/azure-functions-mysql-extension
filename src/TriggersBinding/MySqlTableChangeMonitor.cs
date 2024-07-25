@@ -48,6 +48,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private readonly MySqlOptions _mysqlOptions;
         private readonly ILogger _logger;
         /// <summary>
+        /// Maximum number of changes to process in each iteration of the loop
+        /// </summary>
+        private readonly int _maxBatchSize;
+        /// <summary>
         /// Delay in ms between processing each batch of changes
         /// </summary>
         private readonly int _pollingIntervalInMs;
@@ -109,6 +113,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             this._executor = executor ?? throw new ArgumentNullException(nameof(executor));
             this._logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
+            int? configuredMaxBatchSize = configuration.GetValue<int?>(ConfigKey_MySqlTrigger_MaxBatchSize) ?? configuration.GetValue<int?>(ConfigKey_MySqlTrigger_BatchSize);
+            this._maxBatchSize = configuredMaxBatchSize ?? this._mysqlOptions.MaxBatchSize;
+            if (this._maxBatchSize <= 0)
+            {
+                throw new InvalidOperationException($"Invalid value for configuration setting '{ConfigKey_MySqlTrigger_MaxBatchSize}'. Ensure that the value is a positive integer.");
+            }
+
             int? configuredPollingInterval = configuration.GetValue<int?>(ConfigKey_MySqlTrigger_PollingInterval);
             this._pollingIntervalInMs = configuredPollingInterval ?? this._mysqlOptions.PollingIntervalMs;
             if (this._pollingIntervalInMs <= 0)
@@ -145,7 +156,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         private async Task RunChangeConsumptionLoopAsync()
         {
-            this._logger.LogDebug($"Starting change consumption loop. PollingIntervalMs: {this._pollingIntervalInMs}");
+            this._logger.LogDebug($"Starting change consumption loop. MaxBatchSize: {this._maxBatchSize} PollingIntervalMs: {this._pollingIntervalInMs}");
 
             try
             {
@@ -589,8 +600,15 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
         private MySqlCommand BuildGetChangesCommand(MySqlConnection connection, MySqlTransaction transaction)
         {
-            string getChangesQuery = $"select * from {this._userTable.FullName} where {UpdateAtColumnName} > " +
-                $"(select {GlobalStateTableVersionColumnName} from {GlobalStateTableName} where UserFunctionID = '{this._userFunctionId}' AND UserTableID = {this._userTableId})";
+            string leasesTableJoinCondition = string.Join(" AND ", this._primaryKeyColumns.Select(col => $"c.{col.name.AsBracketQuotedString()} = l.{col.name.AsBracketQuotedString()}"));
+
+            string getChangesQuery = $@"
+                        SELECT * 
+                        FROM {this._userTable.FullName}
+                        where {UpdateAtColumnName} > (select {GlobalStateTableVersionColumnName} from {GlobalStateTableName} where UserFunctionID = '{this._userFunctionId}' AND UserTableID = {this._userTableId})
+                        LEFT JOIN {this._bracketedLeasesTableName} AS l ON {leasesTableJoinCondition}
+                        LIMIT {this._maxBatchSize};
+                        ";
 
             return new MySqlCommand(getChangesQuery, connection, transaction);
         }
@@ -603,9 +621,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
         private MySqlCommand BuildUpdateGlobalStateTableCommand(MySqlConnection connection, MySqlTransaction transaction)
         {
-            string getChangesQuery = $"UPDATE {GlobalStateTableName}" +
-                $" SET {GlobalStateTableVersionColumnName} = @currPolledTimeInUTC" +
-                $" where UserFunctionID = '{this._userFunctionId}' AND UserTableID = {this._userTableId}";
+            string getChangesQuery = $@"UPDATE {GlobalStateTableName}
+                        SET {GlobalStateTableVersionColumnName} = @currPolledTimeInUTC
+                        where UserFunctionID = '{this._userFunctionId}' AND UserTableID = {this._userTableId};";
 
             return new MySqlCommand(getChangesQuery, connection, transaction);
         }

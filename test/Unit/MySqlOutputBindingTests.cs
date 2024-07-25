@@ -60,9 +60,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         }
 
         [Theory]
-        [InlineData("columnName", "[columnName]")]
-        [InlineData("column]Name", "[column]]Name]")]
-        [InlineData("col[umn]Name", "[col[umn]]Name]")]
+        [InlineData("columnName", "`columnName`")]
+        [InlineData("column`Name", "`column``Name`")]
+        [InlineData("col`umn`Name", "`col`umn``Name`")]
         public void TestAsBracketQuotedString(string s, string expectedResult)
         {
             string result = s.AsBracketQuotedString();

@@ -186,7 +186,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The escaped and bracket quoted string.</returns>
         public static string AsBracketQuotedString(this string s)
         {
-            return $"[{s.Replace("]", "]]")}]";
+            return $"`{s.Replace("`", "``")}]";
         }
 
         /// <summary>
