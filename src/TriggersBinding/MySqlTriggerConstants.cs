@@ -5,7 +5,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     internal static class MySqlTriggerConstants
     {
-        public const string MYSQL_FUNC_CURRENTTIME = "CURRENT_TIMESTAMP(6)";
+        public const string MYSQL_FUNC_CURRENTTIME = "CURRENT_TIMESTAMP";
 
         public const string UpdateAtColumnName = "updated_at";
 
