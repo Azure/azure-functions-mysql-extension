@@ -5,10 +5,18 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     internal static class MySqlTriggerConstants
     {
-        public const string SchemaName = "az_func_mysql";
-        public const string GlobalStateTableName = SchemaName + ".GlobalState";
-        public const string GlobalStateTableVersionColumnName = "LastPolledTime";
+        public const string MYSQL_FUNC_CURRENTTIME = "CURRENT_TIMESTAMP(6)";
+
         public const string UpdateAtColumnName = "updated_at";
+
+        public const string SchemaName = "az_func_mysql";
+
+        public const string GlobalStateTableName = SchemaName + ".GlobalState";
+        public const string GlobalStateTableUserFunctionIDColumnName = "UserFunctionID";
+        public const string GlobalStateTableUserTableIDColumnName = "UserTableID";
+        public const string GlobalStateTableLastPolledTimeColumnName = "LastPolledTime";
+        public const string GlobalStateTableStartPollingTimeColumnName = "StartPollingTime";
+
         public const string SysChangeVersionColumnName = "SYS_CHANGE_VERSION";
         public const string LastAccessTimeColumnName = "LastAccessTime";
         public const string ConfigKey_MySqlTrigger_BatchSize = "MySql_Trigger_BatchSize";

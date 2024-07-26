@@ -6,13 +6,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using System.Data;
 using MySql.Data.MySqlClient;
 using System.Linq;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
@@ -27,6 +26,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <summary>
         /// The maximum number of times that we'll attempt to renew a lease be
         /// </summary>
+        private const int MaxChangeProcessAttemptCount = 5;
         /// <remarks>
         /// Leases are held for approximately (LeaseRenewalIntervalInSeconds * MaxLeaseRenewalCount) seconds. It is
         /// required to have at least one of (LeaseIntervalInSeconds / LeaseRenewalIntervalInSeconds) attempts to
@@ -42,8 +42,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private readonly ulong _userTableId;
         private readonly MySqlObject _userTable;
         private readonly string _userFunctionId;
-        private readonly string _bracketedLeasesTableName;
+        private readonly string _leasesTableName;
         private readonly IReadOnlyList<(string name, string type)> _primaryKeyColumns;
+        private readonly IReadOnlyList<string> _userTableColumns;
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly MySqlOptions _mysqlOptions;
         private readonly ILogger _logger;
@@ -85,8 +86,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="userTableId">SQL object ID of the user table</param>
         /// <param name="userTable"><see cref="MySqlObject" /> instance created with user table name</param>
         /// <param name="userFunctionId">Unique identifier for the user function</param>
-        /// <param name="bracketedLeasesTableName">Name of the leases table</param>
+        /// <param name="leasesTableName">Name of the leases table</param>
         /// <param name="primaryKeyColumns">List of primary key column names in the user table</param>
+        /// <param name="userTableColumns">List of all column names in the user table</param>
         /// <param name="executor">Defines contract for triggering user function</param>
         /// <param name="mysqlOptions"></param>
         /// <param name="logger">Facilitates logging of messages</param>
@@ -96,8 +98,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             ulong userTableId,
             MySqlObject userTable,
             string userFunctionId,
-            string bracketedLeasesTableName,
+            string leasesTableName,
             IReadOnlyList<(string name, string type)> primaryKeyColumns,
+            IReadOnlyList<string> userTableColumns,
             ITriggeredFunctionExecutor executor,
             MySqlOptions mysqlOptions,
             ILogger logger,
@@ -105,10 +108,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         {
             this._connectionString = !string.IsNullOrEmpty(connectionString) ? connectionString : throw new ArgumentNullException(nameof(connectionString));
             this._userTableId = userTableId;
-            this._userTable = !string.IsNullOrEmpty(userTable?.FullName) ? userTable : throw new ArgumentNullException(nameof(userTable));
-            this._userFunctionId = !string.IsNullOrEmpty(userFunctionId) ? userFunctionId : throw new ArgumentNullException(nameof(userFunctionId));
-            this._bracketedLeasesTableName = !string.IsNullOrEmpty(bracketedLeasesTableName) ? bracketedLeasesTableName : throw new ArgumentNullException(nameof(bracketedLeasesTableName));
+            this._userTable = userTable ?? throw new ArgumentNullException(nameof(userTable));
+            this._userFunctionId = userFunctionId ?? throw new ArgumentNullException(nameof(userFunctionId));
+            this._leasesTableName = leasesTableName ?? throw new ArgumentNullException(nameof(leasesTableName));
             this._primaryKeyColumns = primaryKeyColumns ?? throw new ArgumentNullException(nameof(primaryKeyColumns));
+            this._userTableColumns = userTableColumns ?? throw new ArgumentNullException(nameof(userTableColumns));
             this._mysqlOptions = mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions));
             this._executor = executor ?? throw new ArgumentNullException(nameof(executor));
             this._logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -184,15 +188,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                         try
                         {
-                            // To track current Polling Time, for update to Global State Table
-                            DateTime _currentPolledTimeInUTC = DateTime.UtcNow;
-
                             // Process states sequentially since we normally expect the state to transition at the end
                             // of each previous state - but if an unexpected error occurs we'll skip the rest and then
                             // retry that state after the delay
                             if (this._state == State.CheckingForChanges)
                             {
-                                _currentPolledTimeInUTC = DateTime.UtcNow;
                                 await this.GetTableChangesAsync(connection, token);
                             }
                             if (this._state == State.ProcessingChanges)
@@ -201,7 +201,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                                 if (isSucceeded)
                                 {
                                     // update global state table polling time
-                                    await this.UpdateGlobalStateTablePollingTime(connection, _currentPolledTimeInUTC, token);
+                                    await this.UpdateGlobalStateTablePollingTime(connection, token);
                                 }
                             }
                             if (this._state == State.Cleanup)
@@ -243,19 +243,27 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// Queries the change/leases tables to check for new changes on the user's table. If any are found, stores the
         /// change along with the corresponding data from the user table in "_rows".
         /// </summary>
-#pragma warning disable CS1998 // Queue the below tasks and exit. Do not wait for their completion.
         private async Task GetTableChangesAsync(MySqlConnection connection, CancellationToken token)
-#pragma warning restore CS1998
         {
             try
             {
-                using (MySqlTransaction transaction = connection.BeginTransaction(IsolationLevel.RepeatableRead))
+                var transactionSw = Stopwatch.StartNew();
+                long setStartPollingTimeDurationMs = 0L, getChangesDurationMs = 0L, acquireLeasesDurationMs = 0L;
+
+                using (MySqlTransaction transaction = connection.BeginTransaction())
                 {
                     try
                     {
-                        var rows = new List<IReadOnlyDictionary<string, object>>();
+                        // Get the current timestamp from server to avoid confliction
+                        using (MySqlCommand updateStartPollingTimeCommand = this.BuildUpdateGlobalTableStartPollingTime(connection, transaction))
+                        {
+                            var commandSw = Stopwatch.StartNew();
+                            await updateStartPollingTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
+                            setStartPollingTimeDurationMs = commandSw.ElapsedMilliseconds;
+                        }
 
-                        // Use the version number to query for new changes.
+                        var rows = new List<IReadOnlyDictionary<string, object>>();
+                        // query for new changes.
                         using (MySqlCommand getChangesCommand = this.BuildGetChangesCommand(connection, transaction))
                         {
                             var commandSw = Stopwatch.StartNew();
@@ -268,19 +276,27 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                                     rows.Add(MySqlBindingUtilities.BuildDictionaryFromMySqlRow(reader));
                                 }
                             }
+                            getChangesDurationMs = commandSw.ElapsedMilliseconds;
                         }
 
                         // If changes were found
                         if (rows.Count > 0)
                         {
-                            this._logger.LogInformation($"Getting Table changes for {this._userTable.FullName}");
+                            using (MySqlCommand acquireLeasesCommand = this.BuildAcquireLeasesCommand(connection, transaction, rows))
+                            {
+                                var commandSw = Stopwatch.StartNew();
+                                await acquireLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
+                                acquireLeasesDurationMs = commandSw.ElapsedMilliseconds;
+                            }
                         }
 
                         transaction.Commit();
 
-                        // Set the rows for processing
+                        // Set the rows for processing, now since the leases are acquired.
+                        await this._rowsLock.WaitAsync(token);
                         this._rowsToProcess = rows;
                         this._state = State.ProcessingChanges;
+                        this._rowsLock.Release();
                     }
                     catch (Exception)
                     {
@@ -300,9 +316,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 // If there's an exception in any part of the process, we want to clear all of our data in memory and
                 // retry checking for changes again.
+                await this._rowsLock.WaitAsync(token);
                 this._rowsToProcess = new List<IReadOnlyDictionary<string, object>>();
-                this._logger.LogError($"Failed to check for changes in table '{this._userTable.FullName}' due to exception: {e.GetType()}. Exception message: {e.Message}");
+                this._rowsLock.Release();
 
+                this._logger.LogError($"Failed to check for changes in table '{this._userTable.FullName}' due to exception: {e.GetType()}. Exception message: {e.Message}");
                 if (connection.IsBrokenOrClosed())      // TODO: e.IsFatalMySqlException() || - check mysql corresponding
                 {
                     // If we get a fatal MySQL Client exception or the connection is broken let it bubble up so we can try to re-establish the connection
@@ -314,25 +332,21 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <summary>
         /// Update LastPollingTime of GlobalStateTable for the requested table
         /// </summary>
-        private async Task UpdateGlobalStateTablePollingTime(MySqlConnection connection, DateTime currentPolledTimeInUTC, CancellationToken token)
+        private async Task UpdateGlobalStateTablePollingTime(MySqlConnection connection, CancellationToken token)
         {
             try
             {
-                using (MySqlTransaction transaction = connection.BeginTransaction(IsolationLevel.RepeatableRead))
+                using (MySqlTransaction transaction = connection.BeginTransaction())
                 {
                     try
                     {
                         var rows = new List<IReadOnlyDictionary<string, object>>();
 
                         // Use the version number to query for new changes.
-                        using (MySqlCommand getChangesCommand = this.BuildUpdateGlobalStateTableCommand(connection, transaction))
+                        using (MySqlCommand updateLastPolledTimeCommand = this.BuildUpdateGlobalStateTablePollingTime(connection, transaction))
                         {
-                            getChangesCommand.Parameters.AddWithValue("@currPolledTimeInUTC", currentPolledTimeInUTC);
-
                             var commandSw = Stopwatch.StartNew();
-
-                            int rowsAffected = await getChangesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
-
+                            int rowsAffected = await updateLastPolledTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
                             if (rowsAffected > 0)
                             {
                                 // Only send an event if we actually updated rows to reduce the overall number of events we send
@@ -493,24 +507,20 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             if (this._state == State.ProcessingChanges && this._rowsToProcess.Count > 0)
             {
                 // Use a transaction to automatically release the app lock when we're done executing the query
-                using (MySqlTransaction transaction = connection.BeginTransaction(IsolationLevel.RepeatableRead))
+                using (MySqlTransaction transaction = connection.BeginTransaction())
                 {
                     try
                     {
                         using (MySqlCommand renewLeasesCommand = this.BuildRenewLeasesCommand(connection, transaction))
                         {
                             var stopwatch = Stopwatch.StartNew();
-
                             int rowsAffected = await renewLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
-
                             long durationMs = stopwatch.ElapsedMilliseconds;
 
                             if (rowsAffected > 0)
                             {
                                 // Only send an event if we actually updated rows to reduce the overall number of events we send
                             }
-
-
                             transaction.Commit();
                         }
                     }
@@ -593,6 +603,22 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <summary>
+        /// Builds the command to update start polling time in global state table
+        /// </summary>
+        /// <param name="connection">The connection to add to the returned MySqlCommand</param>
+        /// <param name="transaction">The transaction to add to the returned MySqlCommand</param>
+        /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
+        private MySqlCommand BuildUpdateGlobalTableStartPollingTime(MySqlConnection connection, MySqlTransaction transaction)
+        {
+            string selectCurrentTimeQuery = $@"UPDATE {GlobalStateTableName}
+                                            SET {GlobalStateTableStartPollingTimeColumnName} = {MYSQL_FUNC_CURRENTTIME}
+                                            WHERE {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' 
+                                            AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId};";
+
+            return new MySqlCommand(selectCurrentTimeQuery, connection, transaction);
+        }
+
+        /// <summary>
         /// Builds the query to check for changes on the user's table (<see cref="RunChangeConsumptionLoopAsync()"/>).
         /// </summary>
         /// <param name="connection">The connection to add to the returned MySqlCommand</param>
@@ -600,13 +626,31 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
         private MySqlCommand BuildGetChangesCommand(MySqlConnection connection, MySqlTransaction transaction)
         {
-            string leasesTableJoinCondition = string.Join(" AND ", this._primaryKeyColumns.Select(col => $"c.{col.name.AsBracketQuotedString()} = l.{col.name.AsBracketQuotedString()}"));
+            string selectList = string.Join(", ", this._userTableColumns.Select(col => $"u.{col.AsAcuteQuotedString()}"));
+            string leasesTableJoinCondition = string.Join(" AND ", this._primaryKeyColumns.Select(col => $"u.{col.name.AsAcuteQuotedString()} = l.{col.name.AsAcuteQuotedString()}"));
 
             string getChangesQuery = $@"
-                        SELECT * 
-                        FROM {this._userTable.FullName}
-                        where {UpdateAtColumnName} > (select {GlobalStateTableVersionColumnName} from {GlobalStateTableName} where UserFunctionID = '{this._userFunctionId}' AND UserTableID = {this._userTableId})
-                        LEFT JOIN {this._bracketedLeasesTableName} AS l ON {leasesTableJoinCondition}
+                        SELECT {selectList}, 
+                        l.{LeasesTableChangeVersionColumnName},
+                        l.{LeasesTableAttemptCountColumnName},
+                        l.{LeasesTableLeaseExpirationTimeColumnName}
+                        FROM {this._userTable.FullName} AS u
+                        LEFT JOIN {this._leasesTableName} AS l ON {leasesTableJoinCondition}
+                        WHERE 
+                            ({UpdateAtColumnName} > (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId}))
+                            AND
+                            ({UpdateAtColumnName} <= (select {GlobalStateTableStartPollingTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId}))
+                            AND
+                            (   (l.{LeasesTableLeaseExpirationTimeColumnName} IS NULL) 
+                                OR
+                                (l.{LeasesTableLeaseExpirationTimeColumnName} < {MYSQL_FUNC_CURRENTTIME})
+                            )
+                            AND
+                            (   (l.{LeasesTableAttemptCountColumnName} IS NULL)
+                                OR 
+                                (l.{LeasesTableAttemptCountColumnName} < {MaxChangeProcessAttemptCount})
+                            )
+                        ORDER BY u.{UpdateAtColumnName} ASC
                         LIMIT {this._maxBatchSize};
                         ";
 
@@ -619,13 +663,36 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="connection">The connection to add to the returned MySqlCommand</param>
         /// <param name="transaction">The transaction to add to the returned MySqlCommand</param>
         /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
-        private MySqlCommand BuildUpdateGlobalStateTableCommand(MySqlConnection connection, MySqlTransaction transaction)
+        private MySqlCommand BuildUpdateGlobalStateTablePollingTime(MySqlConnection connection, MySqlTransaction transaction)
         {
             string getChangesQuery = $@"UPDATE {GlobalStateTableName}
-                        SET {GlobalStateTableVersionColumnName} = @currPolledTimeInUTC
-                        where UserFunctionID = '{this._userFunctionId}' AND UserTableID = {this._userTableId};";
+                        SET {GlobalStateTableLastPolledTimeColumnName} = {GlobalStateTableStartPollingTimeColumnName}
+                        where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId};";
 
             return new MySqlCommand(getChangesQuery, connection, transaction);
+        }
+
+        /// <summary>
+        /// Builds the query to acquire leases on the rows in "_rows" if changes are detected in the user's table
+        /// (<see cref="RunChangeConsumptionLoopAsync()"/>).
+        /// </summary>
+        /// <param name="connection">The connection to add to the returned SqlCommand</param>
+        /// <param name="transaction">The transaction to add to the returned SqlCommand</param>
+        /// <param name="rows">Dictionary representing the table rows on which leases should be acquired</param>
+        /// <returns>The SqlCommand populated with the query and appropriate parameters</returns>
+        private MySqlCommand BuildAcquireLeasesCommand(MySqlConnection connection, MySqlTransaction transaction, IReadOnlyList<IReadOnlyDictionary<string, object>> rows)
+        {
+            const string rowDataParameter = "@rowData";
+
+            string acquireLeasesQuery = $@" {this._leasesTableName} {this._primaryKeyColumns.Count}            
+            ";
+
+            var acquireLeasesCommand = new MySqlCommand(acquireLeasesQuery, connection, transaction);
+            MySqlParameter par = acquireLeasesCommand.Parameters.Add(rowDataParameter, MySqlDbType.VarChar, -1);
+            string rowData = Utils.JsonSerializeObject(rows);
+            par.Value = rowData;
+
+            return acquireLeasesCommand;
         }
 
         /// <summary>
@@ -636,7 +703,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The SqlCommand populated with the query and appropriate parameters</returns>
         private MySqlCommand BuildRenewLeasesCommand(MySqlConnection connection, MySqlTransaction transaction)
         {
-            string renewLeasesQuery = $@" {this._bracketedLeasesTableName} {this._primaryKeyColumns.Count}
+            string renewLeasesQuery = $@" {this._leasesTableName} {this._primaryKeyColumns.Count}
             ";
 
             return new MySqlCommand(renewLeasesQuery, connection, transaction);

@@ -90,8 +90,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     await VerifyTableForTriggerSupported(connection, this._userTable.FullName, this._logger, cancellationToken);
                     ulong userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
                     IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, this._userTable.FullName, this._logger, cancellationToken);
+                    IReadOnlyList<string> userTableColumns = this.GetUserTableColumns(connection, this._userTable, cancellationToken);
 
-                    string bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
+                    string leasesTableName = GetLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
 
                     long createdSchemaDurationMs = 0L, createGlobalStateTableDurationMs = 0L, insertGlobalStateTableRowDurationMs = 0L, createLeasesTableDurationMs = 0L;
 
@@ -100,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         createdSchemaDurationMs = await this.CreateSchemaAsync(connection, transaction, cancellationToken);
                         createGlobalStateTableDurationMs = await this.CreateGlobalStateTableAsync(connection, transaction, cancellationToken);
                         insertGlobalStateTableRowDurationMs = await this.InsertGlobalStateTableRowAsync(connection, transaction, userTableId, cancellationToken);
-                        createLeasesTableDurationMs = await this.CreateLeasesTableAsync(connection, transaction, bracketedLeasesTableName, primaryKeyColumns, cancellationToken);
+                        createLeasesTableDurationMs = await this.CreateLeasesTableAsync(connection, transaction, leasesTableName, primaryKeyColumns, cancellationToken);
 
                         transaction.Commit();
                     }
@@ -110,8 +111,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         userTableId,
                         this._userTable,
                         this._userFunctionId,
-                        bracketedLeasesTableName,
+                        leasesTableName,
                         primaryKeyColumns,
+                        userTableColumns,
                         this._executor,
                         this._mysqlOptions,
                         this._logger,
@@ -174,6 +176,38 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <summary>
+        /// Gets the column names of the user table.
+        /// </summary>
+        private IReadOnlyList<string> GetUserTableColumns(MySqlConnection connection, MySqlObject userTable, CancellationToken cancellationToken)
+        {
+            const int NameIndex = 0;
+            string getUserTableColumnsQuery = $@"
+                    SELECT COLUMN_NAME 
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE table_name = {userTable.QuotedName}
+                    AND table_schema = {userTable.QuotedSchema}
+                    AND column_name <> {UpdateAtColumnName.AsSingleQuotedString()};
+            ";
+
+            using (var getUserTableColumnsCommand = new MySqlCommand(getUserTableColumnsQuery, connection))
+            using (MySqlDataReader reader = getUserTableColumnsCommand.ExecuteReaderWithLogging(this._logger))
+            {
+                var userTableColumns = new List<string>();
+                var userDefinedTypeColumns = new List<(string name, string type)>();
+
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    string columnName = reader.GetString(NameIndex);
+                    userTableColumns.Add(columnName);
+                }
+
+                this._logger.LogDebug($"GetUserTableColumns ColumnNames = {string.Join(", ", userTableColumns.Select(col => $"'{col}'"))}.");
+                return userTableColumns;
+            }
+        }
+
+        /// <summary>
         /// Creates the schema for global state table and leases tables, if it does not already exist.
         /// </summary>
         /// <param name="connection">The already-opened connection to use for executing the command</param>
@@ -225,10 +259,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         {
             string createGlobalStateTableQuery = $@"
                     CREATE TABLE IF NOT EXISTS {GlobalStateTableName} (
-                        UserFunctionID char(16) NOT NULL,
-                        UserTableID int NOT NULL,
-                        LastPolledTime Datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        PRIMARY KEY (UserFunctionID, UserTableID)
+                        {GlobalStateTableUserFunctionIDColumnName} char(16) NOT NULL,
+                        {GlobalStateTableUserTableIDColumnName} int NOT NULL,
+                        {GlobalStateTableLastPolledTimeColumnName} Datetime NOT NULL DEFAULT {MYSQL_FUNC_CURRENTTIME},
+                        {GlobalStateTableStartPollingTimeColumnName} Datetime NOT NULL DEFAULT {MYSQL_FUNC_CURRENTTIME},
+                        PRIMARY KEY ({GlobalStateTableUserFunctionIDColumnName}, {GlobalStateTableUserTableIDColumnName})
                     );
             ";
 
@@ -270,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private async Task<long> InsertGlobalStateTableRowAsync(MySqlConnection connection, MySqlTransaction transaction, ulong userTableId, CancellationToken cancellationToken)
         {
 
-            string insertRowGlobalStateTableQuery = $"INSERT IGNORE INTO {GlobalStateTableName} (UserFunctionID, UserTableID) VALUES ('{this._userFunctionId}', {userTableId});";
+            string insertRowGlobalStateTableQuery = $"INSERT IGNORE INTO {GlobalStateTableName} ({GlobalStateTableUserFunctionIDColumnName}, {GlobalStateTableUserTableIDColumnName}) VALUES ('{this._userFunctionId}', {userTableId});";
 
             using (var insertRowGlobalStateTableCommand = new MySqlCommand(insertRowGlobalStateTableQuery, connection, transaction))
             {
@@ -290,7 +325,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The time taken in ms to execute the command</returns>
         private async Task<long> DeleteGlobalStateTableRowAsync(MySqlConnection connection, MySqlTransaction transaction, ulong userTableId, CancellationToken cancellationToken)
         {
-            string deleteRowGlobalStateTableQuery = $"DELETE FROM {GlobalStateTableName} WHERE UserFunctionID = '{this._userFunctionId}' AND UserTableID = {userTableId};";
+            string deleteRowGlobalStateTableQuery = $"DELETE FROM {GlobalStateTableName} WHERE {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {userTableId};";
 
             using (var deleteRowGlobalStateTableCommand = new MySqlCommand(deleteRowGlobalStateTableQuery, connection, transaction))
             {
