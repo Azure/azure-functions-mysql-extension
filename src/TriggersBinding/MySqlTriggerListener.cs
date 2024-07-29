@@ -357,7 +357,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             string createLeasesTableQuery = $@"
                     CREATE TABLE IF NOT EXISTS {leasesTableName} (
                         {primaryKeysWithTypes},
-                        {LeasesTableChangeVersionColumnName} bigint NOT NULL,
                         {LeasesTableAttemptCountColumnName} int NOT NULL,
                         {LeasesTableLeaseExpirationTimeColumnName} datetime,
                         PRIMARY KEY ({primaryKeys})

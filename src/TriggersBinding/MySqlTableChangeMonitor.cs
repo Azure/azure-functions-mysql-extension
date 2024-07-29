@@ -27,6 +27,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// The maximum number of times that we'll attempt to renew a lease be
         /// </summary>
         private const int MaxChangeProcessAttemptCount = 5;
+        /// The intialize attempt count from
+        private const int InitialValueAttemptCount = 1;
         /// <remarks>
         /// Leases are held for approximately (LeaseRenewalIntervalInSeconds * MaxLeaseRenewalCount) seconds. It is
         /// required to have at least one of (LeaseIntervalInSeconds / LeaseRenewalIntervalInSeconds) attempts to
@@ -36,6 +38,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         public const int LeaseIntervalInSeconds = 60;
         private const int LeaseRenewalIntervalInSeconds = 15;
         //private const int MaxRetryReleaseLeases = 3;
+
+
         #endregion Constants
 
         private readonly string _connectionString;
@@ -197,8 +201,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             }
                             if (this._state == State.ProcessingChanges)
                             {
-                                bool isSucceeded = await this.ProcessTableChangesAsync();
-                                if (isSucceeded)
+                                bool isProcessChangesFailed = await this.ProcessTableChangesAsync();
+
+                                // If process changes is not failed, then
+                                if (isProcessChangesFailed == false)
                                 {
                                     // update global state table polling time
                                     await this.UpdateGlobalStateTablePollingTime(connection, token);
@@ -387,7 +393,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
         private async Task<bool> ProcessTableChangesAsync()
         {
-            bool isSucceeded = false;
+            bool isProcessChangesFailed = false;
 
             if (this._rowsToProcess.Count > 0)
             {
@@ -422,11 +428,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     {
                         this._logger.LogInformation("Function Trigger executed successfully.");
                         this._rowsToProcess = new List<IReadOnlyDictionary<string, object>>();
-                        isSucceeded = true;
                     }
                     else
                     {
                         this._logger.LogError($"Exception encountered while executing the Function Trigger. Exception: {result.Exception}");
+
+                        // set processchanges failed, to avoid update of lastpolledtime in Global State Table
+                        isProcessChangesFailed = true;
                     }
                     this._state = State.Cleanup;
                 }
@@ -437,7 +445,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 // any we still ensure everything is reset to a clean state
                 await this.ClearRowsAsync();
             }
-            return isSucceeded;
+            return isProcessChangesFailed;
         }
 
         /// <summary>
@@ -631,7 +639,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             string getChangesQuery = $@"
                         SELECT {selectList}, 
-                        l.{LeasesTableChangeVersionColumnName},
                         l.{LeasesTableAttemptCountColumnName},
                         l.{LeasesTableLeaseExpirationTimeColumnName}
                         FROM {this._userTable.FullName} AS u
@@ -673,24 +680,44 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <summary>
+        /// arrange rows data into a values\insert format />).
+        /// </summary>
+        /// <param name="rows">Dictionary representing the table rows on which leases should be acquired</param>
+        /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
+        private string BuildRowDataInValuesFormat(IReadOnlyList<IReadOnlyDictionary<string, object>> rows)
+        {
+            IEnumerable<string> listPrimaryKeyName = this._primaryKeyColumns.Select(pk => pk.name);
+            //the default values of attemptCount column, default value of LeaseExpirationTime column
+            string lastColumnValues = $"{InitialValueAttemptCount}, DATE_ADD({MYSQL_FUNC_CURRENTTIME}, INTERVAL {LeaseIntervalInSeconds} SECOND)";
+            IEnumerable<string> rowData = rows.Select(row => $"( {string.Join(", ", row.Where(kvp => listPrimaryKeyName.Contains(kvp.Key)).Select(kp => $"{kp.Value}"))}, {lastColumnValues} )");
+            string rowDataCombined = string.Join(", ", rowData);
+
+            return rowDataCombined;
+        }
+
+        /// <summary>
         /// Builds the query to acquire leases on the rows in "_rows" if changes are detected in the user's table
         /// (<see cref="RunChangeConsumptionLoopAsync()"/>).
         /// </summary>
-        /// <param name="connection">The connection to add to the returned SqlCommand</param>
-        /// <param name="transaction">The transaction to add to the returned SqlCommand</param>
+        /// <param name="connection">The connection to add to the returned MySqlCommand</param>
+        /// <param name="transaction">The transaction to add to the returned MySqlCommand</param>
         /// <param name="rows">Dictionary representing the table rows on which leases should be acquired</param>
-        /// <returns>The SqlCommand populated with the query and appropriate parameters</returns>
+        /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
         private MySqlCommand BuildAcquireLeasesCommand(MySqlConnection connection, MySqlTransaction transaction, IReadOnlyList<IReadOnlyDictionary<string, object>> rows)
         {
-            const string rowDataParameter = "@rowData";
+            string primaryKeys = string.Join(", ", this._primaryKeyColumns.Select(col => $"{col.name}"));
+            string rowDataFormatted = this.BuildRowDataInValuesFormat(rows);
 
-            string acquireLeasesQuery = $@" {this._leasesTableName} {this._primaryKeyColumns.Count}            
-            ";
+            string acquireLeasesQuery = $@" INSERT INTO {this._leasesTableName}
+                                            ({primaryKeys}, {LeasesTableAttemptCountColumnName}, {LeasesTableLeaseExpirationTimeColumnName})
+                                        values
+                                            {rowDataFormatted}
+                                        ON DUPLICATE KEY UPDATE
+                                            {LeasesTableAttemptCountColumnName} = {LeasesTableAttemptCountColumnName} + 1,
+                                            {LeasesTableLeaseExpirationTimeColumnName} = DATE_ADD({LeasesTableLeaseExpirationTimeColumnName}, INTERVAL 60 SECOND)
+                                        ;";
 
             var acquireLeasesCommand = new MySqlCommand(acquireLeasesQuery, connection, transaction);
-            MySqlParameter par = acquireLeasesCommand.Parameters.Add(rowDataParameter, MySqlDbType.VarChar, -1);
-            string rowData = Utils.JsonSerializeObject(rows);
-            par.Value = rowData;
 
             return acquireLeasesCommand;
         }
