@@ -15,7 +15,7 @@
     <ProjectReference Include="..\src\Microsoft.Azure.WebJobs.Extensions.MySql.csproj" />
 	<ProjectReference Include="..\samples\samples-csharp\Microsoft.Azure.WebJobs.Extensions.MySql.Samples.csproj" />
   </ItemGroup>
-  
+  <ItemGroup>
   <ProjectReference Include="..\samples\samples-outofproc\Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.csproj">
         <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
         <Private>false</Private>
