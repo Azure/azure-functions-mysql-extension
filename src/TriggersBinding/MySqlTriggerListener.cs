@@ -13,6 +13,8 @@ using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using MySql.Data.MySqlClient;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
@@ -25,6 +27,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private const int ListenerStopped = 4;
         private readonly MySqlObject _userTable;
         private readonly string _connectionString;
+        private readonly string _userDefinedLeasesTableName;
         private readonly string _userFunctionId;
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly MySqlOptions _mysqlOptions;
@@ -39,15 +42,17 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         /// <param name="connectionString">MySQL connection string used to connect to user database</param>
         /// <param name="tableName">Name of the user table</param>
+        /// <param name="userDefinedLeasesTableName">Optional - Name of the leases table</param>
         /// <param name="userFunctionId">Unique identifier for the user function</param>
         /// <param name="executor">Defines contract for triggering user function</param>
         /// <param name="mysqlOptions"></param>
         /// <param name="logger">Facilitates logging of messages</param>
         /// <param name="configuration">Provides configuration values</param>
-        public MySqlTriggerListener(string connectionString, string tableName, string userFunctionId, ITriggeredFunctionExecutor executor, MySqlOptions mysqlOptions, ILogger logger, IConfiguration configuration)
+        public MySqlTriggerListener(string connectionString, string tableName, string userDefinedLeasesTableName, string userFunctionId, ITriggeredFunctionExecutor executor, MySqlOptions mysqlOptions, ILogger logger, IConfiguration configuration)
         {
             this._connectionString = !string.IsNullOrEmpty(connectionString) ? connectionString : throw new ArgumentNullException(nameof(connectionString));
             this._userTable = !string.IsNullOrEmpty(tableName) ? new MySqlObject(tableName) : throw new ArgumentNullException(nameof(tableName));
+            this._userDefinedLeasesTableName = userDefinedLeasesTableName;
             this._userFunctionId = !string.IsNullOrEmpty(userFunctionId) ? userFunctionId : throw new ArgumentNullException(nameof(userFunctionId));
             this._executor = executor ?? throw new ArgumentNullException(nameof(executor));
             this._mysqlOptions = mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions));
@@ -84,14 +89,20 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                     await VerifyTableForTriggerSupported(connection, this._userTable.FullName, this._logger, cancellationToken);
                     ulong userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
+                    IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, this._userTable.FullName, this._logger, cancellationToken);
+                    IReadOnlyList<string> userTableColumns = this.GetUserTableColumns(connection, this._userTable, cancellationToken);
 
-                    long createdSchemaDurationMs = 0L, createGlobalStateTableDurationMs = 0L, insertGlobalStateTableRowDurationMs = 0L;
+                    string leasesTableName = GetLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
+
+                    long createdSchemaDurationMs = 0L, createGlobalStateTableDurationMs = 0L, insertGlobalStateTableRowDurationMs = 0L, createLeasesTableDurationMs = 0L;
 
                     using (MySqlTransaction transaction = connection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead))
                     {
                         createdSchemaDurationMs = await this.CreateSchemaAsync(connection, transaction, cancellationToken);
                         createGlobalStateTableDurationMs = await this.CreateGlobalStateTableAsync(connection, transaction, cancellationToken);
                         insertGlobalStateTableRowDurationMs = await this.InsertGlobalStateTableRowAsync(connection, transaction, userTableId, cancellationToken);
+                        createLeasesTableDurationMs = await this.CreateLeasesTableAsync(connection, transaction, leasesTableName, primaryKeyColumns, cancellationToken);
+
                         transaction.Commit();
                     }
 
@@ -100,6 +111,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         userTableId,
                         this._userTable,
                         this._userFunctionId,
+                        leasesTableName,
+                        primaryKeyColumns,
+                        userTableColumns,
                         this._executor,
                         this._mysqlOptions,
                         this._logger,
@@ -162,6 +176,38 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <summary>
+        /// Gets the column names of the user table.
+        /// </summary>
+        private IReadOnlyList<string> GetUserTableColumns(MySqlConnection connection, MySqlObject userTable, CancellationToken cancellationToken)
+        {
+            const int NameIndex = 0;
+            string getUserTableColumnsQuery = $@"
+                    SELECT COLUMN_NAME 
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE table_name = {userTable.QuotedName}
+                    AND table_schema = {userTable.QuotedSchema}
+                    AND column_name <> {UpdateAtColumnName.AsSingleQuotedString()};
+            ";
+
+            using (var getUserTableColumnsCommand = new MySqlCommand(getUserTableColumnsQuery, connection))
+            using (MySqlDataReader reader = getUserTableColumnsCommand.ExecuteReaderWithLogging(this._logger))
+            {
+                var userTableColumns = new List<string>();
+                var userDefinedTypeColumns = new List<(string name, string type)>();
+
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    string columnName = reader.GetString(NameIndex);
+                    userTableColumns.Add(columnName);
+                }
+
+                this._logger.LogDebug($"GetUserTableColumns ColumnNames = {string.Join(", ", userTableColumns.Select(col => $"'{col}'"))}.");
+                return userTableColumns;
+            }
+        }
+
+        /// <summary>
         /// Creates the schema for global state table and leases tables, if it does not already exist.
         /// </summary>
         /// <param name="connection">The already-opened connection to use for executing the command</param>
@@ -213,10 +259,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         {
             string createGlobalStateTableQuery = $@"
                     CREATE TABLE IF NOT EXISTS {GlobalStateTableName} (
-                        UserFunctionID char(16) NOT NULL,
-                        UserTableID int NOT NULL,
-                        LastPolledTime Datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                        PRIMARY KEY (UserFunctionID, UserTableID)
+                        {GlobalStateTableUserFunctionIDColumnName} char(16) NOT NULL,
+                        {GlobalStateTableUserTableIDColumnName} int NOT NULL,
+                        {GlobalStateTableLastPolledTimeColumnName} Datetime NOT NULL DEFAULT {MYSQL_FUNC_CURRENTTIME},
+                        {GlobalStateTableStartPollingTimeColumnName} Datetime NOT NULL DEFAULT {MYSQL_FUNC_CURRENTTIME},
+                        PRIMARY KEY ({GlobalStateTableUserFunctionIDColumnName}, {GlobalStateTableUserTableIDColumnName})
                     );
             ";
 
@@ -258,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private async Task<long> InsertGlobalStateTableRowAsync(MySqlConnection connection, MySqlTransaction transaction, ulong userTableId, CancellationToken cancellationToken)
         {
 
-            string insertRowGlobalStateTableQuery = $"INSERT IGNORE INTO {GlobalStateTableName} (UserFunctionID, UserTableID) VALUES ('{this._userFunctionId}', {userTableId})";
+            string insertRowGlobalStateTableQuery = $"INSERT IGNORE INTO {GlobalStateTableName} ({GlobalStateTableUserFunctionIDColumnName}, {GlobalStateTableUserTableIDColumnName}) VALUES ('{this._userFunctionId}', {userTableId});";
 
             using (var insertRowGlobalStateTableCommand = new MySqlCommand(insertRowGlobalStateTableQuery, connection, transaction))
             {
@@ -278,13 +325,59 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The time taken in ms to execute the command</returns>
         private async Task<long> DeleteGlobalStateTableRowAsync(MySqlConnection connection, MySqlTransaction transaction, ulong userTableId, CancellationToken cancellationToken)
         {
-            string deleteRowGlobalStateTableQuery = $"DELETE FROM {GlobalStateTableName} WHERE UserFunctionID = '{this._userFunctionId}' AND UserTableID = {userTableId}";
+            string deleteRowGlobalStateTableQuery = $"DELETE FROM {GlobalStateTableName} WHERE {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {userTableId};";
 
             using (var deleteRowGlobalStateTableCommand = new MySqlCommand(deleteRowGlobalStateTableQuery, connection, transaction))
             {
                 var stopwatch = Stopwatch.StartNew();
                 await deleteRowGlobalStateTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
                 return stopwatch.ElapsedMilliseconds;
+            }
+        }
+
+        /// <summary>
+        /// Creates the leases table for the 'user function and table', if one does not already exist.
+        /// </summary>
+        /// <param name="connection">The already-opened connection to use for executing the command</param>
+        /// <param name="transaction">The transaction wrapping this command</param>
+        /// <param name="leasesTableName">The name of the leases table to create</param>
+        /// <param name="primaryKeyColumns">The primary keys of the user table this leases table is for</param>
+        /// <param name="cancellationToken">Cancellation token to pass to the command</param>
+        /// <returns>The time taken in ms to execute the command</returns>
+        private async Task<long> CreateLeasesTableAsync(
+            MySqlConnection connection,
+            MySqlTransaction transaction,
+            string leasesTableName,
+            IReadOnlyList<(string name, string type)> primaryKeyColumns,
+            CancellationToken cancellationToken)
+        {
+            string primaryKeysWithTypes = string.Join(", ", primaryKeyColumns.Select(col => $"{col.name} {col.type}"));
+            string primaryKeys = string.Join(", ", primaryKeyColumns.Select(col => col.name));
+
+            string createLeasesTableQuery = $@"
+                    CREATE TABLE IF NOT EXISTS {leasesTableName} (
+                        {primaryKeysWithTypes},
+                        {LeasesTableAttemptCountColumnName} int NOT NULL,
+                        {LeasesTableLeaseExpirationTimeColumnName} datetime,
+                        PRIMARY KEY ({primaryKeys})
+                    );
+            ";
+
+            using (var createLeasesTableCommand = new MySqlCommand(createLeasesTableQuery, connection, transaction))
+            {
+                var stopwatch = Stopwatch.StartNew();
+                try
+                {
+                    await createLeasesTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    this._logger.LogWarning($"Failed to create leases table '{leasesTableName}'. Exception message: {ex.Message}");
+                    throw;
+
+                }
+                long durationMs = stopwatch.ElapsedMilliseconds;
+                return durationMs;
             }
         }
     }

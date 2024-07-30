@@ -42,6 +42,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         public readonly string QuotedFullName;
 
         /// <summary>
+        /// The full name of the objected in the format `SCHEMA`.`NAME` (or just `NAME` if there is no specified schema), quoted and escaped with square brackets.
+        /// </summary>
+        public readonly string AcuteQuotedFullName;
+
+        /// <summary>
         /// A MySqlObject which contains information about the name and schema of the given object full name.
         /// </summary>
         /// <param name="fullName">Full name of object, including schema (if it exists).</param>
@@ -65,10 +70,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             var visitor = new TMySqlObjectFragmentVisitor();
             tree.Accept(visitor);
             this.Schema = visitor.schemaName;
-            this.QuotedSchema = this.Schema == SCHEMA_NAME_FUNCTION ? this.Schema : this.Schema.AsSingleQuotedString();
+            this.QuotedSchema = (this.Schema == SCHEMA_NAME_FUNCTION) ? this.Schema : this.Schema.AsSingleQuotedString();
             this.Name = visitor.objectName;
             this.QuotedName = this.Name.AsSingleQuotedString();
-            this.FullName = this.Schema == SCHEMA_NAME_FUNCTION ? this.Name : $"{this.Schema}.{this.Name}";
+            this.FullName = (this.Schema == SCHEMA_NAME_FUNCTION) ? this.Name : $"{this.Schema}.{this.Name}";
+            this.AcuteQuotedFullName = this.Schema == SCHEMA_NAME_FUNCTION ? this.Name.AsAcuteQuotedString() : $"{this.Schema.AsAcuteQuotedString()}.{this.Name.AsAcuteQuotedString()}";
             this.QuotedFullName = this.FullName.AsSingleQuotedString();
         }
 

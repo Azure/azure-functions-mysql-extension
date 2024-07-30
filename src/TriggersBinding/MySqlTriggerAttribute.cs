@@ -34,5 +34,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// Name of the table to watch for changes.
         /// </summary>
         public string TableName { get; }
+
+        /// <summary>
+        /// Name of the table used to store leases.
+        /// If not specified, the leases table name will be Leases_{FunctionId}_{TableId}
+        /// </summary>
+        public string LeasesTableName { get; }
     }
 }

@@ -54,7 +54,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         {
             if (context == null)
             {
-                throw new ArgumentNullException(nameof(context));
+
             }
 
             ParameterInfo parameter = context.Parameter;
@@ -90,10 +90,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 bindingType = typeof(MySqlTriggerBinding<>).MakeGenericType(userType);
             }
 
-            var constructorParameterTypes = new Type[] { typeof(string), typeof(string),/* typeof(string),*/ typeof(ParameterInfo), typeof(IOptions<MySqlOptions>), typeof(IHostIdProvider), typeof(ILogger), typeof(IConfiguration) };
+            var constructorParameterTypes = new Type[] { typeof(string), typeof(string), typeof(string), typeof(ParameterInfo), typeof(IOptions<MySqlOptions>), typeof(IHostIdProvider), typeof(ILogger), typeof(IConfiguration) };
             ConstructorInfo bindingConstructor = bindingType.GetConstructor(constructorParameterTypes);
 
-            object[] constructorParameterValues = new object[] { connectionString, attribute.TableName,/* attribute.LeasesTableName,*/ parameter, this._mysqlOptions, this._hostIdProvider, this._logger, this._configuration };
+            object[] constructorParameterValues = new object[] { connectionString, attribute.TableName, attribute.LeasesTableName, parameter, this._mysqlOptions, this._hostIdProvider, this._logger, this._configuration };
             var triggerBinding = (ITriggerBinding)bindingConstructor.Invoke(constructorParameterValues);
 
             return Task.FromResult(triggerBinding);
