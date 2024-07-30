@@ -54,7 +54,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     /// <typeparam name="T">A user-defined POCO that represents a row of the user's table</typeparam>
     internal class MySqlAsyncCollector<T> : IAsyncCollector<T>, IDisposable
     {
-        private static readonly string[] UnsupportedTypes = { "NTEXT(*)", "TEXT(*)", "IMAGE(*)" };
         private const string ColumnName = "COLUMN_NAME";
         private const string ColumnDefinition = "COLUMN_DEFINITION";
 
@@ -213,12 +212,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 }
 
                 IEnumerable<string> columnNamesFromItem = GetColumnNamesFromItem(rows.First());
-                IEnumerable<string> unsupportedColumns = columnNamesFromItem.Where(prop => UnsupportedTypes.Contains(tableInfo.Columns[prop], StringComparer.OrdinalIgnoreCase));
-                if (unsupportedColumns.Any())
-                {
-                    string message = $"The type(s) of the following column(s) are not supported: {string.Join(", ", unsupportedColumns.ToArray())}. See https://github.com/Azure/azure-functions-sql-extension#output-bindings for more details.";
-                    throw new InvalidOperationException(message);
-                }
 
                 var table = new MySqlObject(fullTableName);
                 string insertQuery = TableInformation.GetInsertQuery(table, columnNamesFromItem);
@@ -439,7 +432,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                 // Convert datetime strings to ISO 8061 format to avoid potential errors on the server when converting into a datetime. This
                 // is the only format that are an international standard.
-                // https://docs.microsoft.com/previous-versions/sql/sql-server-2008-r2/ms180878(v=sql.105)
                 this.JsonSerializerSettings = new JsonSerializerSettings
                 {
                     ContractResolver = new DynamicPOCOContractResolver(columns),
