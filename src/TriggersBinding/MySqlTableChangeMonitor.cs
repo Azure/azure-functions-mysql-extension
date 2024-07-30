@@ -719,7 +719,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                                             {rowDataFormatted}
                                         ON DUPLICATE KEY UPDATE
                                             {LeasesTableAttemptCountColumnName} = {LeasesTableAttemptCountColumnName} + 1,
-                                            {LeasesTableLeaseExpirationTimeColumnName} = DATE_ADD({LeasesTableLeaseExpirationTimeColumnName}, INTERVAL 60 SECOND)
+                                            {LeasesTableLeaseExpirationTimeColumnName} = DATE_ADD({LeasesTableLeaseExpirationTimeColumnName}, INTERVAL {LeaseIntervalInSeconds} SECOND)
                                         ;";
 
             var acquireLeasesCommand = new MySqlCommand(acquireLeasesQuery, connection, transaction);
