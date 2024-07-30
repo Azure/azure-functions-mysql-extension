@@ -22,11 +22,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     internal class MySqlTableChangeMonitor<T> : IDisposable
     {
         #region Constants
-
-        /// <summary>
-        /// The maximum number of times that we'll attempt to renew a lease be
-        /// </summary>
-        private const int MaxChangeProcessAttemptCount = 5;
         /// The intialize attempt count from
         private const int InitialValueAttemptCount = 1;
         /// <remarks>

@@ -28,5 +28,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         public const string LeasesTableChangeVersionColumnName = "_az_func_ChangeVersion";
         public const string LeasesTableAttemptCountColumnName = "_az_func_AttemptCount";
         public const string LeasesTableLeaseExpirationTimeColumnName = "_az_func_LeaseExpirationTime";
+
+        /// <summary>
+        /// The maximum number of times that we'll attempt to renew a lease be
+        /// </summary>
+        public const int MaxChangeProcessAttemptCount = 5;
     }
 }
