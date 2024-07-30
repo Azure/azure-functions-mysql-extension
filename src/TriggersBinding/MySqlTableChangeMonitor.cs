@@ -52,6 +52,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private readonly ITriggeredFunctionExecutor _executor;
         private readonly MySqlOptions _mysqlOptions;
         private readonly ILogger _logger;
+
+        // a list of primary key colum's Names
+        private readonly IEnumerable<string> _primaryKeyColumnNames;
         /// <summary>
         /// Maximum number of changes to process in each iteration of the loop
         /// </summary>
@@ -120,6 +123,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             this._mysqlOptions = mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions));
             this._executor = executor ?? throw new ArgumentNullException(nameof(executor));
             this._logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+
+            this._primaryKeyColumnNames = this._primaryKeyColumns.Select(col => $"{col.name}");
 
             int? configuredMaxBatchSize = configuration.GetValue<int?>(ConfigKey_MySqlTrigger_MaxBatchSize) ?? configuration.GetValue<int?>(ConfigKey_MySqlTrigger_BatchSize);
             this._maxBatchSize = configuredMaxBatchSize ?? this._mysqlOptions.MaxBatchSize;
@@ -443,7 +449,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 // This ideally should never happen, but as a safety measure ensure that if we tried to process changes but there weren't
                 // any we still ensure everything is reset to a clean state
-                await this.ClearRowsAsync();
+                //await this.ClearRowsAsync();
             }
             return isProcessChangesFailed;
         }
@@ -686,10 +692,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
         private string BuildRowDataInValuesFormat(IReadOnlyList<IReadOnlyDictionary<string, object>> rows)
         {
-            IEnumerable<string> listPrimaryKeyName = this._primaryKeyColumns.Select(pk => pk.name);
             //the default values of attemptCount column, default value of LeaseExpirationTime column
             string lastColumnValues = $"{InitialValueAttemptCount}, DATE_ADD({MYSQL_FUNC_CURRENTTIME}, INTERVAL {LeaseIntervalInSeconds} SECOND)";
-            IEnumerable<string> rowData = rows.Select(row => $"( {string.Join(", ", row.Where(kvp => listPrimaryKeyName.Contains(kvp.Key)).Select(kp => $"{kp.Value}"))}, {lastColumnValues} )");
+            IEnumerable<string> rowData = rows.Select(row => $"( {string.Join(", ", row.Where(kvp => this._primaryKeyColumnNames.Contains(kvp.Key)).Select(kp => $"{kp.Value}"))}, {lastColumnValues} )");
             string rowDataCombined = string.Join(", ", rowData);
 
             return rowDataCombined;
@@ -705,7 +710,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
         private MySqlCommand BuildAcquireLeasesCommand(MySqlConnection connection, MySqlTransaction transaction, IReadOnlyList<IReadOnlyDictionary<string, object>> rows)
         {
-            string primaryKeys = string.Join(", ", this._primaryKeyColumns.Select(col => $"{col.name}"));
+            string primaryKeys = string.Join(", ", this._primaryKeyColumnNames);
             string rowDataFormatted = this.BuildRowDataInValuesFormat(rows);
 
             string acquireLeasesQuery = $@" INSERT INTO {this._leasesTableName}
@@ -730,8 +735,16 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The SqlCommand populated with the query and appropriate parameters</returns>
         private MySqlCommand BuildRenewLeasesCommand(MySqlConnection connection, MySqlTransaction transaction)
         {
-            string renewLeasesQuery = $@" {this._leasesTableName} {this._primaryKeyColumns.Count}
-            ";
+            IEnumerable<string> listMatchCondition = this._rowsToProcess.Select(row => $"( {string.Join(" AND ", row.Where(kvp => this._primaryKeyColumnNames.Contains(kvp.Key)).Select(kp => $"{kp.Key} = {kp.Value}"))} )");
+
+            string combinedMatchConditions = string.Join(" OR ", listMatchCondition);
+
+            string renewLeasesQuery = $@"UPDATE {this._leasesTableName}
+                                        SET
+                                            {LeasesTableLeaseExpirationTimeColumnName} = DATE_ADD({LeasesTableLeaseExpirationTimeColumnName}, INTERVAL {LeaseRenewalIntervalInSeconds} SECOND)
+                                        WHERE
+                                            {combinedMatchConditions}
+                                        ;";
 
             return new MySqlCommand(renewLeasesQuery, connection, transaction);
         }
