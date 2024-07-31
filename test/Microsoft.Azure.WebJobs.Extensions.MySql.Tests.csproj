@@ -15,4 +15,69 @@
     <ProjectReference Include="..\src\Microsoft.Azure.WebJobs.Extensions.MySql.csproj" />
 	<ProjectReference Include="..\samples\samples-csharp\Microsoft.Azure.WebJobs.Extensions.MySql.Samples.csproj" />
   </ItemGroup>
+  <ItemGroup>
+  <ProjectReference Include="..\samples\samples-outofproc\Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.csproj">
+        <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+        <Private>false</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\test-outofproc\test-outofproc.csproj">
+        <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+        <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Database\**\*.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <Target Name="CopySamples" AfterTargets="Build">
+    <ItemGroup>
+      <_DatabaseItems Include="..\samples\Database\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_DatabaseItems)" DestinationFolder="$(OutDir)\Database\%(RecursiveDir)" />
+    <Message Text="Copied MySql Scripts to $(OutDir)\Database" Importance="high" />
+    <ItemGroup>
+      <_CSharpCopyItems Include="..\samples\samples-csharp\bin\$(Configuration)\$(TargetFramework)\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_CSharpCopyItems)" DestinationFolder="$(OutDir)\MySqlExtensionSamples\CSharp\%(RecursiveDir)" />
+    <Message Text="Copied C# Samples output to $(OutDir)\MySqlExtensionSamples\CSharp" Importance="high" />
+    <ItemGroup>
+      <_JsCopyItems Include="..\samples\samples-js\**\*.*" />
+      <_JsCopyItems Include="Integration\test-js\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_JsCopyItems)" DestinationFolder="$(OutDir)\MySqlExtensionSamples\JavaScript\%(RecursiveDir)" />
+    <Message Text="Copied JS Samples output to $(OutDir)\MySqlExtensionSamples\JavaScript" Importance="high" />
+    <ItemGroup>
+      <_JavaCopyItems Include="..\samples\samples-java\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_JavaCopyItems)" DestinationFolder="$(OutDir)\MySqlExtensionSamples\Java\%(RecursiveDir)" />
+    <Message Text="Copied Java Samples output to $(OutDir)\MySqlExtensionSamples\Java" Importance="high" />
+    <ItemGroup>
+      <_PSCopyItems Include="..\samples\samples-powershell\**\*.*" />
+      <_PSCopyItems Include="Integration\test-powershell\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_PSCopyItems)" DestinationFolder="$(OutDir)\MySqlExtensionSamples\PowerShell\%(RecursiveDir)" />
+    <Message Text="Copied PS Samples output to $(OutDir)\MySqlExtensionSamples\PowerShell" Importance="high" />
+    <ItemGroup>
+      <_OOPCopyItems Include="..\samples\samples-outofproc\bin\$(Configuration)\$(TargetFramework)\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_OOPCopyItems)" DestinationFolder="$(OutDir)\MySqlExtensionSamples\OutOfProc\%(RecursiveDir)" />
+    <Message Text="Copied C# out of proc Samples output to $(OutDir)\MySqlExtensionSamples\OutOfProc" Importance="high" />
+    <ItemGroup>
+      <_OOPNCopyItems Include="..\test-outofproc\bin\$(Configuration)\$(TargetFramework)\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_OOPNCopyItems)" DestinationFolder="$(OutDir)\MySqlExtensionSamples\OutOfProc\test\%(RecursiveDir)" />
+    <Message Text="Copied test-outofproc Samples to $(OutDir)\MySqlExtensionSamples\OutOfProc\test" Importance="high" />
+    <ItemGroup>
+      <_PythonCopyItems Include="..\samples\samples-python\**\*.*" />
+      <_PythonCopyItems Include="Integration\test-python\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_PythonCopyItems)" DestinationFolder="$(OutDir)\MySqlExtensionSamples\Python\%(RecursiveDir)" />
+    <Message Text="Copied Python Samples output to $(OutDir)\MySqlExtensionSamples\Python" Importance="high" />
+  </Target>
 </Project>

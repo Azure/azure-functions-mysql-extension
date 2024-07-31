@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         [Fact]
         public void TestNullConnectionStringSetting()
         {
-            Assert.Throws<ArgumentNullException>(() => new MySqlAttribute("SELECT * FROM dbo.Products", null));
+            Assert.Throws<ArgumentNullException>(() => new MySqlAttribute("SELECT * FROM Products", null));
         }
 
         [Fact]
