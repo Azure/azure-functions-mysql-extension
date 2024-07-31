@@ -1,0 +1,27 @@
+{
+  "bindings": [
+    {
+      "authLevel": "function",
+      "name": "Request",
+      "direction": "in",
+      "type": "httpTrigger",
+      "methods": [
+        "post"
+      ],
+      "route": "addproduct-extracolumns"
+    },
+    {
+      "name": "response",
+      "type": "http",
+      "direction": "out"
+    },
+    {
+      "name": "products",
+      "type": "mysql",
+      "direction": "out",
+      "commandText": "Products",
+      "connectionStringSetting": "MySqlConnectionString"
+    }
+  ],
+  "disabled": false
+}

@@ -19,7 +19,7 @@ namespace DotnetIsolatedTests
         public static IEnumerable<ProductColumnTypes> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproducts-columntypesserialization")]
             HttpRequest req,
-            [MySqlInput("SELECT * FROM [ProductsColumnTypes]",
+            [MySqlInput("SELECT * FROM ProductsColumnTypes",
                 "MySqlConnectionString")]
             IEnumerable<ProductColumnTypes> products)
         {
