@@ -29,6 +29,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         [InlineData("`mydb`.`Products`", "mydb", "`mydb`", "Products", "`Products`", "mydb.Products", "`mydb`.`Products`")]
         [InlineData("Products", "SCHEMA()", "SCHEMA()", "Products", "`Products`", "Products", "`Products`")]
         [InlineData("`Products`", "SCHEMA()", "SCHEMA()", "Products", "`Products`", "Products", "`Products`")]
+        [InlineData("`''`", "SCHEMA()", "SCHEMA()", "''", "`''`", "''", "`''`")]
         public void TestMySqlObject(string fullName,
             string expectedSchema,
             string expectedQuotedSchema,
@@ -47,7 +48,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         }
 
         [Theory]
-        [InlineData("my`schema.mytable", "Encountered error(s) while parsing object name:\n")]
+        [InlineData("'mydb'.'Products'", "Encountered error(s) while parsing object name:\n")]
+        [InlineData("\"mydb\".\"Products\"", "Encountered error(s) while parsing object name:\n")]
+        [InlineData("'Products'", "Encountered error(s) while parsing object name:\n")]
         public void TestMySqlObjectParseError(string fullName, string expectedErrorMessage)
         {
             string errorMessage = Assert.Throws<InvalidOperationException>(() => new MySqlObject(fullName)).Message;

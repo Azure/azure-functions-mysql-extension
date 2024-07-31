@@ -13,7 +13,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.OutputBindingSamples
         public static IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "addproduct")]
             [FromBody] Product prod,
-            [MySql("`mysqldb1`.`Products`", "MySqlConnectionString")] out Product product)
+            [MySql("\"Products\"", "MySqlConnectionString")] out Product product)
         {
             product = prod;
             return new CreatedResult($"/api/addproduct", product);

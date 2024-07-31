@@ -66,11 +66,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         internal class MySqlObjectNameParser
         {
-            //regex expression to match following example expressions
-            // 1) `myschema`.`mytable` 2) `myschema`.mytable 3) myschema.`mytable` 4) myschema.mytable
+            // followed the reference to validate identifier https://dev.mysql.com/doc/refman/8.0/en/identifiers.html
+            // regex expression to match following example expressions
+            // 1) `mys`adgasg`chema`.`mytable` 2) `myschema`.mytable 3) myschema.`mytable` 4) myschema.mytable
             // 5) `mytable` 6) mytable
-            private const string patternSchemaAndObject = @"(`(?<schema>[\w$]+)`|(?<schema>[\w$]+))\.(`(?<object>[\w$]+)`|(?<object>[\w$]+))";
-            private const string patternObjectWithoutSchema = @"`(?<object>[\w$]+)`|(?<object>[\w$]+)";
+            private const string patternSchemaAndObject = @"(`(?<schema>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<schema>[\w$\u0080-\uFFFF]+))\.(`(?<object>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<object>[\w$\u0080-\uFFFF]+))";
+            private const string patternObjectWithoutSchema = @"`(?<object>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<object>^(?!')[\w$]+(?!')$)";
 
             public string schemaName;
             public string objectName;
