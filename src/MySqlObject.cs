@@ -69,8 +69,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             //regex expression to match following example expressions
             // 1) `myschema`.`mytable` 2) `myschema`.mytable 3) myschema.`mytable` 4) myschema.mytable
             // 5) `mytable` 6) mytable
-            private const string patternSchemaAndObject = @"(`(?<schema>\w+)`|(?<schema>\w+))\.(`(?<object>\w+)`|(?<object>\w+))";
-            private const string patternObjectWithoutSchema = @"`(?<object>\w+)`|(?<object>\w+)";
+            private const string patternSchemaAndObject = @"(`(?<schema>[\w$]+)`|(?<schema>[\w$]+))\.(`(?<object>[\w$]+)`|(?<object>[\w$]+))";
+            private const string patternObjectWithoutSchema = @"`(?<object>[\w$]+)`|(?<object>[\w$]+)";
 
             public string schemaName;
             public string objectName;
