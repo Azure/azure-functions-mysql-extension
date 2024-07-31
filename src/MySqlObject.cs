@@ -2,9 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Collections.Generic;
-using System.IO;
-using Microsoft.SqlServer.TransactSql.ScriptDom;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
@@ -53,52 +51,55 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <exception cref="InvalidOperationException">If the name can't be parsed</exception>
         public MySqlObject(string fullName)
         {
-            var parser = new TSql150Parser(false);
-            var stringReader = new StringReader(fullName);
-            SchemaObjectName tree = parser.ParseSchemaObjectName(stringReader, out IList<ParseError> errors);
+            var visitor = new MySqlObjectNameParser(fullName);
 
-            if (errors.Count > 0)
-            {
-                string errorMessages = "Encountered error(s) while parsing schema and object name:\n";
-                foreach (ParseError err in errors)
-                {
-                    errorMessages += $"{err.Message}\n";
-                }
-                throw new InvalidOperationException(errorMessages);
-            }
-
-            var visitor = new TMySqlObjectFragmentVisitor();
-            tree.Accept(visitor);
             this.Schema = visitor.schemaName;
-            this.QuotedSchema = (this.Schema == SCHEMA_NAME_FUNCTION) ? this.Schema : this.Schema.AsSingleQuotedString();
+            this.QuotedSchema = (this.Schema == SCHEMA_NAME_FUNCTION) ? this.Schema : this.Schema.AsAcuteQuotedString();
             this.Name = visitor.objectName;
-            this.QuotedName = this.Name.AsSingleQuotedString();
+            this.QuotedName = this.Name.AsAcuteQuotedString();
             this.FullName = (this.Schema == SCHEMA_NAME_FUNCTION) ? this.Name : $"{this.Schema}.{this.Name}";
-            this.AcuteQuotedFullName = this.Schema == SCHEMA_NAME_FUNCTION ? this.Name.AsAcuteQuotedString() : $"{this.Schema.AsAcuteQuotedString()}.{this.Name.AsAcuteQuotedString()}";
-            this.QuotedFullName = this.FullName.AsSingleQuotedString();
-        }
-
-        /// <summary>
-        /// Returns the full name of the object, including the schema if it was specified, in the format {Schema}.{Name}
-        /// </summary>
-        /// <returns></returns>
-        public override string ToString()
-        {
-            return $"{this.Schema}.{this.Name}";
+            this.QuotedFullName = this.Schema == SCHEMA_NAME_FUNCTION ? this.Name.AsAcuteQuotedString() : $"{this.Schema.AsAcuteQuotedString()}.{this.Name.AsAcuteQuotedString()}";
         }
 
         /// <summary>
         /// Get the schema and object name from the SchemaObjectName.
         /// </summary>
-        private class TMySqlObjectFragmentVisitor : TSqlFragmentVisitor
+        internal class MySqlObjectNameParser
         {
+            //regex expression to match following example expressions
+            // 1) `myschema`.`mytable` 2) `myschema`.mytable 3) myschema.`mytable` 4) myschema.mytable
+            // 5) `mytable` 6) mytable
+            private const string patternSchemaAndObject = @"(`(?<schema>\w+)`|(?<schema>\w+))\.(`(?<object>\w+)`|(?<object>\w+))";
+            private const string patternObjectWithoutSchema = @"`(?<object>\w+)`|(?<object>\w+)";
+
             public string schemaName;
             public string objectName;
 
-            public override void Visit(SchemaObjectName node)
+            internal MySqlObjectNameParser(string objectFullName)
             {
-                this.schemaName = node.SchemaIdentifier != null ? node.SchemaIdentifier.Value : SCHEMA_NAME_FUNCTION;
-                this.objectName = node.BaseIdentifier.Value;
+                Match match = Regex.Match(objectFullName, patternSchemaAndObject);
+                if (match.Success)
+                {
+                    this.schemaName = match.Groups["schema"].Value;
+                    this.objectName = match.Groups["object"].Value;
+                }
+                else
+                {
+                    match = Regex.Match(objectFullName, patternObjectWithoutSchema);
+                    if (match.Success)
+                    {
+                        this.schemaName = SCHEMA_NAME_FUNCTION;
+                        this.objectName = match.Groups["object"].Value;
+                    }
+                    else
+                    {
+                        this.schemaName = null;
+                        this.objectName = null;
+                        // throw error message
+                        string errorMessages = "Encountered error(s) while parsing object name:\n";
+                        throw new InvalidOperationException(errorMessages);
+                    }
+                }
             }
         }
     }
