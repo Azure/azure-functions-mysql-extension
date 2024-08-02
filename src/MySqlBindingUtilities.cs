@@ -180,33 +180,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <summary>
-        /// Escape any existing closing acute_symbol(`) and add acute_symbols(`) around the string
+        /// Add acute_symbols(`) around the string
         /// </summary>
         /// <param name="s">The string to acute_symbol(`) quote.</param>
-        /// <returns>The escaped and acute_symbol(`) quoted string.</returns>
+        /// <returns>acute_symbol(`) quoted string.</returns>
         public static string AsAcuteQuotedString(this string s)
         {
-            return $"`{s.Replace("`", "``")}`";
-        }
-
-        /// <summary>
-        /// Escape any existing quotes and add quotes around the string.
-        /// </summary>
-        /// <param name="s">The string to quote.</param>
-        /// <returns>The escaped and quoted string.</returns>
-        public static string AsSingleQuotedString(this string s)
-        {
-            return $"'{s.AsSingleQuoteEscapedString()}'";
-        }
-
-        /// <summary>
-        /// Returns the string with any single quotes in it escaped (replaced with '')
-        /// </summary>
-        /// <param name="s">The string to escape.</param>
-        /// <returns>The escaped string.</returns>
-        public static string AsSingleQuoteEscapedString(this string s)
-        {
-            return s.Replace("'", "''");
+            return $"`{s}`";
         }
 
         /// <summary>
