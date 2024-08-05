@@ -11,7 +11,7 @@ namespace DotnetIsolatedTests
     public static class AddProductMissingColumns
     {
         // This output binding should successfully add the ProductMissingColumns object
-        // to the SQL table.
+        // to the MySql table.
         [Function(nameof(AddProductMissingColumns))]
         [MySqlOutput("Products", "MySqlConnectionString")]
         public static ProductMissingColumns Run(

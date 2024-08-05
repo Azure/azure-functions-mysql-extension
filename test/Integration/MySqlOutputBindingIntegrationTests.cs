@@ -102,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 
         /// <summary>
         /// Test compatibility with converting various data types to their respective
-        /// SQL server types.
+        /// MySql server types.
         /// </summary>
         /// <param name="lang">The language to run the test against</param>
         [Theory]
@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         [MySqlInlineData()]
         public void AddProductMissingColumnsNotNullTest(SupportedLanguages lang)
         {
-            // Since the Sql table does not allow null for the Cost column,
+            // Since the MySql table does not allow null for the Cost column,
             // inserting a row without a Cost value should throw an Exception.
             Assert.Throws<AggregateException>(() => this.SendOutputPostRequest("addproduct-missingcolumnsexception", "", TestUtils.GetPort(lang, true)).Wait());
         }
@@ -366,43 +366,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         }
 
         /// <summary>
-        /// Tests that when using an unsupported database the expected error is thrown
-        /// </summary>
-        [Theory]
-        [MySqlInlineData()]
-        [UnsupportedLanguages(SupportedLanguages.OutOfProc)]
-        public async Task UnsupportedDatabaseThrows(SupportedLanguages lang)
-        {
-            // Change database compat level to unsupported version
-            this.ExecuteNonQuery($"ALTER DATABASE {this.DatabaseName} SET COMPATIBILITY_LEVEL = 120;");
-
-            var foundExpectedMessageSource = new TaskCompletionSource<bool>();
-            this.StartFunctionHost(nameof(AddProductParams), lang, false, (object sender, DataReceivedEventArgs e) =>
-            {
-                if (e.Data.Contains("SQL bindings require a database compatibility level of 130 or higher to function. Current compatibility level = 120"))
-                {
-                    foundExpectedMessageSource.SetResult(true);
-                }
-            });
-
-            var query = new Dictionary<string, string>()
-            {
-                { "productId", "1" },
-                { "name", "test" },
-                { "cost", "100" }
-            };
-
-            // The upsert should fail since the database compat level is not supported
-            Exception exception = Assert.Throws<AggregateException>(() => this.SendOutputGetRequest("addproduct-params", query).Wait());
-            // Verify the message contains the expected error so that other errors don't mistakenly make this test pass
-            // Wait 2sec for message to get processed to account for delays reading output
-            await foundExpectedMessageSource.Task.TimeoutAfter(TimeSpan.FromMilliseconds(2000), $"Timed out waiting for expected error message");
-
-            // Change database compat level back to supported level
-            this.ExecuteNonQuery($"ALTER DATABASE {this.DatabaseName} SET COMPATIBILITY_LEVEL = 150;");
-        }
-
-        /// <summary>
         /// Tests that upserting to a case sensitive database works correctly.
         /// </summary>
         [Theory]
@@ -477,7 +440,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// </summary>
         [Theory]
         [MySqlInlineData()]
-        // Only the JavaScript function passes an empty JSON to the SQL extension.
+        // Only the JavaScript function passes an empty JSON to the MySql extension.
         // C#, Java, and Python throw an error while creating the Product object in the function and in PowerShell,
         // the JSON would be passed as {"ProductId": null, "Name": null, "Cost": null}.
         [UnsupportedLanguages(SupportedLanguages.CSharp, SupportedLanguages.Java, SupportedLanguages.OutOfProc, SupportedLanguages.PowerShell, SupportedLanguages.Python)]

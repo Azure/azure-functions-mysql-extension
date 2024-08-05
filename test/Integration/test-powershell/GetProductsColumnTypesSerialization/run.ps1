@@ -7,7 +7,7 @@ using namespace System.Net
 param($Request, $TriggerMetadata, $products)
 
 # Write to the Azure Functions log stream.
-Write-Host "PowerShell function with SQL Input Binding processed a request."
+Write-Host "PowerShell function with MySql Input Binding processed a request."
 
 # Assign the value to return as the HTTP response. 
 # The -Name value matches the name property in the function.json for the binding

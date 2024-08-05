@@ -5,7 +5,7 @@ import azure.functions as func
 from Common.product import Product
 
 # This output binding should throw an error since the ProductsNameNotNull table does not
-# allows rows without a Name value. No rows should be upserted to the Sql table.
+# allows rows without a Name value. No rows should be upserted to the MySql table.
 def main(req: func.HttpRequest, products: func.Out[func.SqlRowList]) -> func.HttpResponse:
     rows = func.SqlRowList()
     for i in range(1000):
