@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
     public static class AddProductMissingColumns
     {
         // This output binding should successfully add the ProductMissingColumns object
-        // to the SQL table.
+        // to the MySql table.
         [FunctionName("AddProductMissingColumns")]
         public static IActionResult Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "addproduct-missingcolumns")]

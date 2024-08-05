@@ -32,7 +32,7 @@ $req_query = @{
     Varbinary="dGVzdA==";
 };
 
-# Assign the value we want to pass to the SQL Output binding.
+# Assign the value we want to pass to the MySql Output binding.
 # The -Name value corresponds to the name property in the function.json for the binding
 Push-OutputBinding -Name product -Value $req_query
 
