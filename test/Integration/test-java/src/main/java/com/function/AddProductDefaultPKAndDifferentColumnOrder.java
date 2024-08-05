@@ -36,7 +36,7 @@ public class AddProductDefaultPKAndDifferentColumnOrder {
                 HttpRequestMessage<Optional<String>> request,
             @MySqlOutput(
                 name = "product",
-                commandText = "ProductsWithDefaultPK",
+                tableName = "ProductsWithDefaultPK",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<ProductDefaultPKAndDifferentColumnOrder> product) {
 
