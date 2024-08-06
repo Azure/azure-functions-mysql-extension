@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
 
                 // Either use integrated auth or MySQL login depending if SA_PASSWORD is set
                 string userId = "root";
-                string password = Environment.GetEnvironmentVariable("SA_PASSWORD");
+                string password = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD");
                 if (string.IsNullOrEmpty(password))
                 {
                     throw new ArgumentNullException(password);
