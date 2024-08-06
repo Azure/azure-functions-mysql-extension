@@ -85,7 +85,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
                 // First connect to master to create the database
                 connectionStringBuilder = new MySqlConnectionStringBuilder();
 
-                // Either use integrated auth or MySQL login depending if SA_PASSWORD is set
+                // Either use integrated auth or MySQL login depending if MYSQL_ROOT_PASSWORD is set
                 string userId = "root";
                 string password = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD");
                 if (string.IsNullOrEmpty(password))
