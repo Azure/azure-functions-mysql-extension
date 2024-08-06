@@ -94,6 +94,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
                 }
                 else
                 {
+                    connectionStringBuilder.Server = testServer;
                     connectionStringBuilder.UserID = userId;
                     connectionStringBuilder.Password = password;
                 }
