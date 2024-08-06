@@ -61,7 +61,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
         /// Sets up a test database for the tests to use.
         /// </summary>
         /// <remarks>
-        /// Connection will be made using MySql login with user "cloudsa" and the provided password.
+        /// Connection will be made using MySql login with user "root" and the provided password.
         /// </remarks>
         public static void SetupDatabase(out string MasterConnectionString, out string DatabaseName)
         {
@@ -86,7 +86,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
                 connectionStringBuilder = new MySqlConnectionStringBuilder();
 
                 // Either use integrated auth or MySQL login depending if SA_PASSWORD is set
-                string userId = "cloudsa";
+                string userId = "root";
                 string password = Environment.GetEnvironmentVariable("SA_PASSWORD");
                 if (string.IsNullOrEmpty(password))
                 {
