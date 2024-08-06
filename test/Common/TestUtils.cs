@@ -79,7 +79,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
                 string testServer = Environment.GetEnvironmentVariable("TEST_SERVER");
                 if (string.IsNullOrEmpty(testServer))
                 {
-                    testServer = "mysqlTest";
+                    testServer = "localhost";
                 }
 
                 // First connect to master to create the database
