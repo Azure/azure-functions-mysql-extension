@@ -33,7 +33,7 @@ public class AddProductColumnTypes {
                 HttpRequestMessage<Optional<String>> request,
             @MySqlOutput(
                 name = "product",
-                commandText = "ProductsColumnTypes",
+                tableName = "ProductsColumnTypes",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<ProductColumnTypes> product) {
 

@@ -30,7 +30,7 @@ public class AddProductExtraColumns {
                 HttpRequestMessage<Optional<String>> request,
             @MySqlOutput(
                 name = "product",
-                commandText = "Products",
+                tableName = "Products",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<ProductExtraColumns> product) {
 
