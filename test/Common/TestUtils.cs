@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security.Authentication;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -98,6 +99,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
                     connectionStringBuilder.UserID = userId;
                     connectionStringBuilder.Password = password;
                     connectionStringBuilder.SslMode = MySqlSslMode.Preferred;
+                    connectionStringBuilder.TlsVersion = SslProtocols.Tls12.ToString() + "," + SslProtocols.Tls13.ToString();
                 }
                 masterConnectionString = connectionStringBuilder.ToString();
             }
