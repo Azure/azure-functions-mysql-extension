@@ -97,6 +97,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
                     connectionStringBuilder.Server = testServer;
                     connectionStringBuilder.UserID = userId;
                     connectionStringBuilder.Password = password;
+                    connectionStringBuilder.SslMode = MySqlSslMode.Preferred;
                 }
                 masterConnectionString = connectionStringBuilder.ToString();
             }
