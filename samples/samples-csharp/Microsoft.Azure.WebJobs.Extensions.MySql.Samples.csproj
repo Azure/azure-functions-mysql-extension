@@ -14,6 +14,9 @@
   </ItemGroup>
 
   <ItemGroup>
+	<None Update="Database\**\*.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="host.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
