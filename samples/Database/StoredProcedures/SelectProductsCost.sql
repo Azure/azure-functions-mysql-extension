@@ -1,4 +1,4 @@
-DROP PROCEDURE SelectProductsCost;
+DROP PROCEDURE IF EXISTS SelectProductsCost;
 
 DELIMITER //
 Create Procedure SelectProductsCost(
