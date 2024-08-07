@@ -142,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // We will wait 6 seconds to guarantee that it has been fired at least once, and check that at least 1000 rows of data has been added.
             Thread.Sleep(6000);
 
-            int rowsAdded = (int)this.ExecuteScalar("SELECT COUNT(1) FROM Products");
+            int rowsAdded = Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(1) FROM Products"));
             Assert.True(rowsAdded >= 1000);
         }
 
@@ -199,10 +199,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 { "name", "MyProduct" },
                 { "cost", "1" }
             };
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity"));
+            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity")));
             await this.SendOutputGetRequest("addproductwithidentitycolumn", query);
             // Product should have been inserted correctly even without an ID when there's an identity column present
-            Assert.Equal(1, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity"));
+            Assert.Equal(1, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity")));
         }
 
         /// <summary>
@@ -214,10 +214,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         {
             this.StartFunctionHost(nameof(AddProductsWithIdentityColumnArray), lang);
 
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity"));
+            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity")));
             await this.SendOutputGetRequest("addproductswithidentitycolumnarray", null);
             // Multiple items should have been inserted
-            Assert.Equal(2, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity"));
+            Assert.Equal(2, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity")));
         }
 
         /// <summary>
@@ -234,10 +234,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 { "name", "MyProduct" },
                 { "cost", "1" }
             };
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithMultiplePrimaryColumnsAndIdentity"));
+            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithMultiplePrimaryColumnsAndIdentity")));
             await this.SendOutputGetRequest("addproductwithmultipleprimarycolumnsandidentity", query, TestUtils.GetPort(lang));
             // Product should have been inserted correctly even without an ID when there's an identity column present
-            Assert.Equal(1, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithMultiplePrimaryColumnsAndIdentity"));
+            Assert.Equal(1, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithMultiplePrimaryColumnsAndIdentity")));
         }
 
         /// <summary>
@@ -255,10 +255,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 { "name", "MyProduct" },
                 { "cost", "1" }
             };
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity"));
+            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity")));
             await this.SendOutputGetRequest(nameof(AddProductWithIdentityColumnIncluded), query);
             // New row should have been inserted
-            Assert.Equal(1, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity"));
+            Assert.Equal(1, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity")));
             query = new Dictionary<string, string>()
             {
                 { "productId", "1" },
@@ -284,10 +284,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 { "name", "MyProduct" },
                 { "cost", "1" }
             };
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity"));
+            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity")));
             await this.SendOutputGetRequest(nameof(AddProductWithIdentityColumnIncluded), query);
             // New row should have been inserted
-            Assert.Equal(1, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity"));
+            Assert.Equal(1, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity")));
             query = new Dictionary<string, string>()
             {
                 { "name", "MyProduct2" },
