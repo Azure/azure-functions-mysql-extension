@@ -41,7 +41,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 
             // Verify result
             Assert.Equal(name, this.ExecuteScalar($"select Name from Products where ProductId={id}"));
-            Assert.Equal(cost, this.ExecuteScalar($"select cost from Products where ProductId={id}"));
+            Assert.Equal(cost, Convert.ToInt32(this.ExecuteScalar($"select cost from Products where ProductId={id}")));
         }
 
         [Theory]
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 
             // Verify result
             Assert.Equal(name, this.ExecuteScalar($"select Name from Products where ProductId={id}"));
-            Assert.Equal(cost, this.ExecuteScalar($"select cost from Products where ProductId={id}"));
+            Assert.Equal(cost, Convert.ToInt32(this.ExecuteScalar($"select cost from Products where ProductId={id}")));
         }
 
         [Theory]
@@ -95,9 +95,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             await this.SendOutputPostRequest("addproducts-array", Utils.JsonSerializeObject(prods), TestUtils.GetPort(lang));
 
             // Function call changes first 2 rows to (1, 'Cup', 2) and (2, 'Glasses', 12)
-            Assert.Equal(1, this.ExecuteScalar("SELECT COUNT(1) FROM Products WHERE Cost = 100"));
-            Assert.Equal(2, this.ExecuteScalar("SELECT Cost FROM Products WHERE ProductId = 1"));
-            Assert.Equal(2, this.ExecuteScalar("SELECT ProductId FROM Products WHERE Cost = 12"));
+            Assert.Equal(1, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(1) FROM Products WHERE Cost = 100")));
+            Assert.Equal(2, Convert.ToInt32(this.ExecuteScalar("SELECT Cost FROM Products WHERE ProductId = 1")));
+            Assert.Equal(2, Convert.ToInt32(this.ExecuteScalar("SELECT ProductId FROM Products WHERE Cost = 12")));
         }
 
         /// <summary>
@@ -312,10 +312,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 { "name", "MyProduct" },
                 { "cost", "1" }
             };
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithMultiplePrimaryColumnsAndIdentity"));
+            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithMultiplePrimaryColumnsAndIdentity")));
             Assert.Throws<AggregateException>(() => this.SendOutputGetRequest("addproductwithmultipleprimarycolumnsandidentity", query, TestUtils.GetPort(lang)).Wait());
             // Nothing should have been inserted
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithMultiplePrimaryColumnsAndIdentity"));
+            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithMultiplePrimaryColumnsAndIdentity")));
         }
 
         /// <summary>
@@ -331,10 +331,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 { "Name", "MyProduct" },
                 { "Cost", 1 }
             };
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK"));
+            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK")));
             await this.SendOutputPostRequest("addproductwithdefaultpk", Utils.JsonSerializeObject(product), TestUtils.GetPort(lang));
             await this.SendOutputPostRequest("addproductwithdefaultpk", Utils.JsonSerializeObject(product), TestUtils.GetPort(lang));
-            Assert.Equal(2, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK"));
+            Assert.Equal(2, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK")));
             // Should throw error when there is no default PK and the primary key is missing from the user object.
             Assert.Throws<AggregateException>(() => this.SendOutputPostRequest("addproduct", Utils.JsonSerializeObject(product), TestUtils.GetPort(lang)).Wait());
         }
@@ -390,7 +390,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 
             // Verify result
             Assert.Equal("test", this.ExecuteScalar($"select Name from Products where ProductId=0"));
-            Assert.Equal(100, this.ExecuteScalar($"select Cost from Products where ProductId=0"));
+            Assert.Equal(100, Convert.ToInt32(this.ExecuteScalar($"select Cost from Products where ProductId=0")));
 
             // Change database collation back to case insensitive
             this.ExecuteNonQuery($"ALTER DATABASE {this.DatabaseName} SET Single_User WITH ROLLBACK IMMEDIATE; ALTER DATABASE {this.DatabaseName} COLLATE Latin1_General_CI_AS; ALTER DATABASE {this.DatabaseName} SET Multi_User;");
@@ -405,7 +405,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         public void AddProductIncorrectCasing(SupportedLanguages lang)
         {
             Assert.Throws<AggregateException>(() => this.SendOutputGetRequest("addproduct-incorrectcasing", null, TestUtils.GetPort(lang, true)).Wait());
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM Products"));
+            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM Products")));
         }
 
         /// <summary>
@@ -472,7 +472,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         [MySqlInlineData()]
         public async Task AddProductDefaultPKAndDifferentColumnOrderTest(SupportedLanguages lang)
         {
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK"));
+            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK")));
             await this.SendOutputGetRequest("addproductdefaultpkanddifferentcolumnorder", null, TestUtils.GetPort(lang, true));
             Assert.Equal(1, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK"));
         }

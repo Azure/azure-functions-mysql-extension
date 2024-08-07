@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             Product[] products = GetProductsWithSameCostAndName(n, cost, "", n * 2);
             this.InsertProducts(products);
 
-            Assert.Equal(n, this.ExecuteScalar($"select count(1) from Products where name = '' and cost = {cost}"));
+            Assert.Equal(n, Convert.ToInt32(this.ExecuteScalar($"select count(1) from Products where name = '' and cost = {cost}"));
 
             // Run the function
             HttpResponseMessage response = await this.SendInputRequest("getproducts-nameempty", cost.ToString(), TestUtils.GetPort(lang));
