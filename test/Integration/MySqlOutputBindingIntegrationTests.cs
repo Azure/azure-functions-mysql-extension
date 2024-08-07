@@ -143,7 +143,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             Thread.Sleep(6000);
 
             int rowsAdded = Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(1) FROM Products"));
-            Console.WriteLine("No of rows added:{0} ", rowsAdded);
+            this.LogOutput($"No of rows added:  ${rowsAdded}");
             Assert.True(rowsAdded >= 1000);
         }
 
@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // Since ProductExtraColumns has columns that does not exist in the table,
             // no rows should be added to the table.
             Assert.Throws<AggregateException>(() => this.SendOutputGetRequest("addproduct-extracolumns", null, TestUtils.GetPort(lang, true)).Wait());
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM Products"));
+            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM Products")));
         }
 
         [Theory]
@@ -354,7 +354,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             //      2. This one will trigger an "insert" query (which ultimately fails due to the incorrect casing, but the table information is still retrieved first)
             Assert.Throws<AggregateException>(() => this.SendOutputGetRequest("addproduct-incorrectcasing", null, TestUtils.GetPort(lang, true)).Wait());
             // Ensure that we have the one expected item
-            Assert.True(1 == (int)this.ExecuteScalar("SELECT COUNT(*) FROM Products"), "There should be one item initially");
+            Assert.True(1 == (int)(long)this.ExecuteScalar("SELECT COUNT(*) FROM Products"), "There should be one item initially");
             var productWithPrimaryKey = new Dictionary<string, object>()
             {
                 { "ProductId", 1 },
@@ -363,7 +363,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             };
             // Now send an output request that we expect to succeed - specifically one that will result in an update so requires the MERGE statement
             await this.SendOutputPostRequest("addproduct", Utils.JsonSerializeObject(productWithPrimaryKey), TestUtils.GetPort(lang));
-            Assert.True(1 == (int)this.ExecuteScalar("SELECT COUNT(*) FROM Products"), "There should be one item at the end");
+            Assert.True(1 == (int)(long)this.ExecuteScalar("SELECT COUNT(*) FROM Products"), "There should be one item at the end");
         }
 
         /// <summary>
