@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
             {
                 using var masterConnection = new MySqlConnection(masterConnectionString);
                 masterConnection.Open();
-                ExecuteNonQuery(masterConnection, $"CREATE DATABASE [{databaseName}]", Console.WriteLine);
+                ExecuteNonQuery(masterConnection, $"CREATE DATABASE {databaseName};", Console.WriteLine);
             }, Console.WriteLine);
 
             connectionStringBuilder.Database = databaseName;
