@@ -143,6 +143,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             Thread.Sleep(6000);
 
             int rowsAdded = Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(1) FROM Products"));
+            Console.WriteLine("No of rows added:{0} ", rowsAdded);
             Assert.True(rowsAdded >= 1000);
         }
 
