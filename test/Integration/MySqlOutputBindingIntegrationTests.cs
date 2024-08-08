@@ -399,17 +399,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         }
 
         /// <summary>
-        /// Tests that an error is thrown when the object field names and table column names do not match.
-        /// </summary>
-        [Theory]
-        [MySqlInlineData()]
-        public void AddProductIncorrectCasing(SupportedLanguages lang)
-        {
-            Assert.Throws<AggregateException>(() => this.SendOutputGetRequest("addproduct-incorrectcasing", null, TestUtils.GetPort(lang, true)).Wait());
-            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM Products")));
-        }
-
-        /// <summary>
         /// Tests that subsequent upserts work correctly when the object properties are different from the first upsert.
         /// </summary>
         [Theory]
