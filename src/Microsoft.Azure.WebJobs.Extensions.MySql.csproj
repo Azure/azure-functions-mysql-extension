@@ -15,6 +15,7 @@
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+	<GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
   </PropertyGroup>
 
   <ItemGroup>
