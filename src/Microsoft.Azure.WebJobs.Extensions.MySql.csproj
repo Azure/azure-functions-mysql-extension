@@ -14,8 +14,7 @@
     <PackageTags>Microsoft Azure WebJobs AzureFunctions for AzureMySql</PackageTags>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-	<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-	<GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+	<AppConfig>App.config</AppConfig>
   </PropertyGroup>
 
   <ItemGroup>
@@ -40,11 +39,6 @@
     <None Include="..\README.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="web.config">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
   <Target Name="PackAndCopyNupkg" AfterTargets="Build">
     <!-- Removed the GeneratePackageOnBuild and adding this explicit Pack command to run post build
     and also adding the copy package to local-packages to be available for the worker extension project. -->
