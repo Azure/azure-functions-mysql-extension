@@ -1766,6 +1766,7 @@
           "Microsoft.SqlServer.TransactSql.ScriptDom": "[161.9109.0, )",
           "MySql.Data": "[8.4.0, )",
           "Newtonsoft.Json": "[13.0.3, )",
+          "System.Diagnostics.DiagnosticSource": "[7.0.2, )",
           "System.Runtime.Caching": "[8.0.0, )",
           "morelinq": "[4.1.0, )"
         }
