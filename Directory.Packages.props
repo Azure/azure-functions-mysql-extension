@@ -5,7 +5,7 @@
     <PackageVersion Include="MySql.Data" Version="8.4.0" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.1.1" />
     <PackageVersion Include="morelinq" Version="4.1.0" />
-    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="7.0.0" />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="7.0.2" />
     <PackageVersion Include="System.Drawing.Common" Version="6.0.0" />
     <PackageVersion Include="System.Runtime.Caching" Version="8.0.0" />
     <PackageVersion Include="System.Net.NameResolution" Version="4.3.0" />

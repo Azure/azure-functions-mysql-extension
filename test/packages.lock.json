@@ -77,15 +77,6 @@
         "resolved": "13.0.3",
         "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ=="
       },
-      "System.Diagnostics.DiagnosticSource": {
-        "type": "Direct",
-        "requested": "[7.0.0, )",
-        "resolved": "7.0.0",
-        "contentHash": "9W0ewWDuAyDqS2PigdTxk6jDKonfgscY/hP8hm7VpxYhNHZHKvZTdRckberlFk3VnCmr3xBUyMBut12Q+T2aOw==",
-        "dependencies": {
-          "System.Runtime.CompilerServices.Unsafe": "6.0.0"
-        }
-      },
       "xRetry": {
         "type": "Direct",
         "requested": "[1.9.0, )",
@@ -1775,7 +1766,6 @@
           "Microsoft.SqlServer.TransactSql.ScriptDom": "[161.9109.0, )",
           "MySql.Data": "[8.4.0, )",
           "Newtonsoft.Json": "[13.0.3, )",
-          "System.Diagnostics.DiagnosticSource": "[7.0.0, )",
           "System.Runtime.Caching": "[8.0.0, )",
           "morelinq": "[4.1.0, )"
         }
@@ -1894,6 +1884,15 @@
           "System.Text.Json": "7.0.1",
           "System.Threading.Tasks.Extensions": "4.5.4",
           "ZstdSharp.Port": "0.7.1"
+        }
+      },
+      "System.Diagnostics.DiagnosticSource": {
+        "type": "CentralTransitive",
+        "requested": "[7.0.2, )",
+        "resolved": "7.0.2",
+        "contentHash": "hYr3I9N9811e0Bjf2WNwAGGyTuAFbbTgX1RPLt/3Wbm68x3IGcX5Cl75CMmgT6WlNwLQ2tCCWfqYPpypjaf2xA==",
+        "dependencies": {
+          "System.Runtime.CompilerServices.Unsafe": "6.0.0"
         }
       },
       "System.Drawing.Common": {
