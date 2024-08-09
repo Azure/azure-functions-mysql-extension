@@ -1602,7 +1602,7 @@
           "Microsoft.SqlServer.TransactSql.ScriptDom": "[161.9109.0, )",
           "MySql.Data": "[8.4.0, )",
           "Newtonsoft.Json": "[13.0.3, )",
-          "System.Diagnostics.DiagnosticSource": "[7.0.2, )",
+          "System.Diagnostics.DiagnosticSource": "[7.0.0, )",
           "System.Runtime.Caching": "[8.0.0, )",
           "morelinq": "[4.1.0, )"
         }
@@ -1746,9 +1746,9 @@
       },
       "System.Diagnostics.DiagnosticSource": {
         "type": "CentralTransitive",
-        "requested": "[7.0.2, )",
-        "resolved": "7.0.2",
-        "contentHash": "hYr3I9N9811e0Bjf2WNwAGGyTuAFbbTgX1RPLt/3Wbm68x3IGcX5Cl75CMmgT6WlNwLQ2tCCWfqYPpypjaf2xA==",
+        "requested": "[7.0.0, )",
+        "resolved": "7.0.0",
+        "contentHash": "9W0ewWDuAyDqS2PigdTxk6jDKonfgscY/hP8hm7VpxYhNHZHKvZTdRckberlFk3VnCmr3xBUyMBut12Q+T2aOw==",
         "dependencies": {
           "System.Runtime.CompilerServices.Unsafe": "6.0.0"
         }

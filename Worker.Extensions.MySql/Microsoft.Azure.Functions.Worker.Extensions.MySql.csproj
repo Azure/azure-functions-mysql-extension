@@ -18,7 +18,6 @@
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Abstractions" />
-		<PackageReference Include="System.Diagnostics.DiagnosticSource" />
 		<None Include="..\Images\pkgicon.png" Pack="true" PackagePath="" />
 		<None Include="..\README.md" Pack="true" PackagePath="" />
 	</ItemGroup>
