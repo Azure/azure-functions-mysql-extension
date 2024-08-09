@@ -37,11 +37,6 @@
     <None Include="..\Images\pkgicon.png" Pack="true" PackagePath="" />
     <None Include="..\README.md" Pack="true" PackagePath="" />
   </ItemGroup> 
-   <ItemGroup>
-    <Content Include="web.config">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
   <Target Name="PackAndCopyNupkg" AfterTargets="Build">
     <!-- Removed the GeneratePackageOnBuild and adding this explicit Pack command to run post build
     and also adding the copy package to local-packages to be available for the worker extension project. -->
