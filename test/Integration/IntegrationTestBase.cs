@@ -340,6 +340,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             }
 
             this.ExecuteNonQuery(queryBuilder.ToString(), $"Inserting {products.Length} products");
+            Console.WriteLine($"Inserted products into products table");
         }
 
         protected static Product[] GetProducts(int n, int cost)
