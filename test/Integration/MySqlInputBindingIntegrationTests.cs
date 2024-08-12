@@ -137,24 +137,24 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             ProductColumnTypes[] expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(/*lang=json,strict*/ "[{\"ProductId\":999,\"BigInt\":999,\"Bit\":true,\"DecimalType\":1.2345,\"Numeric\":1.2345,\"SmallInt\":1,\"TinyInt\":1,\"FloatType\":0.1,\"Real\":0.1,\"Date\":\"2022-10-20T00:00:00.000Z\",\"Datetime\":\"2022-10-20T12:39:13.123Z\",\"Time\":\"12:39:13.1230000\",\"CharType\":\"test\",\"Varchar\":\"test\",\"Nchar\":\"\uFFFD\u0020\u0020\u0020\",\"Nvarchar\":\"\uFFFD\",\"Binary\":\"dGVzdA==\",\"Varbinary\":\"dGVzdA==\"}]");
 
             this.ExecuteNonQuery("INSERT INTO ProductsColumnTypes VALUES (" +
-                "999, " + // ProductId,
-                "999, " + // BigInt
-                "1, " + // Bit
-                "1.2345, " + // DecimalType
-                "1.2345, " + // Numeric  
-                "1, " + // SmallInt
-                "1, " + // TinyInt
-                ".1, " + // FloatType
-                ".1, " + // Real
-                "DateOnly.FromDateTime(DateTime.UtcNow)," +
-                "new SqlDateTime(DateTime.UtcNow).Value," +
-                "DateTime.UtcNow.ToTimestamp()," +
-                "'test', " + // CharType
-                "'test', " + // Varchar
-                "NCHAR(0xD84C), " + // Nchar
-                "NCHAR(0xD84C), " +  // Nvarchar
-                "CONVERT(BINARY, 'test'), " + // Binary
-                "CONVERT(VARBINARY, 'test'))"); // Varbinary
+                                 "999, " + // ProductId,
+                                 "999, " + // BigInt
+                                 "1, " + // Bit
+                                 "1.2345, " + // DecimalType
+                                 "1.2345, " + // Numeric
+                                 "1, " + // SmallInt
+                                 "1, " + // TinyInt
+                                 ".1, " + // FloatType
+                                 ".1, " + // Real
+                                 "CURDATE()," +
+                                 "CURRENT_TIMESTAMP," +
+                                 "CURTIME()," +
+                                 "'test', " + // CharType
+                                 "'test', " + // Varchar
+                                 "'test', " + // Nchar
+                                 "'test', " +  // Nvarchar
+                                 "0x9fad, " + // Binary
+                                 "'test'"); // Varbinary
 
             HttpResponseMessage response = await this.SendInputRequest("getproducts-columntypesserializationasyncenumerable", $"?culture={culture}");
             // We expect the datetime and datetime2 fields to be returned in UTC format
@@ -181,15 +181,15 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 "1, " + // TinyInt
                 ".1, " + // FloatType
                 ".1, " + // Real
-                "DateOnly.FromDateTime(DateTime.UtcNow)," +
-                "new SqlDateTime(DateTime.UtcNow).Value," +
-                "DateTime.UtcNow.ToTimestamp()," +
+                "CURDATE()," +
+                "CURRENT_TIMESTAMP," +
+                "CURTIME()," +
                 "'test', " + // CharType
                 "'test', " + // Varchar
-                "NCHAR(0xD84C), " + // Nchar
-                "NCHAR(0xD84C), " +  // Nvarchar
-                "CONVERT(BINARY, 'test'), " + // Binary
-                "CONVERT(VARBINARY, 'test'))"); // Varbinary
+                "'test', " + // Nchar
+                "'test', " +  // Nvarchar
+                "0x9fad, " + // Binary
+                "'test'"); // Varbinary
 
             HttpResponseMessage response = await this.SendInputRequest("getproducts-columntypesserialization", "", TestUtils.GetPort(lang, true));
             // We expect the date fields to be returned in UTC format
