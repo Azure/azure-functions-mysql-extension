@@ -3,7 +3,6 @@
     <PackageReference Include="Microsoft.Azure.Functions.Extensions" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="Microsoft.Windows.Compatibility" />
     <PackageReference Include="Moq" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
@@ -13,6 +12,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="System.Net.Http" />
     <PackageReference Include="System.Diagnostics.DiagnosticSource" />
+	<FunctionsPreservedDependencies Include="System.Diagnostics.DiagnosticSource.dll" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\src\Microsoft.Azure.WebJobs.Extensions.MySql.csproj" />
