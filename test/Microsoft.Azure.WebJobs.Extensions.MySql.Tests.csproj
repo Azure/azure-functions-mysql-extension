@@ -11,7 +11,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Http" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="System.Net.Http" />
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" />
 	<FunctionsPreservedDependencies Include="System.Diagnostics.DiagnosticSource.dll" />
   </ItemGroup>
   <ItemGroup>
