@@ -40,7 +40,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             await this.SendOutputPostRequest("addproduct", Utils.JsonSerializeObject(query), TestUtils.GetPort(lang));
 
             // Verify result
-            Assert.Equal(name, this.ExecuteScalar($"select Name from Products where ProductId={id}"));
+            Assert.Equal(name, Convert.ToString(this.ExecuteScalar($"select Name from Products where ProductId={id}")));
             Assert.Equal(cost, Convert.ToInt32(this.ExecuteScalar($"select cost from Products where ProductId={id}")));
         }
 
@@ -63,7 +63,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             await this.SendOutputGetRequest("addproduct-params", query, TestUtils.GetPort(lang));
 
             // Verify result
-            Assert.Equal(name, this.ExecuteScalar($"select Name from Products where ProductId={id}"));
+            Assert.Equal(name, Convert.ToString(this.ExecuteScalar($"select Name from Products where ProductId={id}")));
             Assert.Equal(cost, Convert.ToInt32(this.ExecuteScalar($"select cost from Products where ProductId={id}")));
         }
 
@@ -164,7 +164,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // Even though the ProductMissingColumns object is missing the Cost column,
             // the row should still be added successfully since Cost can be null.
             await this.SendOutputPostRequest("addproduct-missingcolumns", "", TestUtils.GetPort(lang, true));
-            Assert.Equal(1, this.ExecuteScalar("SELECT COUNT(*) FROM Products"));
+            Assert.Equal(1, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM Products")));
         }
 
         [Theory]
@@ -182,7 +182,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         {
             Assert.Throws<AggregateException>(() => this.SendOutputPostRequest("addproducts-nopartialupsert", "", TestUtils.GetPort(lang, true)).Wait());
             // No rows should be upserted since there was a row with an invalid value
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsNameNotNull"));
+            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsNameNotNull")));
         }
 
         /// <summary>
@@ -268,8 +268,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             };
             await this.SendOutputGetRequest(nameof(AddProductWithIdentityColumnIncluded), query);
             // Existing row should have been updated
-            Assert.Equal(1, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity"));
-            Assert.Equal(1, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity WHERE Name='MyProduct2'"));
+            Assert.Equal(1, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity")));
+            Assert.Equal(1, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity WHERE Name='MyProduct2'")));
         }
 
         /// <summary>
@@ -296,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             };
             await this.SendOutputGetRequest(nameof(AddProductWithIdentityColumnIncluded), query);
             // Another new row should have been inserted
-            Assert.Equal(2, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity"));
+            Assert.Equal(2, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity")));
         }
 
         /// <summary>
@@ -464,7 +464,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         {
             Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK")));
             await this.SendOutputGetRequest("addproductdefaultpkanddifferentcolumnorder", null, TestUtils.GetPort(lang, true));
-            Assert.Equal(1, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK"));
+            Assert.Equal(1, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK")));
         }
     }
 }
