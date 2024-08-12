@@ -8,8 +8,6 @@ using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.Common;
 using Xunit;
 using Xunit.Abstractions;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
-using Google.Protobuf.WellKnownTypes;
-using System.Data.SqlTypes;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 {
