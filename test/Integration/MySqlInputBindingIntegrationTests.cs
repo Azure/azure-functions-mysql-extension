@@ -154,7 +154,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                                  "'test', " + // Nchar
                                  "'test', " +  // Nvarchar
                                  "0x9fad, " + // Binary
-                                 "'test'"); // Varbinary
+                                 "'test')"); // Varbinary
 
             HttpResponseMessage response = await this.SendInputRequest("getproducts-columntypesserializationasyncenumerable", $"?culture={culture}");
             // We expect the datetime and datetime2 fields to be returned in UTC format
@@ -189,7 +189,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 "'test', " + // Nchar
                 "'test', " +  // Nvarchar
                 "0x9fad, " + // Binary
-                "'test'"); // Varbinary
+                "'test')"); // Varbinary
 
             HttpResponseMessage response = await this.SendInputRequest("getproducts-columntypesserialization", "", TestUtils.GetPort(lang, true));
             // We expect the date fields to be returned in UTC format
