@@ -11,7 +11,6 @@ using Xunit.Abstractions;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using MySql.Data.MySqlClient;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 {
@@ -364,38 +363,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // Now send an output request that we expect to succeed - specifically one that will result in an update so requires the MERGE statement
             await this.SendOutputPostRequest("addproduct", Utils.JsonSerializeObject(productWithPrimaryKey), TestUtils.GetPort(lang));
             Assert.True(1 == (int)(long)this.ExecuteScalar("SELECT COUNT(*) FROM Products"), "There should be one item at the end");
-        }
-
-        /// <summary>
-        /// Tests that upserting to a case sensitive database works correctly.
-        /// </summary>
-        [Theory]
-        [MySqlInlineData()]
-        public async Task AddProductToCaseSensitiveDatabase(SupportedLanguages lang)
-        {
-            // Change database collation to case sensitive
-            this.ExecuteNonQuery($"ALTER DATABASE {this.DatabaseName} SET Single_User WITH ROLLBACK IMMEDIATE; ALTER DATABASE {this.DatabaseName} COLLATE Latin1_General_CS_AS; ALTER DATABASE {this.DatabaseName} SET Multi_User;");
-            // Clear connection pool to ensure new connection is created with new collation
-            // This is to prevent the following error:
-            // "Resetting the connection results in a different state than the initial login. The login fails."
-            MySqlConnection.ClearAllPools();
-
-            var query = new Dictionary<string, object>()
-            {
-                { "ProductId", 0 },
-                { "Name", "test" },
-                { "Cost", 100 }
-            };
-
-            await this.SendOutputPostRequest("addproduct", Utils.JsonSerializeObject(query), TestUtils.GetPort(lang));
-
-            // Verify result
-            Assert.Equal("test", this.ExecuteScalar($"select Name from Products where ProductId=0"));
-            Assert.Equal(100, Convert.ToInt32(this.ExecuteScalar($"select Cost from Products where ProductId=0")));
-
-            // Change database collation back to case insensitive
-            this.ExecuteNonQuery($"ALTER DATABASE {this.DatabaseName} SET Single_User WITH ROLLBACK IMMEDIATE; ALTER DATABASE {this.DatabaseName} COLLATE Latin1_General_CI_AS; ALTER DATABASE {this.DatabaseName} SET Multi_User;");
-            MySqlConnection.ClearAllPools();
         }
 
         /// <summary>

@@ -8,6 +8,8 @@ using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.Common;
 using Xunit;
 using Xunit.Abstractions;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
+using Google.Protobuf.WellKnownTypes;
+using System.Data.SqlTypes;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 {
@@ -133,7 +135,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         {
             this.StartFunctionHost(nameof(GetProductsColumnTypesSerializationAsyncEnumerable), lang, true);
 
-            string datetime = "2022-10-20 12:39:13.123";
+            // string datetime = "2022-10-20 12:39:13.123";
             ProductColumnTypes[] expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(/*lang=json,strict*/ "[{\"ProductId\":999,\"BigInt\":999,\"Bit\":true,\"DecimalType\":1.2345,\"Numeric\":1.2345,\"SmallInt\":1,\"TinyInt\":1,\"FloatType\":0.1,\"Real\":0.1,\"Date\":\"2022-10-20T00:00:00.000Z\",\"Datetime\":\"2022-10-20T12:39:13.123Z\",\"Time\":\"12:39:13.1230000\",\"CharType\":\"test\",\"Varchar\":\"test\",\"Nchar\":\"\uFFFD\u0020\u0020\u0020\",\"Nvarchar\":\"\uFFFD\",\"Binary\":\"dGVzdA==\",\"Varbinary\":\"dGVzdA==\"}]");
 
             this.ExecuteNonQuery("INSERT INTO ProductsColumnTypes VALUES (" +
@@ -146,9 +148,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 "1, " + // TinyInt
                 ".1, " + // FloatType
                 ".1, " + // Real
-                $"CONVERT(DATE, '{datetime}'), " + // Date
-                $"CONVERT(DATETIME, '{datetime}'), " + // Datetime
-                $"CONVERT(TIME, '{datetime}'), " + // Time
+                "DateOnly.FromDateTime(DateTime.UtcNow)," +
+                "new SqlDateTime(DateTime.UtcNow).Value," +
+                "DateTime.UtcNow.ToTimestamp()," +
                 "'test', " + // CharType
                 "'test', " + // Varchar
                 "NCHAR(0xD84C), " + // Nchar
@@ -170,7 +172,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         [MySqlInlineData()]
         public async void GetProductsColumnTypesSerializationTest(SupportedLanguages lang)
         {
-            string datetime = "2022-10-20 12:39:13.123";
+            // string datetime = "2022-10-20 12:39:13.123";
             this.ExecuteNonQuery("INSERT INTO ProductsColumnTypes VALUES (" +
                 "999, " + // ProductId,
                 "999, " + // BigInt
@@ -181,9 +183,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 "1, " + // TinyInt
                 ".1, " + // FloatType
                 ".1, " + // Real
-                $"CONVERT(DATE, '{datetime}'), " + // Date
-                $"CONVERT(DATETIME, '{datetime}'), " + // Datetime
-                $"CONVERT(TIME, '{datetime}'), " + // Time
+                "DateOnly.FromDateTime(DateTime.UtcNow)," +
+                "new SqlDateTime(DateTime.UtcNow).Value," +
+                "DateTime.UtcNow.ToTimestamp()," +
                 "'test', " + // CharType
                 "'test', " + // Varchar
                 "NCHAR(0xD84C), " + // Nchar
