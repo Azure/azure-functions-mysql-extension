@@ -28,21 +28,21 @@ namespace DotnetIsolatedTests
             {
                 ProductId = int.Parse(queryStrings["productId"], null),
                 // Integer Types in MySql. reference: https://dev.mysql.com/doc/refman/8.0/en/numeric-types.html
-                BigInt = int.MaxValue,
-                Bit = true,
+                BigIntType = int.MaxValue,
+                BitType = true,
                 DecimalType = 1.2345M,
-                Numeric = 1.2345M,
-                SmallInt = 0,
-                TinyInt = 1,
+                NumericType = 1.2345M,
+                SmallIntType = 0,
+                TinyIntType = 1,
                 FloatType = 1.2,
-                Real = 1.2f,
-                Date = DateTime.UtcNow,
-                Datetime = new SqlDateTime(DateTime.UtcNow).Value,
-                Time = DateTime.UtcNow.TimeOfDay,
+                RealType = 1.2f,
+                DateType = DateTime.UtcNow,
+                DatetimeType = new SqlDateTime(DateTime.UtcNow).Value,
+                TimeType = DateTime.UtcNow.TimeOfDay,
                 CharType = "test",
-                Varchar = "test",
-                Nchar = "test",
-                Nvarchar = "test"
+                VarcharType = "test",
+                NcharType = "test",
+                NvarcharType = "test"
             };
             return product;
         }

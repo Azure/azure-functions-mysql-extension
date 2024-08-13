@@ -63,39 +63,39 @@ namespace DotnetIsolatedTests.Common
     {
         public int ProductId { get; set; }
 
-        public long BigInt { get; set; }
+        public long BigIntType { get; set; }
 
-        public bool Bit { get; set; }
+        public bool BitType { get; set; }
 
         public decimal DecimalType { get; set; }
 
-        public decimal Numeric { get; set; }
+        public decimal NumericType { get; set; }
 
-        public short SmallInt { get; set; }
+        public short SmallIntType { get; set; }
 
-        public short TinyInt { get; set; }
+        public short TinyIntType { get; set; }
 
         public double FloatType { get; set; }
 
-        public float Real { get; set; }
+        public float RealType { get; set; }
 
-        public DateTime Date { get; set; }
+        public DateTime DateType { get; set; }
 
-        public DateTime Datetime { get; set; }
+        public DateTime DatetimeType { get; set; }
 
-        public TimeSpan Time { get; set; }
+        public TimeSpan TimeType { get; set; }
 
         public string CharType { get; set; }
 
-        public string Varchar { get; set; }
+        public string VarcharType { get; set; }
 
-        public string Nchar { get; set; }
+        public string NcharType { get; set; }
 
-        public string Nvarchar { get; set; }
+        public string NvarcharType { get; set; }
 
-        public byte[] Binary { get; set; }
+        public byte[] BinaryType { get; set; }
 
-        public byte[] Varbinary { get; set; }
+        public byte[] VarbinaryType { get; set; }
 
 
         public override bool Equals(object obj)
@@ -103,13 +103,13 @@ namespace DotnetIsolatedTests.Common
             if (obj is ProductColumnTypes)
             {
                 var that = obj as ProductColumnTypes;
-                return this.ProductId == that.ProductId && this.BigInt == that.BigInt && this.Bit == that.Bit &&
-                    this.DecimalType == that.DecimalType && this.Numeric == that.Numeric &&
-                    this.SmallInt == that.SmallInt && this.TinyInt == that.TinyInt &&
-                    this.FloatType == that.FloatType && this.Real == that.Real && this.Date == that.Date &&
-                    this.Datetime == that.Datetime && this.Time == that.Time && this.CharType == that.CharType &&
-                    this.Varchar == that.Varchar && this.Nchar == that.Nchar && this.Nvarchar == that.Nvarchar &&
-                    this.Binary.SequenceEqual(that.Binary) && this.Varbinary.SequenceEqual(that.Varbinary);
+                return this.ProductId == that.ProductId && this.BigIntType == that.BigIntType && this.BitType == that.BitType &&
+                    this.DecimalType == that.DecimalType && this.NumericType == that.NumericType &&
+                    this.SmallIntType == that.SmallIntType && this.TinyIntType == that.TinyIntType &&
+                    this.FloatType == that.FloatType && this.RealType == that.RealType && this.DateType == that.DateType &&
+                    this.DatetimeType == that.DatetimeType && this.TimeType == that.TimeType && this.CharType == that.CharType &&
+                    this.VarcharType == that.VarcharType && this.NcharType == that.NcharType && this.NvarcharType == that.NvarcharType &&
+                    this.BinaryType.SequenceEqual(that.BinaryType) && this.VarbinaryType.SequenceEqual(that.VarbinaryType);
             }
             return false;
         }
