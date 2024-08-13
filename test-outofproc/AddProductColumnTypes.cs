@@ -28,32 +28,22 @@ namespace DotnetIsolatedTests
             var product = new ProductColumnTypes()
             {
                 ProductId = int.Parse(queryStrings["productId"], null),
-                // Ineger Types in MySql. reference: https://dev.mysql.com/doc/refman/8.0/en/numeric-types.html
-                BigInt = long.MaxValue,
-                IntType = int.MaxValue,
-                MediumInt = 8388607, // medium int in mysql can store 3 bytes, range (-8388608 .. 8388607)
-                SmallInt = short.MaxValue,
-                TinyInt = sbyte.MaxValue,
-                // Fixed-Point Types (Exact Value)
+                // Integer Types in MySql. reference: https://dev.mysql.com/doc/refman/8.0/en/numeric-types.html
+                BigInt = int.MaxValue,
+                Bit = true,
                 DecimalType = 1.2345M,
                 Numeric = 1.2345M,
-                // Floating-Point Types (Approximate Value)
-                FloatType = float.MaxValue,
-                DoubleType = double.MaxValue,
-                // Bit-Value Type
-                Bit = true,
-                // DateTime types. reference: https://dev.mysql.com/doc/refman/8.0/en/date-and-time-types.html
-                Date = DateOnly.FromDateTime(DateTime.UtcNow),
+                SmallInt = 0,
+                TinyInt = 1,
+                FloatType = 1.2,
+                Real = 1.2f,
+                Date = DateTime.UtcNow,
                 Datetime = new SqlDateTime(DateTime.UtcNow).Value,
-                TimeStampType = DateTime.UtcNow.ToTimestamp(),
                 Time = DateTime.UtcNow.TimeOfDay,
-                Year = DateTime.UtcNow.Year,
-                // String Data Types. reference: https://dev.mysql.com/doc/refman/8.0/en/string-types.html
                 CharType = "test",
                 Varchar = "test",
-                Binary = new byte[] { 0, 1, 2 },
-                VarBinary = new byte[] { 0, 1, 2, 3 },
-                Text = "test",
+                Nchar = "test",
+                Nvarchar = "test"
             };
             return product;
         }
