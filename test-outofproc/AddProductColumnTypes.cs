@@ -6,7 +6,6 @@ using System.Collections.Specialized;
 using System.Data.SqlTypes;
 using System.Web;
 using DotnetIsolatedTests.Common;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.Functions.Worker.Extensions.MySql;
