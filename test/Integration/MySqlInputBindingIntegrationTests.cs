@@ -133,28 +133,28 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         {
             this.StartFunctionHost(nameof(GetProductsColumnTypesSerializationAsyncEnumerable), lang, true);
 
-            // string datetime = "2022-10-20 12:39:13.123";
-            ProductColumnTypes[] expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(/*lang=json,strict*/ "[{\"ProductId\":999,\"BigInt\":999,\"Bit\":true,\"DecimalType\":1.2345,\"Numeric\":1.2345,\"SmallInt\":1,\"TinyInt\":1,\"FloatType\":0.1,\"Real\":0.1,\"Date\":\"2022-10-20T00:00:00.000Z\",\"Datetime\":\"2022-10-20T12:39:13.123Z\",\"Time\":\"12:39:13.1230000\",\"CharType\":\"test\",\"Varchar\":\"test\",\"Nchar\":\"\uFFFD\u0020\u0020\u0020\",\"Nvarchar\":\"\uFFFD\",\"Binary\":\"dGVzdA==\",\"Varbinary\":\"dGVzdA==\"}]");
+            string datetime = "2024-08-10 12:40:15";
+            ProductColumnTypes[] expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(/*lang=json,strict*/ "[{\"ProductId\":999,\"BigInt\":999,\"Bit\":true,\"DecimalType\":1.2345,\"Numeric\":1.2345,\"SmallInt\":1,\"TinyInt\":1,\"FloatType\":0.1,\"Real\":0.1,\"Date\":\"2024-08-10\",\"Datetime\":\"2024-08-10 12:40:15\",\"Time\":\"12:40:15\",\"CharType\":\"test\",\"Varchar\":\"test\",\"Nchar\":\"test\",\"Nvarchar\":\"test\",\"Binary\":\"dGVzdA==\",\"Varbinary\":\"test\"}]");
 
             this.ExecuteNonQuery("INSERT INTO ProductsColumnTypes VALUES (" +
-                                 "999, " + // ProductId,
-                                 "999, " + // BigInt
-                                 "1, " + // Bit
-                                 "1.2345, " + // DecimalType
-                                 "1.2345, " + // Numeric
-                                 "1, " + // SmallInt
-                                 "1, " + // TinyInt
-                                 ".1, " + // FloatType
-                                 ".1, " + // Real
-                                 "CURDATE()," +
-                                 "CURRENT_TIMESTAMP," +
-                                 "CURTIME()," +
-                                 "'test', " + // CharType
-                                 "'test', " + // Varchar
-                                 "'test', " + // Nchar
-                                 "'test', " +  // Nvarchar
-                                 "0x9fad, " + // Binary
-                                 "'test')"); // Varbinary
+                "999, " + // ProductId,
+                "999, " + // BigInt
+                "1, " + // Bit
+                "1.2345, " + // DecimalType
+                "1.2345, " + // Numeric
+                "1, " + // SmallInt
+                "1, " + // TinyInt
+                ".1, " + // FloatType
+                ".1, " + // Real
+                $"DATE('{datetime}')," +
+                $"'{datetime}'," +
+                $"TIME('{datetime}')," +
+                "'test', " + // CharType
+                "'test', " + // Varchar
+                "'test', " + // Nchar
+                "'test', " +  // Nvarchar
+                "0x9fad, " + // Binary
+                "'test')"); // Varbinary
 
             HttpResponseMessage response = await this.SendInputRequest("getproducts-columntypesserializationasyncenumerable", $"?culture={culture}");
             // We expect the datetime and datetime2 fields to be returned in UTC format
@@ -170,7 +170,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         [MySqlInlineData()]
         public async void GetProductsColumnTypesSerializationTest(SupportedLanguages lang)
         {
-            // string datetime = "2022-10-20 12:39:13.123";
+            string datetime = "2024-08-10 12:40:15";
             this.ExecuteNonQuery("INSERT INTO ProductsColumnTypes VALUES (" +
                 "999, " + // ProductId,
                 "999, " + // BigInt
@@ -181,9 +181,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 "1, " + // TinyInt
                 ".1, " + // FloatType
                 ".1, " + // Real
-                "CURDATE()," +
-                "CURRENT_TIMESTAMP," +
-                "CURTIME()," +
+                $"DATE('{datetime}')," +
+                $"'{datetime}'," +
+                $"TIME('{datetime}')," +
                 "'test', " + // CharType
                 "'test', " + // Varchar
                 "'test', " + // Nchar
@@ -193,7 +193,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 
             HttpResponseMessage response = await this.SendInputRequest("getproducts-columntypesserialization", "", TestUtils.GetPort(lang, true));
             // We expect the date fields to be returned in UTC format
-            ProductColumnTypes[] expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(/*lang=json,strict*/ "[{\"ProductId\":999,\"BigInt\":999,\"Bit\":true,\"DecimalType\":1.2345,\"Numeric\":1.2345,\"SmallInt\":1,\"TinyInt\":1,\"FloatType\":0.1,\"Real\":0.1,\"Date\":\"2022-10-20T00:00:00.000Z\",\"Datetime\":\"2022-10-20T12:39:13.123Z\",\"Time\":\"12:39:13.1230000\",\"CharType\":\"test\",\"Varchar\":\"test\",\"Nchar\":\"\uFFFD\u0020\u0020\u0020\",\"Nvarchar\":\"\uFFFD\",\"Binary\":\"dGVzdA==\",\"Varbinary\":\"dGVzdA==\"}]");
+            ProductColumnTypes[] expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(/*lang=json,strict*/ "[{\"ProductId\":999,\"BigInt\":999,\"Bit\":true,\"DecimalType\":1.2345,\"Numeric\":1.2345,\"SmallInt\":1,\"TinyInt\":1,\"FloatType\":0.1,\"Real\":0.1,\"Date\":\"2024-08-10\",\"Datetime\":\"2024-08-10 12:40:15\",\"Time\":\"12:40:15\",\"CharType\":\"test\",\"Varchar\":\"test\",\"Nchar\":\"test\",\"Nvarchar\":\"test\",\"Binary\":\"dGVzdA==\",\"Varbinary\":\"test\"}]");
             string actualResponse = await response.Content.ReadAsStringAsync();
             ProductColumnTypes[] actualProductResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(actualResponse);
             Assert.Equal(expectedResponse, actualProductResponse);
