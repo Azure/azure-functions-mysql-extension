@@ -40,11 +40,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         {
             var MySqlObj = new MySqlObject(fullName);
             Assert.Equal(expectedSchema, MySqlObj.Schema);
-            Assert.Equal(expectedQuotedSchema, MySqlObj.QuotedSchema);
+            Assert.Equal(expectedQuotedSchema, MySqlObj.AcuteQuotedSchema);
             Assert.Equal(expectedTableName, MySqlObj.Name);
-            Assert.Equal(expectedSchemaTableName, MySqlObj.QuotedName);
+            Assert.Equal(expectedSchemaTableName, MySqlObj.AcuteQuotedName);
             Assert.Equal(expectedFullName, MySqlObj.FullName);
-            Assert.Equal(expectedQuotedFullName, MySqlObj.QuotedFullName);
+            Assert.Equal(expectedQuotedFullName, MySqlObj.AcuteQuotedFullName);
         }
 
         [Theory]

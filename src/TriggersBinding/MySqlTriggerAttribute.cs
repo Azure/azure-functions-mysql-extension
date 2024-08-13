@@ -17,7 +17,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// Initializes a new instance of the <see cref="MySqlTriggerAttribute"/> class, which triggers the function when any changes on the specified table are detected.
         /// </summary>
         /// <param name="tableName">Name of the table to watch for changes.</param>
-        /// <param name="connectionStringSetting">The name of the app setting where the SQL connection string is stored</param>
+        /// <param name="connectionStringSetting">The name of the app setting where the MySQL connection string is stored</param>
         public MySqlTriggerAttribute(string tableName, string connectionStringSetting)
         {
             this.TableName = tableName ?? throw new ArgumentNullException(nameof(tableName));

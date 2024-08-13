@@ -190,6 +190,28 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <summary>
+        /// Escape any existing quotes and add quotes around the string.
+        /// </summary>
+        /// <param name="s">The string to quote.</param>
+        /// <returns>The escaped and quoted string.</returns>
+        public static string AsSingleQuotedString(this string s)
+        {
+            return $"'{s.AsSingleQuoteEscapedString()}'";
+        }
+
+        /// <summary>
+        /// Returns the string with any single quotes in it escaped (replaced with '')
+        /// </summary>
+        /// <param name="s">The string to escape.</param>
+        /// <returns>The escaped string.</returns>
+        public static string AsSingleQuoteEscapedString(this string s)
+        {
+            s.Replace("\\", "\\\\");
+            s.Replace("'", "\'");
+            return s;
+        }
+
+        /// <summary>
         /// Opens a connection and handles some specific errors if they occur.
         /// </summary>
         /// <param name="connection">The connection to open</param>

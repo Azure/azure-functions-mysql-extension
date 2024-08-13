@@ -44,8 +44,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 logger.LogDebug($"Database version: {dbVersion}");
 
                 getObjectIdQuery = dbVersion.ToString().StartsWith("5.7", StringComparison.InvariantCulture)
-                    ? $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_sys_tables where NAME = CONCAT(DATABASE(), '/', {userTable.QuotedName})"
-                    : $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_tables where NAME = CONCAT(DATABASE(), '/', {userTable.QuotedName})";
+                    ? $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_sys_tables where NAME = CONCAT(DATABASE(), '/', {userTable.AcuteQuotedName})"
+                    : $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_tables where NAME = CONCAT(DATABASE(), '/', {userTable.AcuteQuotedName})";
             }
 
 
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <summary>
         /// Gets the names and types of primary key columns of the user table.
         /// </summary>
-        /// <param name="connection">SQL connection used to connect to user database</param>
+        /// <param name="connection">MySQL connection used to connect to user database</param>
         /// <param name="userTableName">Name of the user table</param>
         /// <param name="logger">Facilitates logging of messages</param>
         /// <param name="cancellationToken">Cancellation token to pass to the command</param>
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// Returns the formatted leases table name. If userDefinedLeasesTableName is null, the default name Leases_{FunctionId}_{TableId} is used.
         /// </summary>
         /// <param name="userDefinedLeasesTableName">Leases table name defined by the user</param>
-        /// <param name="userTableId">SQL object ID of the user table</param>
+        /// <param name="userTableId">MySQL object ID of the user table</param>
         /// <param name="userFunctionId">Unique identifier for the user function</param>
         internal static string GetLeasesTableName(string userDefinedLeasesTableName, string userFunctionId, ulong userTableId)
         {

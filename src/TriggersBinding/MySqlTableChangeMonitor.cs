@@ -84,8 +84,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <summary>
         /// Initializes a new instance of the <see cref="MySqlTableChangeMonitor{T}" />> class.
         /// </summary>
-        /// <param name="connectionString">SQL connection string used to connect to user database</param>
-        /// <param name="userTableId">SQL object ID of the user table</param>
+        /// <param name="connectionString">MySQL connection string used to connect to user database</param>
+        /// <param name="userTableId">MySQL object ID of the user table</param>
         /// <param name="userTable"><see cref="MySqlObject" /> instance created with user table name</param>
         /// <param name="userFunctionId">Unique identifier for the user function</param>
         /// <param name="leasesTableName">Name of the leases table</param>
@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         }
                         catch (Exception e) when (connection.IsBrokenOrClosed())        // TODO: e.IsFatalMySqlException() || - check mysql corresponding 
                         {
-                            // Retry connection if there was a fatal SQL exception or something else caused the connection to be closed
+                            // Retry connection if there was a fatal MySQL exception or something else caused the connection to be closed
                             // since that indicates some other issue occurred (such as dropped network) and may be able to be recovered
                             this._logger.LogError($"Fatal MySQL Client exception processing changes. Will attempt to reestablish connection in {this._pollingIntervalInMs}ms. Exception = {e.Message}");
                             forceReconnect = true;
@@ -485,7 +485,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         }
                         catch (Exception e) when (e.IsDeadlockException() || /*e.IsFatalSqlException() || */connection.IsBrokenOrClosed())
                         {
-                            // Retry connection if there was a fatal SQL exception or something else caused the connection to be closed
+                            // Retry connection if there was a fatal MySQL exception or something else caused the connection to be closed
                             // since that indicates some other issue occurred (such as dropped network) and may be able to be recovered
                             forceReconnect = true;
                         }
