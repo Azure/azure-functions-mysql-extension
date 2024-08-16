@@ -485,7 +485,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             public static string GetInsertQuery(MySqlObject table, IEnumerable<string> columnNamesFromItem)
             {
-                return $"INSERT INTO {table.FullName} ({string.Join(",", columnNamesFromItem)}) VALUES";
+                return $"INSERT INTO {table.AcuteQuotedFullName} ({string.Join(",", columnNamesFromItem)}) VALUES";
             }
 
             public static string GetOnDuplicateUpdateQuery(IEnumerable<string> columnNamesFromItem)

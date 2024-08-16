@@ -206,8 +206,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The escaped string.</returns>
         public static string AsSingleQuoteEscapedString(this string s)
         {
-            s.Replace("\\", "\\\\");
-            s.Replace("'", "\'");
+            s = s.Replace("\\", "\\\\");
+            s = s.Replace("'", "\\'");
             return s;
         }
 
