@@ -266,6 +266,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         {
                             var commandSw = Stopwatch.StartNew();
                             await updateStartPollingTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
+                            this._logger.LogInformation($"Updated column {GlobalStateTableStartPollingTimeColumnName} in {GlobalStateTableName} table");
+
                             setStartPollingTimeDurationMs = commandSw.ElapsedMilliseconds;
                         }
 
@@ -275,7 +277,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         {
                             var commandSw = Stopwatch.StartNew();
 
-                            using (MySqlDataReader reader = getChangesCommand.ExecuteReader())
+                            this._logger.LogInformation($"Looking for latest changes in Table having ID : {this._userTableId}");
+
+                            using (MySqlDataReader reader = getChangesCommand.ExecuteReaderWithLogging(this._logger, true))
                             {
                                 while (reader.Read())
                                 {
@@ -289,6 +293,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         // If changes were found
                         if (rows.Count > 0)
                         {
+                            this._logger.LogInformation($"The total no of rows found to process is {rows.Count}");
+
                             using (MySqlCommand acquireLeasesCommand = this.BuildAcquireLeasesCommand(connection, transaction, rows))
                             {
                                 var commandSw = Stopwatch.StartNew();
@@ -357,7 +363,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             if (rowsAffected > 0)
                             {
                                 // Only send an event if we actually updated rows to reduce the overall number of events we send
-                                this._logger.LogInformation($"Updated Global State Table");
+                                this._logger.LogInformation($"Updated {GlobalStateTableLastPolledTimeColumnName} in {GlobalStateTableName} table");
                             }
                         }
 
@@ -444,7 +450,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 // This ideally should never happen, but as a safety measure ensure that if we tried to process changes but there weren't
                 // any we still ensure everything is reset to a clean state
-                //await this.ClearRowsAsync();
+                await this.ClearRowsAsync();
             }
             return isProcessChangesFailed;
         }
@@ -529,6 +535,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             if (rowsAffected > 0)
                             {
                                 // Only send an event if we actually updated rows to reduce the overall number of events we send
+                                this._logger.LogInformation($"Updated the Leases table {this._leasesTableName}");
                             }
                             transaction.Commit();
                         }

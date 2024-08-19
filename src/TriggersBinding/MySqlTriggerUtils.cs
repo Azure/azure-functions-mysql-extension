@@ -44,8 +44,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 logger.LogDebug($"Database version: {dbVersion}");
 
                 getObjectIdQuery = dbVersion.ToString().StartsWith("5.7", StringComparison.InvariantCulture)
-                    ? $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_sys_tables where NAME = CONCAT(DATABASE(), '/', {userTable.AcuteQuotedName})"
-                    : $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_tables where NAME = CONCAT(DATABASE(), '/', {userTable.AcuteQuotedName})";
+                    ? $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_sys_tables where NAME = CONCAT({userTable.SingleQuotedSchema}, '/', {userTable.SingleQuotedName})"
+                    : $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_tables where NAME = CONCAT({userTable.SingleQuotedSchema}, '/', {userTable.SingleQuotedName})";
             }
 
 

@@ -42,12 +42,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         public readonly string FullName;
         /// <summary>
-        /// The full name of the object in the format 'SCHEMA.NAME' (or just 'NAME' if there is no specified schema), quoted and escaped with single quotes
-        /// </summary>
-        /// <remarks>The schema and name are also bracket quoted to avoid issues when there are .'s in the object names</remarks>
-        public readonly string QuotedFullName;
-
-        /// <summary>
         /// The full name of the objected in the format `SCHEMA`.`NAME` (or just `NAME` if there is no specified schema), quoted and escaped with square brackets.
         /// </summary>
         public readonly string AcuteQuotedFullName;
