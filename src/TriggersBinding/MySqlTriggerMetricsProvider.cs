@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             string getUnprocessedChangesQuery = $@"
                         SELECT COUNT(*)
-                        FROM {this._userTable.FullName} AS u
+                        FROM {this._userTable.AcuteQuotedFullName} AS u
                         LEFT JOIN {leasesTableName} AS l ON {leasesTableJoinCondition}
                         WHERE 
                             ({UpdateAtColumnName} > (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {userTableId}))

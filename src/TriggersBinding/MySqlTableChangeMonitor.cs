@@ -649,7 +649,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         SELECT {selectList}, 
                         l.{LeasesTableAttemptCountColumnName},
                         l.{LeasesTableLeaseExpirationTimeColumnName}
-                        FROM {this._userTable.FullName} AS u
+                        FROM {this._userTable.AcuteQuotedFullName} AS u
                         LEFT JOIN {this._leasesTableName} AS l ON {leasesTableJoinCondition}
                         WHERE 
                             ({UpdateAtColumnName} > (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId}))
