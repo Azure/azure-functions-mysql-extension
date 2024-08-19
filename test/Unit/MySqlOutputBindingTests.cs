@@ -23,28 +23,34 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         }
 
         [Theory]
-        [InlineData("mydb.Products", "mydb", "`mydb`", "Products", "`Products`", "mydb.Products", "`mydb`.`Products`")]
-        [InlineData("`mydb`.Products", "mydb", "`mydb`", "Products", "`Products`", "mydb.Products", "`mydb`.`Products`")]
-        [InlineData("mydb.`Products`", "mydb", "`mydb`", "Products", "`Products`", "mydb.Products", "`mydb`.`Products`")]
-        [InlineData("`mydb`.`Products`", "mydb", "`mydb`", "Products", "`Products`", "mydb.Products", "`mydb`.`Products`")]
-        [InlineData("Products", "SCHEMA()", "SCHEMA()", "Products", "`Products`", "Products", "`Products`")]
-        [InlineData("`Products`", "SCHEMA()", "SCHEMA()", "Products", "`Products`", "Products", "`Products`")]
-        [InlineData("`''`", "SCHEMA()", "SCHEMA()", "''", "`''`", "''", "`''`")]
+        [InlineData("mydb.Products", "mydb", "`mydb`", "'mydb'", "Products", "`Products`", "'Products'", "mydb.Products", "`mydb`.`Products`")]
+        [InlineData("`mydb`.Products", "mydb", "`mydb`", "'mydb'", "Products", "`Products`", "'Products'", "mydb.Products", "`mydb`.`Products`")]
+        [InlineData("mydb.`Products`", "mydb", "`mydb`", "'mydb'", "Products", "`Products`", "'Products'", "mydb.Products", "`mydb`.`Products`")]
+        [InlineData("`mydb`.`Products`", "mydb", "`mydb`", "'mydb'", "Products", "`Products`", "'Products'", "mydb.Products", "`mydb`.`Products`")]
+        [InlineData("Products", "SCHEMA()", "SCHEMA()", "SCHEMA()", "Products", "`Products`", "'Products'", "Products", "`Products`")]
+        [InlineData("`Products`", "SCHEMA()", "SCHEMA()", "SCHEMA()", "Products", "`Products`", "'Products'", "Products", "`Products`")]
+        [InlineData("`Products'`", "SCHEMA()", "SCHEMA()", "SCHEMA()", "Products'", "`Products'`", "'Products\\''", "Products'", "`Products'`")]
+        [InlineData("`Products\\'`", "SCHEMA()", "SCHEMA()", "SCHEMA()", "Products\\'", "`Products\\'`", "'Products\\\\\\''", "Products\\'", "`Products\\'`")]
+        [InlineData("`''`", "SCHEMA()", "SCHEMA()", "SCHEMA()", "''", "`''`", "'\\'\\''", "''", "`''`")]
         public void TestMySqlObject(string fullName,
             string expectedSchema,
-            string expectedQuotedSchema,
-            string expectedTableName,
-            string expectedSchemaTableName,
+            string expectedAcuteQuotedSchema,
+            string expectedSingleQuotedSchema,
+            string expectedName,
+            string expectedAcuteQuotedName,
+            string expectedSingleQuotedName,
             string expectedFullName,
-            string expectedQuotedFullName)
+            string expectedAcuteQuotedFullName)
         {
             var MySqlObj = new MySqlObject(fullName);
             Assert.Equal(expectedSchema, MySqlObj.Schema);
-            Assert.Equal(expectedQuotedSchema, MySqlObj.AcuteQuotedSchema);
-            Assert.Equal(expectedTableName, MySqlObj.Name);
-            Assert.Equal(expectedSchemaTableName, MySqlObj.AcuteQuotedName);
+            Assert.Equal(expectedAcuteQuotedSchema, MySqlObj.AcuteQuotedSchema);
+            Assert.Equal(expectedSingleQuotedSchema, MySqlObj.SingleQuotedSchema);
+            Assert.Equal(expectedName, MySqlObj.Name);
+            Assert.Equal(expectedAcuteQuotedName, MySqlObj.AcuteQuotedName);
+            Assert.Equal(expectedSingleQuotedName, MySqlObj.SingleQuotedName);
             Assert.Equal(expectedFullName, MySqlObj.FullName);
-            Assert.Equal(expectedQuotedFullName, MySqlObj.AcuteQuotedFullName);
+            Assert.Equal(expectedAcuteQuotedFullName, MySqlObj.AcuteQuotedFullName);
         }
 
         [Theory]
