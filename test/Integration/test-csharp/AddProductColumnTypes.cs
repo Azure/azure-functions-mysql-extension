@@ -31,7 +31,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 TinyIntType = 1,
                 FloatType = 1.2,
                 RealType = 1.2f,
-                DateType = DateTime.Now,
+                DateType = DateOnly.FromDateTime(DateTime.Now),
                 DatetimeType = DateTime.Now,
                 TimeType = DateTime.Now.TimeOfDay,
                 CharType = "test",

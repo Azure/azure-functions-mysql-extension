@@ -79,7 +79,7 @@ namespace DotnetIsolatedTests.Common
 
         public float RealType { get; set; }
 
-        public DateTime DateType { get; set; }
+        public DateOnly DateType { get; set; }
 
         public DateTime DatetimeType { get; set; }
 
