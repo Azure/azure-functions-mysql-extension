@@ -29,7 +29,7 @@ namespace DotnetIsolatedTests
                 ProductId = int.Parse(queryStrings["productId"], null),
                 // Integer Types in MySql. reference: https://dev.mysql.com/doc/refman/8.0/en/numeric-types.html
                 BigIntType = int.MaxValue,
-                BitType = true,
+                BitType = 1,
                 DecimalType = 1.2345M,
                 NumericType = 1.2345M,
                 SmallIntType = 0,

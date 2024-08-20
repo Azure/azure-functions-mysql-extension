@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             {
                 ProductId = int.Parse(req.Query["productId"]),
                 BigIntType = int.MaxValue,
-                BitType = true,
+                BitType = 1,
                 DecimalType = 1.2345M,
                 NumericType = 1.2345M,
                 SmallIntType = 0,

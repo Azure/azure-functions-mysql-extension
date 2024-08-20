@@ -65,7 +65,7 @@ namespace DotnetIsolatedTests.Common
 
         public long BigIntType { get; set; }
 
-        public bool BitType { get; set; }
+        public int BitType { get; set; }
 
         public decimal DecimalType { get; set; }
 

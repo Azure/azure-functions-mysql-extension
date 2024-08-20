@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
 
         public long BigIntType { get; set; }
 
-        public bool BitType { get; set; }
+        public int BitType { get; set; }
 
         public decimal DecimalType { get; set; }
 
