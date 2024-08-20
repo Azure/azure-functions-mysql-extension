@@ -36,7 +36,7 @@ namespace DotnetIsolatedTests
                 TinyIntType = 1,
                 FloatType = 1.2,
                 RealType = 1.2f,
-                DateType = DateTime.UtcNow,
+                DateType = DateTime.UtcNow.Date,
                 DatetimeType = new SqlDateTime(DateTime.UtcNow).Value,
                 TimeType = DateTime.UtcNow.TimeOfDay,
                 CharType = "test",
