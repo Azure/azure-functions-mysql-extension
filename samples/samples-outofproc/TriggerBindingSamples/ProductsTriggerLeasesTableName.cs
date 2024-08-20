@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
 
-namespace Microsoft.Azure.WebJobs.Extensions.Sql.SamplesOutOfProc.TriggerBindingSamples
+namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.TriggerBindingSamples
 {
     public class ProductsTriggerLeasesTableName
     {

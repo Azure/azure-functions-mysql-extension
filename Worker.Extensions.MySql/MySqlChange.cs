@@ -26,9 +26,7 @@ namespace Microsoft.Azure.Functions.Worker.Extensions.MySql
         public MySqlChangeOperation Operation { get; }
 
         /// <summary>
-        /// POCO representing the row in the user table on which the change operation took place. If the change
-        /// operation is <see cref="MySqlChangeOperation.Insert" />, then only the properties corresponding to the primary
-        /// keys will be populated.
+        /// POCO representing the row in the user table on which the change operation took place.
         /// </summary>
         public T Item { get; }
     }
