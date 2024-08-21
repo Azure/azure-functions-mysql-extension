@@ -18,27 +18,29 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         public readonly string Name;
         /// <summary>
-        /// The name of the object, quoted and escaped with single quotes
+        /// The name of the object, quoted and escaped with acute quote (`)
         /// </summary>
-        public readonly string QuotedName;
+        public readonly string AcuteQuotedName;
+        /// <summary>
+        /// The name of the object, quoted and escaped with single quote (')
+        /// </summary>
+        public readonly string SingleQuotedName;
         /// <summary>
         /// The schema of the object, defaulting to the SCHEMA() function if the full name doesn't include a schema
         /// </summary>
         public readonly string Schema;
         /// <summary>
-        /// The name of the object, quoted and escaped with single quotes if it's not the default SCHEMA() function
+        /// The name of the object, quoted and escaped with acute quotes (`) if it's not the default SCHEMA() function
         /// </summary>
-        public readonly string QuotedSchema;
+        public readonly string AcuteQuotedSchema;
+        /// <summary>
+        /// The name of the object, quoted and escaped with single quotes (') if it's not the default SCHEMA() function
+        /// </summary>
+        public readonly string SingleQuotedSchema;
         /// <summary>
         /// The full name of the object in the format SCHEMA.NAME (or just NAME if there is no specified schema)
         /// </summary>
         public readonly string FullName;
-        /// <summary>
-        /// The full name of the object in the format 'SCHEMA.NAME' (or just 'NAME' if there is no specified schema), quoted and escaped with single quotes
-        /// </summary>
-        /// <remarks>The schema and name are also bracket quoted to avoid issues when there are .'s in the object names</remarks>
-        public readonly string QuotedFullName;
-
         /// <summary>
         /// The full name of the objected in the format `SCHEMA`.`NAME` (or just `NAME` if there is no specified schema), quoted and escaped with square brackets.
         /// </summary>
@@ -54,11 +56,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             var visitor = new MySqlObjectNameParser(fullName);
 
             this.Schema = visitor.schemaName;
-            this.QuotedSchema = (this.Schema == SCHEMA_NAME_FUNCTION) ? this.Schema : this.Schema.AsAcuteQuotedString();
+            this.AcuteQuotedSchema = (this.Schema == SCHEMA_NAME_FUNCTION) ? this.Schema : this.Schema.AsAcuteQuotedString();
+            this.SingleQuotedSchema = (this.Schema == SCHEMA_NAME_FUNCTION) ? this.Schema : this.Schema.AsSingleQuotedString();
             this.Name = visitor.objectName;
-            this.QuotedName = this.Name.AsAcuteQuotedString();
+            this.AcuteQuotedName = this.Name.AsAcuteQuotedString();
+            this.SingleQuotedName = this.Name.AsSingleQuotedString();
             this.FullName = (this.Schema == SCHEMA_NAME_FUNCTION) ? this.Name : $"{this.Schema}.{this.Name}";
-            this.QuotedFullName = this.Schema == SCHEMA_NAME_FUNCTION ? this.Name.AsAcuteQuotedString() : $"{this.Schema.AsAcuteQuotedString()}.{this.Name.AsAcuteQuotedString()}";
+            this.AcuteQuotedFullName = this.Schema == SCHEMA_NAME_FUNCTION ? this.Name.AsAcuteQuotedString() : $"{this.Schema.AsAcuteQuotedString()}.{this.Name.AsAcuteQuotedString()}";
         }
 
         /// <summary>

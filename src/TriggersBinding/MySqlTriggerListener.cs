@@ -184,9 +184,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             string getUserTableColumnsQuery = $@"
                     SELECT COLUMN_NAME 
                     FROM INFORMATION_SCHEMA.COLUMNS
-                    WHERE table_name = {userTable.QuotedName}
-                    AND table_schema = {userTable.QuotedSchema}
-                    AND column_name <> {UpdateAtColumnName.AsAcuteQuotedString()};
+                    WHERE table_name = {userTable.SingleQuotedName}
+                    AND table_schema = {userTable.SingleQuotedSchema}
+                    AND column_name <> {UpdateAtColumnName.AsSingleQuotedString()};
             ";
 
             using (var getUserTableColumnsCommand = new MySqlCommand(getUserTableColumnsQuery, connection))

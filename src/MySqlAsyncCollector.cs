@@ -408,11 +408,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             public IEnumerable<string> ColumnDefinitions => this.Columns.Select(c => $"{c.Key} {c.Value}");
 
             /// <summary>
-            /// Whether to use an insert query or merge query.
-            /// </summary>
-            public QueryType QueryType { get; }
-
-            /// <summary>
             /// Whether at least one of the primary keys on this table is an identity column
             /// </summary>
             public bool HasIdentityColumnPrimaryKeys { get; }
@@ -422,12 +417,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             /// </summary>
             public JsonSerializerSettings JsonSerializerSettings { get; }
 
-            public TableInformation(List<PrimaryKey> primaryKeys, IEnumerable<PropertyInfo> primaryKeyProperties, IDictionary<string, string> columns, QueryType queryType, bool hasIdentityColumnPrimaryKeys)
+            public TableInformation(List<PrimaryKey> primaryKeys, IEnumerable<PropertyInfo> primaryKeyProperties, IDictionary<string, string> columns, bool hasIdentityColumnPrimaryKeys)
             {
                 this.PrimaryKeys = primaryKeys;
                 this.PrimaryKeyProperties = primaryKeyProperties;
                 this.Columns = columns;
-                this.QueryType = queryType;
                 this.HasIdentityColumnPrimaryKeys = hasIdentityColumnPrimaryKeys;
 
                 // Convert datetime strings to ISO 8061 format to avoid potential errors on the server when converting into a datetime. This
@@ -464,9 +458,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     WHERE
                         tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
                     and
-                        tc.TABLE_NAME = {table.QuotedName}
+                        tc.TABLE_NAME = {table.SingleQuotedName}
                     and
-                        tc.TABLE_SCHEMA = {table.QuotedSchema}";
+                        tc.TABLE_SCHEMA = {table.SingleQuotedSchema}";
             }
 
             /// <summary>
@@ -484,14 +478,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     from
 	                    INFORMATION_SCHEMA.COLUMNS c
                     where
-	                    c.TABLE_NAME = {table.QuotedName}
+	                    c.TABLE_NAME = {table.SingleQuotedName}
                     and
-                        c.TABLE_SCHEMA = {table.QuotedSchema}";
+                        c.TABLE_SCHEMA = {table.SingleQuotedSchema}";
             }
 
             public static string GetInsertQuery(MySqlObject table, IEnumerable<string> columnNamesFromItem)
             {
-                return $"INSERT INTO {table.FullName} ({string.Join(",", columnNamesFromItem)}) VALUES";
+                return $"INSERT INTO {table.AcuteQuotedFullName} ({string.Join(",", columnNamesFromItem)}) VALUES";
             }
 
             public static string GetOnDuplicateUpdateQuery(IEnumerable<string> columnNamesFromItem)
@@ -610,15 +604,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     throw ex;
                 }
 
-                // If any identity columns or columns with default values aren't included in the object then we have to generate a basic insert since the merge statement expects all primary key
-                // columns to exist. (the merge statement can handle nullable columns though if those exist)
-                //QueryType queryType = (hasIdentityColumnPrimaryKeys || hasDefaultColumnPrimaryKeys) && missingPrimaryKeysFromItem.Any() ? QueryType.Insert : QueryType.Merge;
-                QueryType queryType = QueryType.Insert;
-
                 tableInfoSw.Stop();
                 logger.LogInformation($"Time taken(ms) to get Table {table} information: {tableInfoSw.ElapsedMilliseconds}");
                 logger.LogDebug($"RetrieveTableInformation DB and Table: {mysqlConnection.Database}.{fullName}. Primary keys: [{string.Join(",", primaryKeys.Select(pk => pk.Name))}].\nMySQL Column and Definitions:  [{string.Join(",", columnDefinitionsFromMySQL)}]\nObject columns: [{string.Join(",", objectColumnNames)}]");
-                return new TableInformation(primaryKeys, primaryKeyProperties, columnDefinitionsFromMySQL, queryType, hasIdentityColumnPrimaryKeys);
+                return new TableInformation(primaryKeys, primaryKeyProperties, columnDefinitionsFromMySQL, hasIdentityColumnPrimaryKeys);
             }
         }
 

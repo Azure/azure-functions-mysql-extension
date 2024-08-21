@@ -84,8 +84,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <summary>
         /// Initializes a new instance of the <see cref="MySqlTableChangeMonitor{T}" />> class.
         /// </summary>
-        /// <param name="connectionString">SQL connection string used to connect to user database</param>
-        /// <param name="userTableId">SQL object ID of the user table</param>
+        /// <param name="connectionString">MySQL connection string used to connect to user database</param>
+        /// <param name="userTableId">MySQL object ID of the user table</param>
         /// <param name="userTable"><see cref="MySqlObject" /> instance created with user table name</param>
         /// <param name="userFunctionId">Unique identifier for the user function</param>
         /// <param name="leasesTableName">Name of the leases table</param>
@@ -218,7 +218,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         }
                         catch (Exception e) when (connection.IsBrokenOrClosed())        // TODO: e.IsFatalMySqlException() || - check mysql corresponding 
                         {
-                            // Retry connection if there was a fatal SQL exception or something else caused the connection to be closed
+                            // Retry connection if there was a fatal MySQL exception or something else caused the connection to be closed
                             // since that indicates some other issue occurred (such as dropped network) and may be able to be recovered
                             this._logger.LogError($"Fatal MySQL Client exception processing changes. Will attempt to reestablish connection in {this._pollingIntervalInMs}ms. Exception = {e.Message}");
                             forceReconnect = true;
@@ -266,6 +266,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         {
                             var commandSw = Stopwatch.StartNew();
                             await updateStartPollingTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
+                            this._logger.LogInformation($"Updated column {GlobalStateTableStartPollingTimeColumnName} in {GlobalStateTableName} table");
+
                             setStartPollingTimeDurationMs = commandSw.ElapsedMilliseconds;
                         }
 
@@ -275,7 +277,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         {
                             var commandSw = Stopwatch.StartNew();
 
-                            using (MySqlDataReader reader = getChangesCommand.ExecuteReader())
+                            this._logger.LogInformation($"Looking for latest changes in Table having ID : {this._userTableId}");
+
+                            using (MySqlDataReader reader = getChangesCommand.ExecuteReaderWithLogging(this._logger, true))
                             {
                                 while (reader.Read())
                                 {
@@ -289,6 +293,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         // If changes were found
                         if (rows.Count > 0)
                         {
+                            this._logger.LogInformation($"The total no of rows found to process is {rows.Count}");
+
                             using (MySqlCommand acquireLeasesCommand = this.BuildAcquireLeasesCommand(connection, transaction, rows))
                             {
                                 var commandSw = Stopwatch.StartNew();
@@ -357,7 +363,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             if (rowsAffected > 0)
                             {
                                 // Only send an event if we actually updated rows to reduce the overall number of events we send
-                                this._logger.LogInformation($"Updated Global State Table");
+                                this._logger.LogInformation($"Updated {GlobalStateTableLastPolledTimeColumnName} in {GlobalStateTableName} table");
                             }
                         }
 
@@ -444,7 +450,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 // This ideally should never happen, but as a safety measure ensure that if we tried to process changes but there weren't
                 // any we still ensure everything is reset to a clean state
-                //await this.ClearRowsAsync();
+                await this.ClearRowsAsync();
             }
             return isProcessChangesFailed;
         }
@@ -485,7 +491,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         }
                         catch (Exception e) when (e.IsDeadlockException() || /*e.IsFatalSqlException() || */connection.IsBrokenOrClosed())
                         {
-                            // Retry connection if there was a fatal SQL exception or something else caused the connection to be closed
+                            // Retry connection if there was a fatal MySQL exception or something else caused the connection to be closed
                             // since that indicates some other issue occurred (such as dropped network) and may be able to be recovered
                             forceReconnect = true;
                         }
@@ -529,6 +535,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             if (rowsAffected > 0)
                             {
                                 // Only send an event if we actually updated rows to reduce the overall number of events we send
+                                this._logger.LogInformation($"Updated the Leases table {this._leasesTableName}");
                             }
                             transaction.Commit();
                         }
@@ -642,7 +649,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         SELECT {selectList}, 
                         l.{LeasesTableAttemptCountColumnName},
                         l.{LeasesTableLeaseExpirationTimeColumnName}
-                        FROM {this._userTable.FullName} AS u
+                        FROM {this._userTable.AcuteQuotedFullName} AS u
                         LEFT JOIN {this._leasesTableName} AS l ON {leasesTableJoinCondition}
                         WHERE 
                             ({UpdateAtColumnName} > (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId}))
