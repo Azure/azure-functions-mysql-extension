@@ -23,49 +23,52 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         }
 
         [Theory]
-        [InlineData("dbo.Products", "dbo", "'dbo'", "Products", "'Products'", "dbo.Products", "'[dbo].[Products]'")] // Simple full name
-        [InlineData("Products", "SCHEMA()", "SCHEMA()", "Products", "'Products'", "Products", "'[Products]'")] // Simple no schema
-        [InlineData("[dbo].[Products]", "dbo", "'dbo'", "Products", "'Products'", "dbo.Products", "'[dbo].[Products]'")] // Simple full name bracket quoted
-        [InlineData("[dbo].Products", "dbo", "'dbo'", "Products", "'Products'", "dbo.Products", "'[dbo].[Products]'")] // Simple full name only schema bracket quoted
-        [InlineData("dbo.[Products]", "dbo", "'dbo'", "Products", "'Products'", "dbo.Products", "'[dbo].[Products]'")] // Simple full name only name bracket quoted
-        [InlineData("[My'Schema].[Prod'ucts]", "My'Schema", "'My''Schema'", "Prod'ucts", "'Prod''ucts'", "My'Schema.Prod'ucts", "'[My''Schema].[Prod''ucts]'")] // Full name with single quotes in schema and name
-        [InlineData("[My]]Schema].[My]]Object]", "My]Schema", "'My]Schema'", "My]Object", "'My]Object'", "My]Schema.My]Object", "'[My]]Schema].[My]]Object]'")] // Full name with brackets in schema and name
+        [InlineData("mydb.Products", "mydb", "`mydb`", "'mydb'", "Products", "`Products`", "'Products'", "mydb.Products", "`mydb`.`Products`")]
+        [InlineData("`mydb`.Products", "mydb", "`mydb`", "'mydb'", "Products", "`Products`", "'Products'", "mydb.Products", "`mydb`.`Products`")]
+        [InlineData("mydb.`Products`", "mydb", "`mydb`", "'mydb'", "Products", "`Products`", "'Products'", "mydb.Products", "`mydb`.`Products`")]
+        [InlineData("`mydb`.`Products`", "mydb", "`mydb`", "'mydb'", "Products", "`Products`", "'Products'", "mydb.Products", "`mydb`.`Products`")]
+        [InlineData("Products", "SCHEMA()", "SCHEMA()", "SCHEMA()", "Products", "`Products`", "'Products'", "Products", "`Products`")]
+        [InlineData("`Products`", "SCHEMA()", "SCHEMA()", "SCHEMA()", "Products", "`Products`", "'Products'", "Products", "`Products`")]
+        [InlineData("`Products'`", "SCHEMA()", "SCHEMA()", "SCHEMA()", "Products'", "`Products'`", "'Products\\''", "Products'", "`Products'`")]
+        [InlineData("`Products\\'`", "SCHEMA()", "SCHEMA()", "SCHEMA()", "Products\\'", "`Products\\'`", "'Products\\\\\\''", "Products\\'", "`Products\\'`")]
+        [InlineData("`''`", "SCHEMA()", "SCHEMA()", "SCHEMA()", "''", "`''`", "'\\'\\''", "''", "`''`")]
         public void TestMySqlObject(string fullName,
             string expectedSchema,
-            string expectedQuotedSchema,
-            string expectedTableName,
-            string expectedSchemaTableName,
+            string expectedAcuteQuotedSchema,
+            string expectedSingleQuotedSchema,
+            string expectedName,
+            string expectedAcuteQuotedName,
+            string expectedSingleQuotedName,
             string expectedFullName,
-            string expectedQuotedFullName)
+            string expectedAcuteQuotedFullName)
         {
             var MySqlObj = new MySqlObject(fullName);
             Assert.Equal(expectedSchema, MySqlObj.Schema);
-            Assert.Equal(expectedQuotedSchema, MySqlObj.QuotedSchema);
-            Assert.Equal(expectedTableName, MySqlObj.Name);
-            Assert.Equal(expectedSchemaTableName, MySqlObj.QuotedName);
+            Assert.Equal(expectedAcuteQuotedSchema, MySqlObj.AcuteQuotedSchema);
+            Assert.Equal(expectedSingleQuotedSchema, MySqlObj.SingleQuotedSchema);
+            Assert.Equal(expectedName, MySqlObj.Name);
+            Assert.Equal(expectedAcuteQuotedName, MySqlObj.AcuteQuotedName);
+            Assert.Equal(expectedSingleQuotedName, MySqlObj.SingleQuotedName);
             Assert.Equal(expectedFullName, MySqlObj.FullName);
-            Assert.Equal(expectedQuotedFullName, MySqlObj.QuotedFullName);
+            Assert.Equal(expectedAcuteQuotedFullName, MySqlObj.AcuteQuotedFullName);
         }
 
         [Theory]
-        [InlineData("myschema.my'table", "Expected but did not find a closing quotation mark after the character string 'table.\n")]
-        [InlineData("my'schema.mytable", "Expected but did not find a closing quotation mark after the character string 'schema.mytable.\n")]
-        [InlineData("schema.mytable", "Incorrect syntax near 'schema'.\n")] // 'schema' is a keyword and needs to be bracket-quoted to be used as the schema name.
-        [InlineData("myschema.table", "Incorrect syntax near '.'.\n")] // 'table' is a keyword and needs to be bracket-quoted to be used as the table name.
-        public void TestMySqlObjectParseError(string fullName, string expectedError)
+        [InlineData("'mydb'.'Products'", "Encountered error(s) while parsing object name:\n")]
+        [InlineData("\"mydb\".\"Products\"", "Encountered error(s) while parsing object name:\n")]
+        [InlineData("'Products'", "Encountered error(s) while parsing object name:\n")]
+        public void TestMySqlObjectParseError(string fullName, string expectedErrorMessage)
         {
-            string expectedErrorMessage = "Encountered error(s) while parsing schema and object name:\n" + expectedError;
             string errorMessage = Assert.Throws<InvalidOperationException>(() => new MySqlObject(fullName)).Message;
             Assert.Equal(expectedErrorMessage, errorMessage);
         }
 
         [Theory]
-        [InlineData("columnName", "[columnName]")]
-        [InlineData("column]Name", "[column]]Name]")]
-        [InlineData("col[umn]Name", "[col[umn]]Name]")]
-        public void TestAsBracketQuotedString(string s, string expectedResult)
+        [InlineData("columnName", "`columnName`")]
+        [InlineData("mydb.tablename", "`mydb.tablename`")]
+        public void TestAsAcuteQuotedString(string s, string expectedResult)
         {
-            string result = s.AsBracketQuotedString();
+            string result = s.AsAcuteQuotedString();
             Assert.Equal(expectedResult, result);
         }
     }

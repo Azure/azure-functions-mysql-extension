@@ -16,8 +16,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     {
         // NOTE: please ensure the Readme file and other public documentation are also updated if the deafult values
         // are ever changed.
+        public const int DefaultMaxBatchSize = 100;
         public const int DefaultPollingIntervalMs = 1000;
         private const int DefaultMinimumPollingIntervalMs = 100;
+        /// <summary>
+        /// Maximum number of changes to process in each iteration of the loop
+        /// </summary>
+        private int _maxBatchSize = DefaultMaxBatchSize;
         /// <summary>
         /// Delay in ms between processing each batch of changes
         /// </summary>
@@ -30,6 +35,25 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         public MySqlOptions()
         {
 
+        }
+
+        /// <summary>
+        /// Gets or sets the number of changes per batch to retrieve from the server.
+        /// The default is 100.
+        /// </summary>
+        public int MaxBatchSize
+        {
+            get => this._maxBatchSize;
+
+            set
+            {
+                if (value <= 0)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), "MaxBatchSize must not be less than 1.");
+                }
+
+                this._maxBatchSize = value;
+            }
         }
 
         /// <summary>

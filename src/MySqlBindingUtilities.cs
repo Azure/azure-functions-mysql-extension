@@ -180,13 +180,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <summary>
-        /// Escape any existing closing brackets and add brackets around the string
+        /// Add acute_symbols(`) around the string
         /// </summary>
-        /// <param name="s">The string to bracket quote.</param>
-        /// <returns>The escaped and bracket quoted string.</returns>
-        public static string AsBracketQuotedString(this string s)
+        /// <param name="s">The string to acute_symbol(`) quote.</param>
+        /// <returns>acute_symbol(`) quoted string.</returns>
+        public static string AsAcuteQuotedString(this string s)
         {
-            return $"[{s.Replace("]", "]]")}]";
+            return $"`{s}`";
         }
 
         /// <summary>
@@ -206,7 +206,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The escaped string.</returns>
         public static string AsSingleQuoteEscapedString(this string s)
         {
-            return s.Replace("'", "''");
+            s = s.Replace("\\", "\\\\");
+            s = s.Replace("'", "\\'");
+            return s;
         }
 
         /// <summary>

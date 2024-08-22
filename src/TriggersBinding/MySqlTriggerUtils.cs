@@ -2,10 +2,14 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
@@ -40,8 +44,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 logger.LogDebug($"Database version: {dbVersion}");
 
                 getObjectIdQuery = dbVersion.ToString().StartsWith("5.7", StringComparison.InvariantCulture)
-                    ? $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_sys_tables where NAME = CONCAT(DATABASE(), '/', {userTable.QuotedName})"
-                    : $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_tables where NAME = CONCAT(DATABASE(), '/', {userTable.QuotedName})";
+                    ? $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_sys_tables where NAME = CONCAT({userTable.SingleQuotedSchema}, '/', {userTable.SingleQuotedName})"
+                    : $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_tables where NAME = CONCAT({userTable.SingleQuotedSchema}, '/', {userTable.SingleQuotedName})";
             }
 
 
@@ -63,6 +67,56 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 return (ulong)userTableId;
             }
         }
-    }
 
+        /// <summary>
+        /// Gets the names and types of primary key columns of the user table.
+        /// </summary>
+        /// <param name="connection">MySQL connection used to connect to user database</param>
+        /// <param name="userTableName">Name of the user table</param>
+        /// <param name="logger">Facilitates logging of messages</param>
+        /// <param name="cancellationToken">Cancellation token to pass to the command</param>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown if there are no primary key columns present in the user table or if their names conflict with columns in leases table.
+        /// </exception>
+        public static IReadOnlyList<(string name, string type)> GetPrimaryKeyColumnsAsync(MySqlConnection connection, string userTableName, ILogger logger, CancellationToken cancellationToken)
+        {
+            const int NameIndex = 0, TypeIndex = 1;
+            string getPrimaryKeyColumnsQuery = $"SHOW COLUMNS FROM " + userTableName + " WHERE `Key` = 'PRI'";
+
+            using (var getPrimaryKeyColumnsCommand = new MySqlCommand(getPrimaryKeyColumnsQuery, connection))
+            using (MySqlDataReader reader = getPrimaryKeyColumnsCommand.ExecuteReaderWithLogging(logger))
+            {
+                var primaryKeyColumns = new List<(string name, string type)>();
+
+                while (reader.Read())
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    string name = reader.GetString(NameIndex);
+                    string type = reader.GetString(TypeIndex);
+
+                    primaryKeyColumns.Add((name, type));
+                }
+
+                if (primaryKeyColumns.Count == 0)
+                {
+                    throw new InvalidOperationException($"Could not find primary key created in table: '{userTableName}'.");
+                }
+
+                logger.LogDebug($"GetPrimaryKeyColumns ColumnNames(types) = {string.Join(", ", primaryKeyColumns.Select(col => $"'{col.name}({col.type})'"))}.");
+                return primaryKeyColumns;
+            }
+        }
+
+        /// <summary>
+        /// Returns the formatted leases table name. If userDefinedLeasesTableName is null, the default name Leases_{FunctionId}_{TableId} is used.
+        /// </summary>
+        /// <param name="userDefinedLeasesTableName">Leases table name defined by the user</param>
+        /// <param name="userTableId">MySQL object ID of the user table</param>
+        /// <param name="userFunctionId">Unique identifier for the user function</param>
+        internal static string GetLeasesTableName(string userDefinedLeasesTableName, string userFunctionId, ulong userTableId)
+        {
+            return string.IsNullOrEmpty(userDefinedLeasesTableName) ? string.Format(CultureInfo.InvariantCulture, LeasesTableNameFormat, $"{userFunctionId}_{userTableId}") :
+                string.Format(CultureInfo.InvariantCulture, UserDefinedLeasesTableNameFormat, $"{userDefinedLeasesTableName.AsAcuteQuotedString()}");
+        }
+    }
 }
