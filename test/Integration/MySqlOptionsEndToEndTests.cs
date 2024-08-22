@@ -15,9 +15,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             string extensionPath = "AzureWebJobs:Extensions:MySql";
             var values = new Dictionary<string, string>
             {
-                //{ $"{extensionPath}:MaxBatchSize", "30" },
+                { $"{extensionPath}:MaxBatchSize", "30" },
                 { $"{extensionPath}:PollingIntervalMs", "1000" },
-                //{ $"{extensionPath}:MaxChangesPerWorker", "100" },
+                { $"{extensionPath}:MaxChangesPerWorker", "100" },
             };
 
             MySqlOptions options = TestHelpers.GetConfiguredOptions<MySqlOptions>(b =>

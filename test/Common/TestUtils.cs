@@ -67,6 +67,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
         {
             MySqlConnectionStringBuilder connectionStringBuilder;
             string connectionString = Environment.GetEnvironmentVariable("TEST_CONNECTION_STRING");
+
             string masterConnectionString;
             if (connectionString != null)
             {
@@ -77,17 +78,20 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
             {
                 // Get the test server name from environment variable "TEST_SERVER", default to localhost if not set
                 string testServer = Environment.GetEnvironmentVariable("TEST_SERVER");
-                if (string.IsNullOrEmpty(testServer))
-                {
-                    testServer = "localhost";
-                }
+                testServer ??= "localhost";
 
-                // First connect to master to create the database
-                connectionStringBuilder = new MySqlConnectionStringBuilder();
+                // First connect to mysql to create the database
+                connectionStringBuilder = new MySqlConnectionStringBuilder()
+                {
+                    Server = testServer,
+                    Database = "mysql"
+                };
 
                 // Either use integrated auth or MySQL login depending if SA_PASSWORD is set
-                string userId = "root";
-                string password = Environment.GetEnvironmentVariable("SA_PASSWORD");
+                string userId = Environment.GetEnvironmentVariable("TEST_UserID");
+                userId ??= "root";
+
+                string password = Environment.GetEnvironmentVariable("TEST_PASSWORD");
                 if (string.IsNullOrEmpty(password))
                 {
                     throw new ArgumentNullException(password);
@@ -100,6 +104,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
                 masterConnectionString = connectionStringBuilder.ToString();
             }
 
+            Console.WriteLine(masterConnectionString);
+
             // Create database
             // Retry this in case the server isn't fully initialized yet
             string databaseName = GetUniqueDBName("MySqlBindingsTest");
@@ -107,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
             {
                 using var masterConnection = new MySqlConnection(masterConnectionString);
                 masterConnection.Open();
-                ExecuteNonQuery(masterConnection, $"CREATE DATABASE [{databaseName}]", Console.WriteLine);
+                ExecuteNonQuery(masterConnection, $"CREATE DATABASE {databaseName}", Console.WriteLine);
             }, Console.WriteLine);
 
             connectionStringBuilder.Database = databaseName;

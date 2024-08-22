@@ -95,9 +95,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             await this.SendOutputPostRequest("addproducts-array", Utils.JsonSerializeObject(prods), TestUtils.GetPort(lang));
 
             // Function call changes first 2 rows to (1, 'Cup', 2) and (2, 'Glasses', 12)
-            Assert.Equal(1, this.ExecuteScalar("SELECT COUNT(1) FROM Products WHERE Cost = 100"));
-            Assert.Equal(2, this.ExecuteScalar("SELECT Cost FROM Products WHERE ProductId = 1"));
-            Assert.Equal(2, this.ExecuteScalar("SELECT ProductId FROM Products WHERE Cost = 12"));
+            Assert.Equal("1", this.ExecuteScalar("SELECT COUNT(1) FROM Products WHERE Cost = 100").ToString());
+            Assert.Equal("2", this.ExecuteScalar("SELECT Cost FROM Products WHERE ProductId = 1").ToString());
+            Assert.Equal("2", this.ExecuteScalar("SELECT ProductId FROM Products WHERE Cost = 12").ToString());
         }
 
         /// <summary>
@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // Function should add 5000 rows to the table
             await this.SendOutputGetRequest("addproducts-collector");
 
-            Assert.Equal(5000, this.ExecuteScalar("SELECT COUNT(1) FROM Products"));
+            Assert.Equal("5000", this.ExecuteScalar("SELECT COUNT(1) FROM Products").ToString());
         }
 
         [Theory]
@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // Since ProductExtraColumns has columns that does not exist in the table,
             // no rows should be added to the table.
             Assert.Throws<AggregateException>(() => this.SendOutputGetRequest("addproduct-extracolumns", null, TestUtils.GetPort(lang, true)).Wait());
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM Products"));
+            Assert.Equal("0", this.ExecuteScalar("SELECT COUNT(*) FROM Products").ToString());
         }
 
         [Theory]
@@ -163,7 +163,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // Even though the ProductMissingColumns object is missing the Cost column,
             // the row should still be added successfully since Cost can be null.
             await this.SendOutputPostRequest("addproduct-missingcolumns", "", TestUtils.GetPort(lang, true));
-            Assert.Equal(1, this.ExecuteScalar("SELECT COUNT(*) FROM Products"));
+            Assert.Equal("1", this.ExecuteScalar("SELECT COUNT(*) FROM Products").ToString());
         }
 
         [Theory]
@@ -181,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         {
             Assert.Throws<AggregateException>(() => this.SendOutputPostRequest("addproducts-nopartialupsert", "", TestUtils.GetPort(lang, true)).Wait());
             // No rows should be upserted since there was a row with an invalid value
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsNameNotNull"));
+            Assert.Equal("0", this.ExecuteScalar("SELECT COUNT(*) FROM ProductsNameNotNull").ToString());
         }
 
         /// <summary>
@@ -214,10 +214,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         {
             this.StartFunctionHost(nameof(AddProductsWithIdentityColumnArray), lang);
 
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity"));
+            Assert.Equal("0", this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity").ToString());
             await this.SendOutputGetRequest("addproductswithidentitycolumnarray", null);
             // Multiple items should have been inserted
-            Assert.Equal(2, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity"));
+            Assert.Equal("2", this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithIdentity").ToString());
         }
 
         /// <summary>
@@ -405,7 +405,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         public void AddProductIncorrectCasing(SupportedLanguages lang)
         {
             Assert.Throws<AggregateException>(() => this.SendOutputGetRequest("addproduct-incorrectcasing", null, TestUtils.GetPort(lang, true)).Wait());
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM Products"));
+            Assert.Equal("0", this.ExecuteScalar("SELECT COUNT(*) FROM Products").ToString());
         }
 
         /// <summary>
@@ -472,9 +472,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         [MySqlInlineData()]
         public async Task AddProductDefaultPKAndDifferentColumnOrderTest(SupportedLanguages lang)
         {
-            Assert.Equal(0, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK"));
+            Assert.Equal("0", this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK").ToString());
             await this.SendOutputGetRequest("addproductdefaultpkanddifferentcolumnorder", null, TestUtils.GetPort(lang, true));
-            Assert.Equal(1, this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK"));
+            Assert.Equal("1", this.ExecuteScalar("SELECT COUNT(*) FROM ProductsWithDefaultPK").ToString());
         }
     }
 }

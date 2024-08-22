@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             await this.SendInputRequest("getandaddproducts/100", "", TestUtils.GetPort(lang));
 
             // Verify that the 10 rows in Products were upserted to ProductsWithIdentity
-            Assert.Equal(10, this.ExecuteScalar("SELECT COUNT(1) FROM ProductsWithIdentity"));
+            Assert.Equal("10", this.ExecuteScalar("SELECT COUNT(1) FROM ProductsWithIdentity").ToString());
         }
     }
 }

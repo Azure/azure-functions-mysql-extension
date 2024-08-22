@@ -70,10 +70,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             this.Connection.Open();
             this.DatabaseName = this.Connection.Database;
             this.ExecuteAllScriptsInFolder(Path.Combine(TestUtils.GetPathToBin(), "Database", "Tables"));
-            // Separate DROP and CREATE for views and procedures since CREATE VIEW/PROCEDURE needs to be the first statement in the batch
-            this.ExecuteAllScriptsInFolder(Path.Combine(TestUtils.GetPathToBin(), "Database", "Views", "Drop"));
             this.ExecuteAllScriptsInFolder(Path.Combine(TestUtils.GetPathToBin(), "Database", "Views"));
-            this.ExecuteAllScriptsInFolder(Path.Combine(TestUtils.GetPathToBin(), "Database", "StoredProcedures", "Drop"));
             this.ExecuteAllScriptsInFolder(Path.Combine(TestUtils.GetPathToBin(), "Database", "StoredProcedures"));
         }
 

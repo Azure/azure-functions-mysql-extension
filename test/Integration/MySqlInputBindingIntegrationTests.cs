@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             Product[] products = GetProductsWithSameCostAndName(n, cost, "", n * 2);
             this.InsertProducts(products);
 
-            Assert.Equal(n, this.ExecuteScalar($"select count(1) from Products where name = '' and cost = {cost}"));
+            Assert.Equal(n.ToString(), this.ExecuteScalar($"select count(1) from Products where name = '' and cost = {cost}").ToString());
 
             // Run the function
             HttpResponseMessage response = await this.SendInputRequest("getproducts-nameempty", cost.ToString(), TestUtils.GetPort(lang));
@@ -81,6 +81,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // Verify result
             string actualResponse = await response.Content.ReadAsStringAsync();
             Product[] actualProductResponse = Utils.JsonDeserializeObject<Product[]>(actualResponse);
+            this.LogOutput(actualProductResponse.ToString());
 
             Assert.Equal(products, actualProductResponse);
         }
@@ -95,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             Product[] productsWithCost100 = GetProducts(1, 100);
 
             // Run the function
-            HttpResponseMessage response = await this.SendInputRequest("getproductsbycost", "", TestUtils.GetPort(lang));
+            HttpResponseMessage response = await this.SendInputRequest("getproducts", "", TestUtils.GetPort(lang));
 
             // Verify result
             string actualResponse = await response.Content.ReadAsStringAsync();
