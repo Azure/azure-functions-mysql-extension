@@ -3,8 +3,8 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet",
-    "MySqlConnectionString": "",
+    "MySqlConnectionString": "Server = 'testserver-v5-centralus.mysql.database.azure.com'; UserID = 'cloudsa'; Password = 'Yukon900'; Database = 'mysqldb1';",
     "Sp_SelectCost": "SelectProductsCost",
-    "ProductCost": 200
+    "ProductCost": 100
   }
 }

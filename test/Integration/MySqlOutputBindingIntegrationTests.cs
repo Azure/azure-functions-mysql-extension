@@ -128,7 +128,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // Function should add 5000 rows to the table
             await this.SendOutputGetRequest("addproducts-collector");
 
-            Assert.Equal(5000, this.ExecuteScalar("SELECT COUNT(1) FROM Products"));
+            Assert.Equal(5000, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(1) FROM Products")));
         }
 
         [Theory]
