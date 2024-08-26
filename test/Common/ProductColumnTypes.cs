@@ -26,7 +26,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
 
         public float RealType { get; set; }
 
-        public DateOnly DateType { get; set; }
+        public string DateType { get; set; }
 
         public DateTime DatetimeType { get; set; }
 
