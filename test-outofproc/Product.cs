@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using System;
 using System.Linq;
+using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 
 namespace DotnetIsolatedTests.Common
 {
@@ -104,7 +105,10 @@ namespace DotnetIsolatedTests.Common
             {
                 var that = obj as ProductColumnTypes;
                 Console.WriteLine("Debug Values: " + $"{this.ProductId == that.ProductId} {this.BigIntType == that.BigIntType} {this.BitType == that.BitType} {this.DecimalType == that.DecimalType} {this.NumericType == that.NumericType} {this.SmallIntType == that.SmallIntType} {this.TinyIntType == that.TinyIntType} {this.FloatType == that.FloatType} {this.RealType == that.RealType} {this.DateType == that.DateType} {this.DatetimeType == that.DatetimeType} {this.TimeType == that.TimeType} {this.CharType == that.CharType} {this.VarcharType == that.VarcharType} {this.NcharType == that.NcharType} {this.NvarcharType == that.NvarcharType} {this.BinaryType.SequenceEqual(that.BinaryType)} {this.VarbinaryType.SequenceEqual(that.VarbinaryType)}");
-
+                Console.WriteLine("This date: " + this.DatetimeType);
+                Console.WriteLine("That date: " + that.DatetimeType);
+                Console.WriteLine("This binary: " + this.BinaryType);
+                Console.WriteLine("That binary: " + that.BinaryType);
                 return this.ProductId == that.ProductId && this.BigIntType == that.BigIntType && this.BitType == that.BitType &&
                     this.DecimalType == that.DecimalType && this.NumericType == that.NumericType &&
                     this.SmallIntType == that.SmallIntType && this.TinyIntType == that.TinyIntType &&
