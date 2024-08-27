@@ -81,7 +81,7 @@ namespace DotnetIsolatedTests.Common
 
         public string DateType { get; set; }
 
-        public DateTime DatetimeType { get; set; }
+        public string DatetimeType { get; set; }
 
         public TimeSpan TimeType { get; set; }
 
