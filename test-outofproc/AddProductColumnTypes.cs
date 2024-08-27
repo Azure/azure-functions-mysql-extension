@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Specialized;
-using System.Data.SqlTypes;
 using System.Web;
 using DotnetIsolatedTests.Common;
 using Microsoft.Azure.Functions.Worker;
