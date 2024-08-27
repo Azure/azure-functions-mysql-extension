@@ -8,6 +8,7 @@ using DotnetIsolatedTests.Common;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.Functions.Worker.Extensions.MySql;
+using System.Globalization;
 
 namespace DotnetIsolatedTests
 {
@@ -35,8 +36,8 @@ namespace DotnetIsolatedTests
                 TinyIntType = 1,
                 FloatType = 1.2,
                 RealType = 1.2f,
-                DateType = "2024-08-10",
-                DatetimeType = "2024-08-10 09:56:10",
+                DateType = DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.CreateSpecificCulture("en-US")),
+                DatetimeType = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CreateSpecificCulture("en-US")),
                 TimeType = DateTime.UtcNow.TimeOfDay,
                 CharType = "test",
                 VarcharType = "test",
