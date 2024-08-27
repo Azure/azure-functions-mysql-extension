@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
 
         public string DateType { get; set; }
 
-        public DateTime DatetimeType { get; set; }
+        public string DatetimeType { get; set; }
 
         public TimeSpan TimeType { get; set; }
 
@@ -49,6 +49,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
             if (obj is ProductColumnTypes)
             {
                 var that = obj as ProductColumnTypes;
+                Console.WriteLine($"{this.ProductId == that.ProductId} {this.BigIntType == that.BigIntType} {this.BitType == that.BitType} {this.DecimalType == that.DecimalType} {this.NumericType == that.NumericType} {this.SmallIntType == that.SmallIntType} {this.TinyIntType == that.TinyIntType} {this.FloatType == that.FloatType} {this.RealType == that.RealType} {this.DateType == that.DateType} {this.DatetimeType == that.DatetimeType} {this.TimeType == that.TimeType} {this.CharType == that.CharType} {this.VarcharType == that.VarcharType} {this.NcharType == that.NcharType} {this.NvarcharType == that.NvarcharType} {this.BinaryType.SequenceEqual(that.BinaryType)} {this.VarbinaryType.SequenceEqual(that.VarbinaryType)}");
+
                 return this.ProductId == that.ProductId && this.BigIntType == that.BigIntType && this.BitType == that.BitType &&
                     this.DecimalType == that.DecimalType && this.NumericType == that.NumericType &&
                     this.SmallIntType == that.SmallIntType && this.TinyIntType == that.TinyIntType &&
