@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 FloatType = 1.2,
                 RealType = 1.2f,
                 DateType = Convert.ToString(DateOnly.FromDateTime(DateTime.Now)),
-                DatetimeType = DateTime.Now,
+                DatetimeType = DateTime.UtcNow,
                 TimeType = DateTime.Now.TimeOfDay,
                 CharType = "test",
                 VarcharType = "test",

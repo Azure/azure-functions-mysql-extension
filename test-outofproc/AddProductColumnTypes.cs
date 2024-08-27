@@ -37,7 +37,7 @@ namespace DotnetIsolatedTests
                 FloatType = 1.2,
                 RealType = 1.2f,
                 DateType = "2024-08-10",
-                DatetimeType = new SqlDateTime(DateTime.UtcNow).Value,
+                DatetimeType = DateTime.UtcNow,
                 TimeType = DateTime.UtcNow.TimeOfDay,
                 CharType = "test",
                 VarcharType = "test",
