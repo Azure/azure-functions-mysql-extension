@@ -195,6 +195,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // We expect the date fields to be returned in UTC format
             ProductColumnTypes[] expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(/*lang=json,strict*/ "[{\"ProductId\":999,\"BigIntType\":999,\"BitType\":1,\"DecimalType\":1.2345,\"NumericType\":1.2345,\"SmallIntType\":1,\"TinyIntType\":1,\"FloatType\":0.1,\"RealType\":0.1,\"DateType\":\"2024-08-10T00:00:00.000Z\",\"DatetimeType\":\"2024-08-10 12:40:15\",\"TimeType\":\"12:40:15\",\"CharType\":\"test\",\"VarcharType\":\"test\",\"NcharType\":\"test\",\"NvarcharType\":\"test\",\"BinaryType\":\"test\",\"VarbinaryType\":\"test\"}]");
             string actualResponse = await response.Content.ReadAsStringAsync();
+            string expectedString = /*lang=json,strict*/"[{\"ProductId\":999,\"BigIntType\":999,\"BitType\":1,\"DecimalType\":1.2345,\"NumericType\":1.2345,\"SmallIntType\":1,\"TinyIntType\":1,\"FloatType\":0.1,\"RealType\":0.1,\"DateType\":\"2024-08-10T00:00:00.000Z\",\"DatetimeType\":\"2024-08-10 12:40:15\",\"TimeType\":\"12:40:15\",\"CharType\":\"test\",\"VarcharType\":\"test\",\"NcharType\":\"test\",\"NvarcharType\":\"test\",\"BinaryType\":\"test\",\"VarbinaryType\":\"test\"}]";
+            Console.WriteLine("actual string: " + actualResponse);
+            Console.WriteLine($"Expected {expectedString}");
             ProductColumnTypes[] actualProductResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(actualResponse);
             bool a = expectedResponse.Equals(actualProductResponse);
             Console.WriteLine("Compared: " + a);
