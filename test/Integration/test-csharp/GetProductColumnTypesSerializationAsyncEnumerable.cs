@@ -3,13 +3,13 @@
 
 using System.Collections.Generic;
 using System.Globalization;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.InputBindingSamples
 {
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.InputBindingSamples
             var productsList = new List<ProductColumnTypes>();
             await foreach (ProductColumnTypes item in products)
             {
-                log.LogInformation(JsonSerializer.Serialize(item));
+                log.LogInformation(JsonConvert.SerializeObject(item));
                 productsList.Add(item);
             }
             return new OkObjectResult(productsList);
