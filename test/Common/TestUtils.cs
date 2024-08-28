@@ -85,17 +85,20 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
                 // First connect to master to create the database
                 connectionStringBuilder = new MySqlConnectionStringBuilder();
 
-                // Either use integrated auth or MySQL login depending if SA_PASSWORD is set
+                // Either use integrated auth or MySQL login depending if MYSQL_ROOT_PASSWORD is set
                 string userId = "root";
-                string password = Environment.GetEnvironmentVariable("SA_PASSWORD");
+                string password = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD");
                 if (string.IsNullOrEmpty(password))
                 {
                     throw new ArgumentNullException(password);
                 }
                 else
                 {
+                    connectionStringBuilder.Server = testServer;
                     connectionStringBuilder.UserID = userId;
                     connectionStringBuilder.Password = password;
+                    connectionStringBuilder.SslMode = MySqlSslMode.Disabled;
+                    // connectionStringBuilder.TlsVersion = SslProtocols.Tls12.ToString() + "," + SslProtocols.Tls13.ToString();
                 }
                 masterConnectionString = connectionStringBuilder.ToString();
             }
@@ -107,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
             {
                 using var masterConnection = new MySqlConnection(masterConnectionString);
                 masterConnection.Open();
-                ExecuteNonQuery(masterConnection, $"CREATE DATABASE [{databaseName}]", Console.WriteLine);
+                ExecuteNonQuery(masterConnection, $"CREATE DATABASE {databaseName};", Console.WriteLine);
             }, Console.WriteLine);
 
             connectionStringBuilder.Database = databaseName;

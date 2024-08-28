@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -23,21 +24,21 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             product = new ProductColumnTypes()
             {
                 ProductId = int.Parse(req.Query["productId"]),
-                BigInt = int.MaxValue,
-                Bit = true,
+                BigIntType = int.MaxValue,
+                BitType = 1,
                 DecimalType = 1.2345M,
-                Numeric = 1.2345M,
-                SmallInt = 0,
-                TinyInt = 1,
+                NumericType = 1.2345M,
+                SmallIntType = 0,
+                TinyIntType = 1,
                 FloatType = 1.2,
-                Real = 1.2f,
-                Date = DateTime.Now,
-                Datetime = DateTime.Now,
-                Time = DateTime.Now.TimeOfDay,
+                RealType = 1.2f,
+                DateType = DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.CreateSpecificCulture("en-US")),
+                DatetimeType = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CreateSpecificCulture("en-US")),
+                TimeType = DateTime.Now.TimeOfDay,
                 CharType = "test",
-                Varchar = "test",
-                Nchar = "\u2649",
-                Nvarchar = "\u2649",
+                VarcharType = "test",
+                NcharType = "test",
+                NvarcharType = "test",
             };
 
             // Items were inserted successfully so return success, an exception would be thrown if there

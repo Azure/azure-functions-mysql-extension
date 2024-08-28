@@ -3,22 +3,12 @@
 using System.Collections.Generic;
 using System;
 using System.Linq;
-using Google.Protobuf.WellKnownTypes;
 
 namespace DotnetIsolatedTests.Common
 {
     public class Product
     {
         public int? ProductId { get; set; }
-
-        public string Name { get; set; }
-
-        public int Cost { get; set; }
-    }
-
-    public class ProductIncorrectCasing
-    {
-        public int ProductID { get; set; }
 
         public string Name { get; set; }
 
@@ -73,58 +63,58 @@ namespace DotnetIsolatedTests.Common
     {
         public int ProductId { get; set; }
 
-        public sbyte TinyInt { get; set; }
+        public long BigIntType { get; set; }
 
-        public short SmallInt { get; set; }
-
-        public int MediumInt { get; set; }
-
-        public int IntType { get; set; }
-
-        public long BigInt { get; set; }
+        public int BitType { get; set; }
 
         public decimal DecimalType { get; set; }
 
-        public decimal Numeric { get; set; }
+        public decimal NumericType { get; set; }
+
+        public short SmallIntType { get; set; }
+
+        public short TinyIntType { get; set; }
 
         public double FloatType { get; set; }
 
-        public double DoubleType { get; set; }
+        public float RealType { get; set; }
 
-        public bool Bit { get; set; }
+        public string DateType { get; set; }
 
-        public DateOnly Date { get; set; }
+        public string DatetimeType { get; set; }
 
-        public DateTime Datetime { get; set; }
-
-        public Timestamp TimeStampType { get; set; }
-
-        public TimeSpan Time { get; set; }
-
-        public int Year { get; set; }
+        public TimeSpan TimeType { get; set; }
 
         public string CharType { get; set; }
 
-        public string Varchar { get; set; }
+        public string VarcharType { get; set; }
 
-        public byte[] Binary { get; set; }
+        public string NcharType { get; set; }
 
-        public byte[] VarBinary { get; set; }
+        public string NvarcharType { get; set; }
 
-        public string Text { get; set; }
+        public byte[] BinaryType { get; set; }
+
+        public byte[] VarbinaryType { get; set; }
+
 
         public override bool Equals(object obj)
         {
             if (obj is ProductColumnTypes)
             {
                 var that = obj as ProductColumnTypes;
-                return this.ProductId == that.ProductId && this.TinyInt == that.TinyInt && this.SmallInt == that.SmallInt
-                    && this.MediumInt == that.MediumInt && this.IntType == that.IntType && this.BigInt == that.BigInt
-                    && this.DecimalType == that.DecimalType && this.Numeric == that.Numeric && this.FloatType == that.FloatType
-                    && this.DoubleType == that.DoubleType && this.Bit == that.Bit && this.Date == that.Date && this.Datetime == that.Datetime
-                    && this.TimeStampType == that.TimeStampType && this.Time == that.Time && this.Year == that.Year
-                    && this.CharType == that.CharType && this.Varchar == that.Varchar && this.Text == that.Text
-                    && this.Binary.SequenceEqual(that.Binary) && this.VarBinary.SequenceEqual(that.VarBinary);
+                Console.WriteLine("Debug Values: " + $"{this.ProductId == that.ProductId} {this.BigIntType == that.BigIntType} {this.BitType == that.BitType} {this.DecimalType == that.DecimalType} {this.NumericType == that.NumericType} {this.SmallIntType == that.SmallIntType} {this.TinyIntType == that.TinyIntType} {this.FloatType == that.FloatType} {this.RealType == that.RealType} {this.DateType == that.DateType} {this.DatetimeType == that.DatetimeType} {this.TimeType == that.TimeType} {this.CharType == that.CharType} {this.VarcharType == that.VarcharType} {this.NcharType == that.NcharType} {this.NvarcharType == that.NvarcharType} {this.BinaryType.SequenceEqual(that.BinaryType)} {this.VarbinaryType.SequenceEqual(that.VarbinaryType)}");
+                Console.WriteLine("This date: " + this.DatetimeType);
+                Console.WriteLine("That date: " + that.DatetimeType);
+                Console.WriteLine("This binary: " + this.BinaryType);
+                Console.WriteLine("That binary: " + that.BinaryType);
+                return this.ProductId == that.ProductId && this.BigIntType == that.BigIntType && this.BitType == that.BitType &&
+                    this.DecimalType == that.DecimalType && this.NumericType == that.NumericType &&
+                    this.SmallIntType == that.SmallIntType && this.TinyIntType == that.TinyIntType &&
+                    this.FloatType == that.FloatType && this.RealType == that.RealType && this.DateType == that.DateType &&
+                    this.DatetimeType == that.DatetimeType && this.TimeType == that.TimeType && this.CharType == that.CharType &&
+                    this.VarcharType == that.VarcharType && this.NcharType == that.NcharType && this.NvarcharType == that.NvarcharType &&
+                    this.BinaryType.SequenceEqual(that.BinaryType) && this.VarbinaryType.SequenceEqual(that.VarbinaryType);
             }
             return false;
         }
@@ -149,17 +139,6 @@ namespace DotnetIsolatedTests.Common
         public int ProductId { get; set; }
 
         public string Name { get; set; }
-    }
-
-    public class ProductUnsupportedTypes
-    {
-        public int ProductId { get; set; }
-
-        public string TextCol { get; set; }
-
-        public string NtextCol { get; set; }
-
-        public byte[] ImageCol { get; set; }
     }
 
     public class ProductDefaultPKWithDifferentColumnOrder

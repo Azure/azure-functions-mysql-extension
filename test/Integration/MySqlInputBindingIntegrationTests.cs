@@ -73,7 +73,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             Product[] products = GetProductsWithSameCostAndName(n, cost, "", n * 2);
             this.InsertProducts(products);
 
-            Assert.Equal(n, this.ExecuteScalar($"select count(1) from Products where name = '' and cost = {cost}"));
+            Assert.Equal(n, Convert.ToInt32(this.ExecuteScalar($"select count(1) from Products where name = '' and cost = {cost}")));
 
             // Run the function
             HttpResponseMessage response = await this.SendInputRequest("getproducts-nameempty", cost.ToString(), TestUtils.GetPort(lang));
@@ -133,32 +133,35 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         {
             this.StartFunctionHost(nameof(GetProductsColumnTypesSerializationAsyncEnumerable), lang, true);
 
-            string datetime = "2022-10-20 12:39:13.123";
-            ProductColumnTypes[] expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(/*lang=json,strict*/ "[{\"ProductId\":999,\"BigInt\":999,\"Bit\":true,\"DecimalType\":1.2345,\"Numeric\":1.2345,\"SmallInt\":1,\"TinyInt\":1,\"FloatType\":0.1,\"Real\":0.1,\"Date\":\"2022-10-20T00:00:00.000Z\",\"Datetime\":\"2022-10-20T12:39:13.123Z\",\"Time\":\"12:39:13.1230000\",\"CharType\":\"test\",\"Varchar\":\"test\",\"Nchar\":\"\uFFFD\u0020\u0020\u0020\",\"Nvarchar\":\"\uFFFD\",\"Binary\":\"dGVzdA==\",\"Varbinary\":\"dGVzdA==\"}]");
+            string datetime = "2024-08-10 12:40:15";
+            ProductColumnTypes[] expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(/*lang=json,strict*/ "[{\"ProductId\":999,\"BigIntType\":999,\"BitType\":1,\"DecimalType\":1.2345,\"NumericType\":1.2345,\"SmallIntType\":1,\"TinyIntType\":1,\"FloatType\":0.1,\"RealType\":0.1,\"DateType\":\"2024-08-10T00:00:00.000Z\",\"DatetimeType\":\"2024-08-10T12:40:15.000Z\",\"TimeType\":\"12:40:15\",\"CharType\":\"test\",\"VarcharType\":\"test\",\"NcharType\":\"test\",\"NvarcharType\":\"test\",\"BinaryType\":\"dGVzdA==\",\"VarbinaryType\":\"dGVzdA==\"}]");
 
             this.ExecuteNonQuery("INSERT INTO ProductsColumnTypes VALUES (" +
                 "999, " + // ProductId,
                 "999, " + // BigInt
                 "1, " + // Bit
                 "1.2345, " + // DecimalType
-                "1.2345, " + // Numeric  
+                "1.2345, " + // Numeric
                 "1, " + // SmallInt
                 "1, " + // TinyInt
                 ".1, " + // FloatType
                 ".1, " + // Real
-                $"CONVERT(DATE, '{datetime}'), " + // Date
-                $"CONVERT(DATETIME, '{datetime}'), " + // Datetime
-                $"CONVERT(TIME, '{datetime}'), " + // Time
+                $"DATE('{datetime}')," +
+                $"'{datetime}'," +
+                $"TIME('{datetime}')," +
                 "'test', " + // CharType
                 "'test', " + // Varchar
-                "NCHAR(0xD84C), " + // Nchar
-                "NCHAR(0xD84C), " +  // Nvarchar
-                "CONVERT(BINARY, 'test'), " + // Binary
-                "CONVERT(VARBINARY, 'test'))"); // Varbinary
+                "'test', " + // Nchar
+                "'test', " +  // Nvarchar
+                "'test', " + // Binary
+                "'test')"); // Varbinary
 
             HttpResponseMessage response = await this.SendInputRequest("getproducts-columntypesserializationasyncenumerable", $"?culture={culture}");
             // We expect the datetime and datetime2 fields to be returned in UTC format
             string actualResponse = await response.Content.ReadAsStringAsync();
+            Console.WriteLine("Actual test1 :" + actualResponse);
+            string expected = /*lang=json,strict*/ "[{\"ProductId\":999,\"BigIntType\":999,\"BitType\":1,\"DecimalType\":1.2345,\"NumericType\":1.2345,\"SmallIntType\":1,\"TinyIntType\":1,\"FloatType\":0.1,\"RealType\":0.1,\"DateType\":\"2024-08-10T00:00:00.000Z\",\"DatetimeType\":\"2024-08-10T12:40:15.000Z\",\"TimeType\":\"12:40:15\",\"CharType\":\"test\",\"VarcharType\":\"test\",\"NcharType\":\"test\",\"NvarcharType\":\"test\",\"BinaryType\":\"dGVzdA==\",\"VarbinaryType\":\"dGVzdA==\"}]";
+            Console.WriteLine("Expected test1: " + expected);
             ProductColumnTypes[] actualProductResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(actualResponse);
             Assert.Equal(expectedResponse, actualProductResponse);
         }
@@ -170,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         [MySqlInlineData()]
         public async void GetProductsColumnTypesSerializationTest(SupportedLanguages lang)
         {
-            string datetime = "2022-10-20 12:39:13.123";
+            string datetime = "2024-08-10 12:40:15";
             this.ExecuteNonQuery("INSERT INTO ProductsColumnTypes VALUES (" +
                 "999, " + // ProductId,
                 "999, " + // BigInt
@@ -181,20 +184,23 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 "1, " + // TinyInt
                 ".1, " + // FloatType
                 ".1, " + // Real
-                $"CONVERT(DATE, '{datetime}'), " + // Date
-                $"CONVERT(DATETIME, '{datetime}'), " + // Datetime
-                $"CONVERT(TIME, '{datetime}'), " + // Time
+                $"DATE('{datetime}')," +
+                $"'{datetime}'," +
+                $"TIME('{datetime}')," +
                 "'test', " + // CharType
                 "'test', " + // Varchar
-                "NCHAR(0xD84C), " + // Nchar
-                "NCHAR(0xD84C), " +  // Nvarchar
-                "CONVERT(BINARY, 'test'), " + // Binary
-                "CONVERT(VARBINARY, 'test'))"); // Varbinary
+                "'test', " + // Nchar
+                "'test', " +  // Nvarchar
+                "'test', " + // Binary
+                "'test')"); // Varbinary
 
             HttpResponseMessage response = await this.SendInputRequest("getproducts-columntypesserialization", "", TestUtils.GetPort(lang, true));
             // We expect the date fields to be returned in UTC format
-            ProductColumnTypes[] expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(/*lang=json,strict*/ "[{\"ProductId\":999,\"BigInt\":999,\"Bit\":true,\"DecimalType\":1.2345,\"Numeric\":1.2345,\"SmallInt\":1,\"TinyInt\":1,\"FloatType\":0.1,\"Real\":0.1,\"Date\":\"2022-10-20T00:00:00.000Z\",\"Datetime\":\"2022-10-20T12:39:13.123Z\",\"Time\":\"12:39:13.1230000\",\"CharType\":\"test\",\"Varchar\":\"test\",\"Nchar\":\"\uFFFD\u0020\u0020\u0020\",\"Nvarchar\":\"\uFFFD\",\"Binary\":\"dGVzdA==\",\"Varbinary\":\"dGVzdA==\"}]");
+            ProductColumnTypes[] expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(/*lang=json,strict*/ "[{\"ProductId\":999,\"BigIntType\":999,\"BitType\":1,\"DecimalType\":1.2345,\"NumericType\":1.2345,\"SmallIntType\":1,\"TinyIntType\":1,\"FloatType\":0.1,\"RealType\":0.1,\"DateType\":\"2024-08-10T00:00:00.000Z\",\"DatetimeType\":\"2024-08-10T12:40:15.000Z\",\"TimeType\":\"12:40:15\",\"CharType\":\"test\",\"VarcharType\":\"test\",\"NcharType\":\"test\",\"NvarcharType\":\"test\",\"BinaryType\":\"dGVzdA==\",\"VarbinaryType\":\"dGVzdA==\"}]");
             string actualResponse = await response.Content.ReadAsStringAsync();
+            string expectedString = /*lang=json,strict*/"[{\"ProductId\":999,\"BigIntType\":999,\"BitType\":1,\"DecimalType\":1.2345,\"NumericType\":1.2345,\"SmallIntType\":1,\"TinyIntType\":1,\"FloatType\":0.1,\"RealType\":0.1,\"DateType\":\"2024-08-10T00:00:00.000Z\",\"DatetimeType\":\"2024-08-10 12:40:15\",\"TimeType\":\"12:40:15\",\"CharType\":\"test\",\"VarcharType\":\"test\",\"NcharType\":\"test\",\"NvarcharType\":\"test\",\"BinaryType\":\"dGVzdA==\",\"VarbinaryType\":\"dGVzdA==\"}]";
+            Console.WriteLine("actual string: " + actualResponse);
+            Console.WriteLine($"Expected {expectedString}");
             ProductColumnTypes[] actualProductResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(actualResponse);
             Assert.Equal(expectedResponse, actualProductResponse);
         }

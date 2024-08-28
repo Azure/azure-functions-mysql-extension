@@ -22,7 +22,7 @@ namespace DotnetIsolatedTests
         public static async Task<List<ProductColumnTypes>> Run(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "getproducts-columntypesserializationasyncenumerable")]
             HttpRequestData req,
-            [MySqlInput("SELECT * FROM [ProductsColumnTypes]",
+            [MySqlInput("SELECT * FROM ProductsColumnTypes",
                 "MySqlConnectionString")]
             IAsyncEnumerable<ProductColumnTypes> products)
         {

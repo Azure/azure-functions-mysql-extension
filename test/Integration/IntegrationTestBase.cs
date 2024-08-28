@@ -95,7 +95,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// </remarks>
         public void StartFunctionHost(string functionName, SupportedLanguages language, bool useTestFolder = false, DataReceivedEventHandler customOutputHandler = null, IDictionary<string, string> environmentVariables = null)
         {
-            string workingDirectory = language == SupportedLanguages.CSharp && useTestFolder ? TestUtils.GetPathToBin() : Path.Combine(TestUtils.GetPathToBin(), "SqlExtensionSamples", Enum.GetName(typeof(SupportedLanguages), language));
+            string workingDirectory = language == SupportedLanguages.CSharp && useTestFolder ? TestUtils.GetPathToBin() : Path.Combine(TestUtils.GetPathToBin(), "MySqlExtensionSamples", Enum.GetName(typeof(SupportedLanguages), language));
             if (language == SupportedLanguages.Java)
             {
                 workingDirectory = useTestFolder ? Path.Combine(TestUtils.GetPathToBin(), "..", "..", "..", "Integration", "test-java") : workingDirectory;
@@ -340,6 +340,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             }
 
             this.ExecuteNonQuery(queryBuilder.ToString(), $"Inserting {products.Length} products");
+            Console.WriteLine($"Inserted products into products table");
         }
 
         protected static Product[] GetProducts(int n, int cost)
