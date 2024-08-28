@@ -45,12 +45,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
     }
 
-    public enum QueryType
-    {
-        Insert,
-        Merge
-    }
-
     /// <typeparam name="T">A user-defined POCO that represents a row of the user's table</typeparam>
     internal class MySqlAsyncCollector<T> : IAsyncCollector<T>, IDisposable
     {
@@ -231,7 +225,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     foreach (IEnumerable<T> batch in rows.Batch(batchSize))
                     {
                         batchCount++;
-                        GenerateDataQueryForMerge(tableInfo, batch, out string newDataQuery);
+                        GenerateDataQueryForMerge(tableInfo, batch, columnNamesFromItem, out string newDataQuery);
                         command.CommandText = $"{insertQuery} {newDataQuery} {duplicateUpdateQuery};";
 
                         await command.ExecuteNonQueryAsyncWithLogging(this._logger, CancellationToken.None);
@@ -295,7 +289,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             return typeof(T).GetProperties().Select(prop => prop.Name);
         }
 
-        private static string GetColValuesForUpsert(T row, TableInformation table)
+        private static string GetColValuesForUpsert(T row, TableInformation table, IEnumerable<string> columnNamesFromItem)
         {
             //build a string of column data
             string jsonRowDataInString = Utils.JsonSerializeObject(row, table.JsonSerializerSettings);
@@ -303,9 +297,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             //to store temproraly, the values of each property in each row
             var colValues = new List<string>();
-            foreach (KeyValuePair<string, JToken> colDataPair in jsonRowData)
+
+            foreach (string colName in columnNamesFromItem)
             {
-                string colVal = colDataPair.Value.ToString();
+                //find the col value in jsonRowData, to the respecting column name
+                string colVal = jsonRowData[colName].ToString();
 
                 //If column values is empty
                 if (string.IsNullOrEmpty(colVal))
@@ -313,7 +309,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     colVal = "null";
                 }
                 // If the value type is String
-                else if (colDataPair.Value.Type == JTokenType.String)
+                else if (jsonRowData[colName].Type == JTokenType.String)
                 {
                     // add single quote for string values
                     colVal = "'" + colVal + "'";
@@ -332,9 +328,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         /// <param name="table">Information about the table we will be upserting into</param>
         /// <param name="rows">Rows to be upserted</param>
+        /// <param name="columnNamesFromItem">column list to be upserted</param>
         /// <param name="newDataQuery">Generated T-MySQL data query</param>
         /// <returns>T-MySQL containing data for merge</returns>
-        private static void GenerateDataQueryForMerge(TableInformation table, IEnumerable<T> rows, out string newDataQuery)
+        private static void GenerateDataQueryForMerge(TableInformation table, IEnumerable<T> rows, IEnumerable<string> columnNamesFromItem, out string newDataQuery)
         {
             // to store rows data in List of string 
             IList<string> rowsValuesToUpsert = new List<string>();
@@ -350,7 +347,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     {
                         // If the table has an identity column as a primary key then
                         // all rows are guaranteed to be unique so we can insert them all
-                        rowsValuesToUpsert.Add(GetColValuesForUpsert(row, table));
+                        rowsValuesToUpsert.Add(GetColValuesForUpsert(row, table, columnNamesFromItem));
                     }
                     else
                     {
@@ -374,7 +371,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         if (uniqueUpdatedPrimaryKeys.Add(combinedPrimaryKeyStr))
                         {
                             //add a column values of a single row
-                            rowsValuesToUpsert.Add(GetColValuesForUpsert(row, table));
+                            rowsValuesToUpsert.Add(GetColValuesForUpsert(row, table, columnNamesFromItem));
                         }
                     }
                 }
@@ -382,7 +379,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     // ToDo: add check for duplicate primary keys once we find a way to get primary keys.
                     //add column values of a single row
-                    rowsValuesToUpsert.Add(GetColValuesForUpsert(row, table));
+                    rowsValuesToUpsert.Add(GetColValuesForUpsert(row, table, columnNamesFromItem));
 
                 }
             }
