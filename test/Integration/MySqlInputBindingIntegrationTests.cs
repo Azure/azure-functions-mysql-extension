@@ -157,11 +157,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 "'test')"); // Varbinary
 
             HttpResponseMessage response = await this.SendInputRequest("getproducts-columntypesserializationasyncenumerable", $"?culture={culture}");
-            // We expect the datetime and datetime2 fields to be returned in UTC format
+            // We expect the datetime fields to be returned in UTC format
             string actualResponse = await response.Content.ReadAsStringAsync();
-            Console.WriteLine("Actual test1 :" + actualResponse);
-            string expected = /*lang=json,strict*/ "[{\"ProductId\":999,\"BigIntType\":999,\"BitType\":1,\"DecimalType\":1.2345,\"NumericType\":1.2345,\"SmallIntType\":1,\"TinyIntType\":1,\"FloatType\":0.1,\"RealType\":0.1,\"DateType\":\"2024-08-10T00:00:00.000Z\",\"DatetimeType\":\"2024-08-10T12:40:15.000Z\",\"TimeType\":\"12:40:15\",\"CharType\":\"test\",\"VarcharType\":\"test\",\"NcharType\":\"test\",\"NvarcharType\":\"test\",\"BinaryType\":\"dGVzdA==\",\"VarbinaryType\":\"dGVzdA==\"}]";
-            Console.WriteLine("Expected test1: " + expected);
             ProductColumnTypes[] actualProductResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(actualResponse);
             Assert.Equal(expectedResponse, actualProductResponse);
         }
@@ -198,9 +195,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // We expect the date fields to be returned in UTC format
             ProductColumnTypes[] expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(/*lang=json,strict*/ "[{\"ProductId\":999,\"BigIntType\":999,\"BitType\":1,\"DecimalType\":1.2345,\"NumericType\":1.2345,\"SmallIntType\":1,\"TinyIntType\":1,\"FloatType\":0.1,\"RealType\":0.1,\"DateType\":\"2024-08-10T00:00:00.000Z\",\"DatetimeType\":\"2024-08-10T12:40:15.000Z\",\"TimeType\":\"12:40:15\",\"CharType\":\"test\",\"VarcharType\":\"test\",\"NcharType\":\"test\",\"NvarcharType\":\"test\",\"BinaryType\":\"dGVzdA==\",\"VarbinaryType\":\"dGVzdA==\"}]");
             string actualResponse = await response.Content.ReadAsStringAsync();
-            string expectedString = /*lang=json,strict*/"[{\"ProductId\":999,\"BigIntType\":999,\"BitType\":1,\"DecimalType\":1.2345,\"NumericType\":1.2345,\"SmallIntType\":1,\"TinyIntType\":1,\"FloatType\":0.1,\"RealType\":0.1,\"DateType\":\"2024-08-10T00:00:00.000Z\",\"DatetimeType\":\"2024-08-10 12:40:15\",\"TimeType\":\"12:40:15\",\"CharType\":\"test\",\"VarcharType\":\"test\",\"NcharType\":\"test\",\"NvarcharType\":\"test\",\"BinaryType\":\"dGVzdA==\",\"VarbinaryType\":\"dGVzdA==\"}]";
-            Console.WriteLine("actual string: " + actualResponse);
-            Console.WriteLine($"Expected {expectedString}");
             ProductColumnTypes[] actualProductResponse = Utils.JsonDeserializeObject<ProductColumnTypes[]>(actualResponse);
             Assert.Equal(expectedResponse, actualProductResponse);
         }
