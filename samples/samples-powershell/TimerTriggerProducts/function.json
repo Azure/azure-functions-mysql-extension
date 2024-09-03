@@ -15,7 +15,7 @@
       "name": "products",
       "type": "mysql",
       "direction": "out",
-      "commandText": "[dbo].[Products]",
+      "commandText": "Products",
       "connectionStringSetting": "MySqlConnectionString"
     }
   ],
