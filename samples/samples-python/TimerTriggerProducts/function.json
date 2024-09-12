@@ -1,0 +1,18 @@
+{
+  "bindings": [
+    {
+      "schedule": "*/5 * * * * *",
+      "name": "myTimer",
+      "type": "timerTrigger",
+      "direction": "in"
+    },
+    {
+      "name": "products",
+      "type": "mysql",
+      "direction": "out",
+      "commandText": "Products",
+      "connectionStringSetting": "MySqlConnectionString"
+    }
+  ],
+  "disabled": false
+}

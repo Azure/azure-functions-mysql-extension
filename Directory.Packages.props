@@ -31,7 +31,7 @@
     <PackageVersion Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="161.9109.0" />
     <PackageVersion Include="Grpc.Net.Client" Version="2.62.0" />
     <!-- Packages below this line result in a major version bump of dependencies, which can cause conflicts with the host.
-         Any such updates should only happen with a major version bump of the SQL extension, or by :
+         Any such updates should only happen with a major version bump of the MySQL extension, or by :
             1. Verifying with the core Azure Functions host team that there will not be any issues
             2. Running the bundle dependency test and verifying it passes
      -->

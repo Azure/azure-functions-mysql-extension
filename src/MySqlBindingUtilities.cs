@@ -240,20 +240,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
         }
 
-        //internal static bool IsFatalMySqlException(this Exception e)
-        //{
-        //    string lowerMessage = e.Message.ToLowerInvariant();
-        //    // Most MySqlExceptions wrap the original error from the native driver, so make sure to check both
-        //    return (e as MySqlException)?.Class >= 20
-        //        || (e.InnerException as MySqlException)?.Class >= 20
-        //        // TEMPORARY - Not all exceptions thrown by MySqlClient are MySqlExceptions, and the current SqlClient
-        //        // does not correctly update the State property in all cases. So for now explicitly check for
-        //        // the string containing a message indicating that the connection has been closed or broken.
-        //        // This should be removed once version 5.2.0+ has been released
-        //        // https://github.com/Azure/azure-functions-sql-extension/issues/860
-        //        || (lowerMessage.Contains("connection") && (lowerMessage.Contains("broken") || lowerMessage.Contains("closed")));
-        //}
-
         /// <summary>
         /// Whether the exception is a MySqlClient deadlock exception (Error Number 1205)
         /// </summary>
