@@ -10,6 +10,7 @@ using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerUtils;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using MySql.Data.MySqlClient;
@@ -33,8 +34,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private readonly MySqlOptions _mysqlOptions;
         private readonly ILogger _logger;
         private readonly IConfiguration _configuration;
+        private readonly int _maxChangesPerWorker;
 
         private MySqlTableChangeMonitor<T> _changeMonitor;
+        private readonly IScaleMonitor<MySqlTriggerMetrics> _scaleMonitor;
+        private readonly ITargetScaler _targetScaler;
+
         private int _listenerState = ListenerNotStarted;
 
         /// <summary>
@@ -58,6 +63,18 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             this._mysqlOptions = mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions));
             this._logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+
+            int? configuredMaxChangesPerWorker;
+            // TODO: when we move to reading them exclusively from the host options, remove reading from settings.
+            configuredMaxChangesPerWorker = configuration.GetValue<int?>(ConfigKey_MySqlTrigger_MaxChangesPerWorker);
+            this._maxChangesPerWorker = configuredMaxChangesPerWorker ?? this._mysqlOptions.MaxChangesPerWorker;
+            if (this._maxChangesPerWorker <= 0)
+            {
+                throw new InvalidOperationException($"Invalid value for configuration setting '{ConfigKey_MySqlTrigger_MaxChangesPerWorker}'. Ensure that the value is a positive integer.");
+            }
+
+            this._scaleMonitor = new MySqlTriggerScaleMonitor(this._userFunctionId, this._userTable, this._userDefinedLeasesTableName, this._connectionString, this._maxChangesPerWorker, this._logger);
+            this._targetScaler = new MySqlTriggerTargetScaler(this._userFunctionId, this._userTable, this._userDefinedLeasesTableName, this._connectionString, this._maxChangesPerWorker, this._logger);
         }
 
         public void Cancel()
@@ -379,6 +396,16 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 long durationMs = stopwatch.ElapsedMilliseconds;
                 return durationMs;
             }
+        }
+
+        public IScaleMonitor GetMonitor()
+        {
+            return this._scaleMonitor;
+        }
+
+        public ITargetScaler GetTargetScaler()
+        {
+            return this._targetScaler;
         }
     }
 }

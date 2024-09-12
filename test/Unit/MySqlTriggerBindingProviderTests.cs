@@ -47,6 +47,26 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         }
 
         /// <summary>
+        /// Verifies that <see cref="InvalidOperationException"/> is thrown if the <see cref="MySqlTriggerAttribute"/> is
+        /// applied on the trigger parameter of unsupported type.
+        /// </summary>
+        [Theory]
+        [InlineData(typeof(object))]
+        [InlineData(typeof(MySqlChange<object>))]
+        [InlineData(typeof(IEnumerable<MySqlChange<object>>))]
+        [InlineData(typeof(IReadOnlyList<object>))]
+        [InlineData(typeof(IReadOnlyList<IReadOnlyList<object>>))]
+        public async Task TryCreateAsync_InvalidTriggerParameterType_ThrowsException(Type parameterType)
+        {
+            Task testCode() { return CreateTriggerBindingAsync(parameterType, nameof(UserFunctionWithAttribute)); }
+            InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(testCode);
+
+            Assert.Equal(
+                $"Can't bind MySqlTriggerAttribute to type {parameterType}, this is not a supported type.",
+                exception.Message);
+        }
+
+        /// <summary>
         /// Verifies that <see cref="MySqlTriggerBinding{T}"/> is returned if the <see cref="MySqlTriggerAttribute"/> has all
         /// required properties set and it is applied on the trigger parameter of supported type.
         /// </summary>
@@ -55,6 +75,18 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         {
             Type parameterType = typeof(IReadOnlyList<MySqlChange<object>>);
             ITriggerBinding binding = await CreateTriggerBindingAsync(parameterType, nameof(UserFunctionWithAttribute));
+            Assert.IsType<MySqlTriggerBinding<object>>(binding);
+        }
+
+        /// <summary>
+        /// Verifies that <see cref="MySqlTriggerBinding{T}"/> is returned if the <see cref="MySqlTriggerAttribute"/> has all
+        /// required and optional properties set and it is applied on the trigger parameter of supported type.
+        /// </summary>
+        [Fact]
+        public async Task TryCreateAsync_LeasesTableName_ReturnsTriggerBinding()
+        {
+            Type parameterType = typeof(IReadOnlyList<MySqlChange<object>>);
+            ITriggerBinding binding = await CreateTriggerBindingAsync(parameterType, nameof(UserFunctionWithLeasesTableName));
             Assert.IsType<MySqlTriggerBinding<object>>(binding);
         }
 
@@ -80,5 +112,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         private static void UserFunctionWithoutConnectionString<T>([MySqlTrigger("testTableName", null)] T _) { }
 
         private static void UserFunctionWithAttribute<T>([MySqlTrigger("testTableName", "testConnectionStringSetting")] T _) { }
+
+        private static void UserFunctionWithLeasesTableName<T>([MySqlTrigger("testTableName", "testConnectionStringSetting", "testLeasesTableName")] T _) { }
     }
 }
