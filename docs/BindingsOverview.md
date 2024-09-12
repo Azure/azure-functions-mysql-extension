@@ -108,30 +108,19 @@ For an in-depth explanation of how the trigger functions see the [Trigger Bindin
 
 ### Change Tracking Setup
 
-Azure MySQL Trigger bindings utilize MySQL [change tracking](https://docs.microsoft.com/mysql/relational-databases/track-changes/about-change-tracking-mysql-server) functionality to monitor the user table for changes. As such, it is necessary to enable change tracking on the MySQL database and the MySQL table before using the trigger support. The change tracking can be enabled through the following two queries.
-
-1. Enabling change tracking on the MySQL database:
-
-    ```mysql
-    ALTER DATABASE ['your database name']
-    SET CHANGE_TRACKING = ON
-    (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON);
-    ```
-
-    The `CHANGE_RETENTION` option specifies the duration for which the changes are retained in the change tracking table. This may affect the trigger functionality. For example, if the user application is turned off for several days and then resumed, the database will contain the changes that occurred in past two days in the above setup example. Hence, please update the value of `CHANGE_RETENTION` to suit your requirements.
-
-    The `AUTO_CLEANUP` option is used to enable or disable the clean-up task that removes the stale data. Please refer to MySQL Server documentation [here](https://docs.microsoft.com/mysql/relational-databases/track-changes/enable-and-disable-change-tracking-mysql-server#enable-change-tracking-for-a-database) for more information.
+Azure MySQL Trigger bindings uses "updated_at" and "inserted_at" column's data, to monitor the user table for changes. As such, it is necessary to enable change tracking on the MySQL table before using the trigger support. The change tracking can be enabled through the following two queries.
 
 1. Enabling change tracking on the MySQL table:
 
     ```mysql
-    ALTER TABLE dbo.Employees
-    ENABLE CHANGE_TRACKING;
+    ALTER TABLE Products
+    ADD updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    ADD inserted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     ```
 
     For more information, please refer to the documentation [here](https://docs.microsoft.com/mysql/relational-databases/track-changes/enable-and-disable-change-tracking-mysql-server#enable-change-tracking-for-a-table). The trigger needs to have read access on the table being monitored for changes as well as to the change tracking system tables. It also needs write access to an `az_func` schema within the database, where it will create additional leases tables to store the trigger states and leases. Each function trigger has an associated change tracking table and leases table.
 
-    > **NOTE:** The leases table contains all columns corresponding to the primary key from the user table and three additional columns named `_az_func_ChangeVersion`, `_az_func_AttemptCount` and `_az_func_LeaseExpirationTime`. If any of the primary key columns happen to have the same name, that will result in an error message listing any conflicts. In this case, the listed primary key columns must be renamed for the trigger to work.
+    > **NOTE:** The leases table contains all columns corresponding to the primary key from the user table and three additional columns named `_az_func_AttemptCount` and `_az_func_LeaseExpirationTime`. If any of the primary key columns happen to have the same name, that will result in an error message listing any conflicts. In this case, the listed primary key columns must be renamed for the trigger to work.
 
 ### Configuration for Trigger Bindings
 
@@ -190,7 +179,7 @@ If the function execution fails 5 times in a row for a given row then that row i
 You can run this query to see what rows have failed 5 times and are currently ignored, see [Leases table](./TriggerBinding.md#az_funcleasestablename) documentation for how to get the correct Leases table to query for your function.
 
 ```mysql
-SELECT * FROM [az_func].[Leases_<FunctionId>_<TableId>] WHERE _az_func_AttemptCount = 5
+SELECT * FROM az_func_mysql.Leases_<FunctionId>_<TableId> WHERE _az_func_AttemptCount = 5
 ```
 
 To reset a row and enable functions to try processing it again set the `_az_func_AttemptCount` value to 0.
@@ -198,15 +187,7 @@ To reset a row and enable functions to try processing it again set the `_az_func
 e.g.
 
 ```mysql
-UPDATE [Products].[az_func].[Leases_<FunctionId>_<TableId>] SET _az_func_AttemptCount = 0 WHERE _az_func_AttemptCount = 5
-```
-
-> Note: This will reset ALL ignored rows. To reset only a specific row change the WHERE clause to select only the row you want to update.
-
-e.g.
-
-```mysql
-UPDATE [Products].[az_func].[Leases_<FunctionId>_<TableId>] SET _az_func_AttemptCount = 0 WHERE ProductId = 123
+UPDATE az_func_mysql.Leases_<FunctionId>_<TableId> SET _az_func_AttemptCount = 0 WHERE _az_func_AttemptCount = 5
 ```
 
 #### Lease Tables clean up
@@ -219,92 +200,29 @@ Why clean up?
 3. You want to reset your environment.
 The Azure MySQL Trigger does not currently handle automatically cleaning up any leftover objects, and so we have provided the below scripts to help guide you through doing that.
 
-- Delete all the lease tables that haven't been accessed in `@CleanupAgeDays` days:
+- Delete all the lease tables that haven't been accessed in recent days:
 
 ```mysql
--- Deletes all the lease tables that haven't been accessed in @CleanupAgeDays days (set below)
+-- Deletes all the lease tables that haven't been accessed in recent days (set below)
 -- and removes them from the GlobalState table.
-USE [<Insert DATABASE name here>]
-GO
-DECLARE @TableName NVARCHAR(MAX);
-DECLARE @UserFunctionId char(16);
-DECLARE @UserTableId int;
-DECLARE @CleanupAgeDays int = <Insert desired cleanup age in days here>;
-DECLARE LeaseTable_Cursor CURSOR FOR
-
-SELECT 'az_func.Leases_'+UserFunctionId+'_'+convert(varchar(100),UserTableID) as TABLE_NAME, UserFunctionID, UserTableID
-FROM az_func.GlobalState
-WHERE DATEDIFF(day, LastAccessTime, GETDATE()) > @CleanupAgeDays
-
-OPEN LeaseTable_Cursor;
-
-FETCH NEXT FROM LeaseTable_Cursor INTO @TableName, @UserFunctionId, @UserTableId;
-
-WHILE @@FETCH_STATUS = 0
-BEGIN
-    PRINT N'Dropping table ' + @TableName;
-    EXEC ('DROP TABLE IF EXISTS ' + @TableName);
-    PRINT 'Removing row from GlobalState for UserFunctionID = ' + RTRIM(CAST(@UserFunctionId AS NVARCHAR(30))) + ' and UserTableID = ' + RTRIM(CAST(@UserTableId AS NVARCHAR(30)));
-    DELETE FROM az_func.GlobalState WHERE UserFunctionID = @UserFunctionId and UserTableID = @UserTableId
-    FETCH NEXT FROM LeaseTable_Cursor INTO @TableName, @UserFunctionId, @UserTableId;
-END;
-
-CLOSE LeaseTable_Cursor;
-
-DEALLOCATE LeaseTable_Cursor;
 ```
 
 - Clean up a specific lease table:
 
 To find the name of the lease table associated with your function, look in the log output for a line such as this which is emitted when the trigger is started.
 
-`MySQL trigger Leases table: [az_func].[Leases_84d975fca0f7441a_901578250]`
+`MySQL trigger Leases table: az_func_mysql.Leases_84d975fca0f7441a_901578250`
 
 This log message is at the `Information` level, so make sure your log level is set correctly.
 
 ```mysql
 -- Deletes the specified lease table and removes it from GlobalState table.
-USE [<Insert DATABASE name here>]
-GO
-DECLARE @TableName NVARCHAR(MAX) = <Insert lease table name here>; -- e.g. '[az_func].[Leases_84d975fca0f7441a_901578250]
-DECLARE @UserFunctionId char(16) = <Insert function ID here>; -- e.g. '84d975fca0f7441a' the first section of the lease table name [Leases_84d975fca0f7441a_901578250].
-DECLARE @UserTableId int = <Insert table ID here>; -- e.g. '901578250' the second section of the lease table name [Leases_84d975fca0f7441a_901578250].
-PRINT N'Dropping table ' + @TableName;
-EXEC ('DROP TABLE IF EXISTS ' + @TableName);
-PRINT 'Removing row from GlobalState for UserFunctionID = ' + RTRIM(CAST(@UserFunctionId AS NVARCHAR(30))) + ' and UserTableID = ' + RTRIM(CAST(@UserTableId AS NVARCHAR(30)));
-DELETE FROM az_func.GlobalState WHERE UserFunctionID = @UserFunctionId and UserTableID = @UserTableId
 ```
 
 - Clear all trigger related data for a reset:
 
 ```mysql
 -- Deletes all the lease tables and clears them from the GlobalState table.
-USE [<Insert DATABASE name here>]
-GO
-DECLARE @TableName NVARCHAR(MAX);
-DECLARE @UserFunctionId char(16);
-DECLARE @UserTableId int;
-DECLARE LeaseTable_Cursor CURSOR FOR
-
-SELECT 'az_func.Leases_'+UserFunctionId+'_'+convert(varchar(100),UserTableID) as TABLE_NAME, UserFunctionID, UserTableID
-FROM az_func.GlobalState
-
-OPEN LeaseTable_Cursor;
-
-FETCH NEXT FROM LeaseTable_Cursor INTO @TableName, @UserFunctionId, @UserTableId;
-
-WHILE @@FETCH_STATUS = 0
-BEGIN
-    PRINT N'Dropping table ' + @TableName;
-    EXEC ('DROP TABLE IF EXISTS ' + @TableName);
-    PRINT 'Removing row from GlobalState for UserFunctionID = ' + RTRIM(CAST(@UserFunctionId AS NVARCHAR(30))) + ' and UserTableID = ' + RTRIM(CAST(@UserTableId AS NVARCHAR(30)));
-    DELETE FROM az_func.GlobalState WHERE UserFunctionID = @UserFunctionId and UserTableID = @UserTableId
-    FETCH NEXT FROM LeaseTable_Cursor INTO @TableName, @UserFunctionId, @UserTableId;
-END;
-
-CLOSE LeaseTable_Cursor;
-
-DEALLOCATE LeaseTable_Cursor;
 ```
 
 ### Setup Guides
