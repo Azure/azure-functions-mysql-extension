@@ -1,8 +1,8 @@
-# Azure SQL bindings for Azure Functions - Overview
+# Azure MySQL bindings for Azure Functions - Overview
 
 ## Table of Contents
 
-- [Azure SQL bindings for Azure Functions - Overview](#azure-sql-bindings-for-azure-functions---overview)
+- [Azure MySQL bindings for Azure Functions - Overview](#azure-mysql-bindings-for-azure-functions---overview)
   - [Table of Contents](#table-of-contents)
   - [Input Binding](#input-binding)
     - [Retry support for Input Bindings](#retry-support-for-input-bindings)
@@ -17,9 +17,9 @@
   - [Trigger Binding](#trigger-binding)
     - [Change Tracking Setup](#change-tracking-setup)
     - [Configuration for Trigger Bindings](#configuration-for-trigger-bindings)
-      - [Sql\_Trigger\_MaxBatchSize](#sql_trigger_maxbatchsize)
-      - [Sql\_Trigger\_PollingIntervalMs](#sql_trigger_pollingintervalms)
-      - [Sql\_Trigger\_MaxChangesPerWorker](#sql_trigger_maxchangesperworker)
+      - [MySql\_Trigger\_MaxBatchSize](#mysql_trigger_maxbatchsize)
+      - [MySql\_Trigger\_PollingIntervalMs](#mysql_trigger_pollingintervalms)
+      - [MySql\_Trigger\_MaxChangesPerWorker](#mysql_trigger_maxchangesperworker)
     - [Scaling for Trigger Bindings](#scaling-for-trigger-bindings)
     - [Retry support for Trigger Bindings](#retry-support-for-trigger-bindings)
       - [Startup retries](#startup-retries)
@@ -31,7 +31,7 @@
 
 ## Input Binding
 
-Azure SQL Input bindings take a SQL query or stored procedure to run and returns the output to the function.
+Azure MySQL Input bindings take a MySQL query or stored procedure to run and returns the output to the function.
 
 ### Retry support for Input Bindings
 
@@ -41,7 +41,6 @@ There currently is no retry support for errors that occur for input bindings. If
 
 - [.NET (In-Proc)](./SetupGuide_Dotnet.md#input-binding)
 - [.NET (Isolated)](./SetupGuide_DotnetOutOfProc.md#input-binding)
-- [C# Script](./SetupGuide_DotnetCSharpScript.md#input-binding)
 - [Java](./SetupGuide_Java.md#input-binding)
 - [JavaScript](./SetupGuide_Javascript.md#input-binding)
 - [Python](./SetupGuide_Python.md#input-binding)
@@ -49,9 +48,9 @@ There currently is no retry support for errors that occur for input bindings. If
 
 ## Output Binding
 
-Azure SQL Output bindings take a list of rows and upserts them to the user table. Upserting means that if the primary key values of the row already exists in the table, the row is interpreted as an update, meaning that the values of the other columns in the table for that row are updated. If the primary key values do not exist in the table, the row values are inserted as new values. The upserting of the rows is batched by the output binding code.
+Azure MySQL Output bindings take a list of rows and upserts them to the user table. Upserting means that if the primary key values of the row already exists in the table, the row is interpreted as an update, meaning that the values of the other columns in the table for that row are updated. If the primary key values do not exist in the table, the row values are inserted as new values. The upserting of the rows is batched by the output binding code.
 
-  > **NOTE:** By default the Output binding uses the T-SQL [MERGE](https://docs.microsoft.com/sql/t-sql/statements/merge-transact-sql) statement which requires [SELECT](https://docs.microsoft.com/sql/t-sql/statements/merge-transact-sql#permissions) permissions on the target database.
+  > **NOTE:** By default the Output binding uses the T-MySQL [MERGE](https://docs.microsoft.com/mysql/t-mysql/statements/merge-transact-mysql) statement which requires [SELECT](https://docs.microsoft.com/mysql/t-mysql/statements/merge-transact-mysql#permissions) permissions on the target database.
 
 ### Output Binding columns
 
@@ -104,17 +103,17 @@ See <https://github.com/Azure/Azure-Functions/issues/891> for further informatio
 
 ## Trigger Binding
 
-Azure SQL Trigger bindings monitor the user table for changes (i.e., row inserts, updates, and deletes) and invokes the function with updated rows.
+Azure MySQL Trigger bindings monitor the user table for changes (i.e., row inserts, updates, and deletes) and invokes the function with updated rows.
 
 For an in-depth explanation of how the trigger functions see the [Trigger Binding](./TriggerBinding.md) documentation.
 
 ### Change Tracking Setup
 
-Azure SQL Trigger bindings utilize SQL [change tracking](https://docs.microsoft.com/sql/relational-databases/track-changes/about-change-tracking-sql-server) functionality to monitor the user table for changes. As such, it is necessary to enable change tracking on the SQL database and the SQL table before using the trigger support. The change tracking can be enabled through the following two queries.
+Azure MySQL Trigger bindings utilize MySQL [change tracking](https://docs.microsoft.com/mysql/relational-databases/track-changes/about-change-tracking-mysql-server) functionality to monitor the user table for changes. As such, it is necessary to enable change tracking on the MySQL database and the MySQL table before using the trigger support. The change tracking can be enabled through the following two queries.
 
-1. Enabling change tracking on the SQL database:
+1. Enabling change tracking on the MySQL database:
 
-    ```sql
+    ```mysql
     ALTER DATABASE ['your database name']
     SET CHANGE_TRACKING = ON
     (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON);
@@ -122,33 +121,33 @@ Azure SQL Trigger bindings utilize SQL [change tracking](https://docs.microsoft.
 
     The `CHANGE_RETENTION` option specifies the duration for which the changes are retained in the change tracking table. This may affect the trigger functionality. For example, if the user application is turned off for several days and then resumed, the database will contain the changes that occurred in past two days in the above setup example. Hence, please update the value of `CHANGE_RETENTION` to suit your requirements.
 
-    The `AUTO_CLEANUP` option is used to enable or disable the clean-up task that removes the stale data. Please refer to SQL Server documentation [here](https://docs.microsoft.com/sql/relational-databases/track-changes/enable-and-disable-change-tracking-sql-server#enable-change-tracking-for-a-database) for more information.
+    The `AUTO_CLEANUP` option is used to enable or disable the clean-up task that removes the stale data. Please refer to MySQL Server documentation [here](https://docs.microsoft.com/mysql/relational-databases/track-changes/enable-and-disable-change-tracking-mysql-server#enable-change-tracking-for-a-database) for more information.
 
-1. Enabling change tracking on the SQL table:
+1. Enabling change tracking on the MySQL table:
 
-    ```sql
+    ```mysql
     ALTER TABLE dbo.Employees
     ENABLE CHANGE_TRACKING;
     ```
 
-    For more information, please refer to the documentation [here](https://docs.microsoft.com/sql/relational-databases/track-changes/enable-and-disable-change-tracking-sql-server#enable-change-tracking-for-a-table). The trigger needs to have read access on the table being monitored for changes as well as to the change tracking system tables. It also needs write access to an `az_func` schema within the database, where it will create additional leases tables to store the trigger states and leases. Each function trigger has an associated change tracking table and leases table.
+    For more information, please refer to the documentation [here](https://docs.microsoft.com/mysql/relational-databases/track-changes/enable-and-disable-change-tracking-mysql-server#enable-change-tracking-for-a-table). The trigger needs to have read access on the table being monitored for changes as well as to the change tracking system tables. It also needs write access to an `az_func` schema within the database, where it will create additional leases tables to store the trigger states and leases. Each function trigger has an associated change tracking table and leases table.
 
     > **NOTE:** The leases table contains all columns corresponding to the primary key from the user table and three additional columns named `_az_func_ChangeVersion`, `_az_func_AttemptCount` and `_az_func_LeaseExpirationTime`. If any of the primary key columns happen to have the same name, that will result in an error message listing any conflicts. In this case, the listed primary key columns must be renamed for the trigger to work.
 
 ### Configuration for Trigger Bindings
 
-This section goes over some of the configuration values you can use to customize SQL trigger bindings. See [How to Use host.json for configuring options](https://learn.microsoft.com/azure/azure-functions/functions-host-json) to learn more.
-    > **NOTE:** Currently, SQL trigger bindings configurations from app settings will take precedence over settings in the host.json file. At a point in the future, SQL trigger bindings will move to only use configurations from the host.json file.
+This section goes over some of the configuration values you can use to customize MySQL trigger bindings. See [How to Use host.json for configuring options](https://learn.microsoft.com/azure/azure-functions/functions-host-json) to learn more.
+    > **NOTE:** Currently, MySQL trigger bindings configurations from app settings will take precedence over settings in the host.json file. At a point in the future, MySQL trigger bindings will move to only use configurations from the host.json file.
 
-#### Sql_Trigger_MaxBatchSize
+#### MySql_Trigger_MaxBatchSize
 
 The maximum number of changes sent to the function during each iteration of the change processing loop.
 
-#### Sql_Trigger_PollingIntervalMs
+#### MySql_Trigger_PollingIntervalMs
 
 The delay in milliseconds between processing each batch of changes.
 
-#### Sql_Trigger_MaxChangesPerWorker
+#### MySql_Trigger_MaxChangesPerWorker
 
 The upper limit on the number of pending changes in the user table that are allowed per application-worker. If the count of changes exceeds this limit, it may result in a scale out. The setting only applies for Azure Function Apps with runtime driven scaling enabled. See the [Scaling](#scaling-for-trigger-bindings) section for more information.
 
@@ -156,18 +155,18 @@ The upper limit on the number of pending changes in the user table that are allo
 
 The unique name used in creating the lease tables. The local apps depend on this setting for creating unique leases tables, please give a unique name for each app.
     > **NOTE:** If the setting is re-used accross apps, having the same function name could cause the functions to use the same lease tables and the function runs to not work as expected.
-    > **NOTE:** If you have 2 different SQL trigger functions with same functionName locally, not having WEBSITE_SITE_NAME would mean that the same leasees table would be used for both triggers resulting in only one of the functions being triggered.
+    > **NOTE:** If you have 2 different MySQL trigger functions with same functionName locally, not having WEBSITE_SITE_NAME would mean that the same leasees table would be used for both triggers resulting in only one of the functions being triggered.
     > **NOTE:** This is a read-only variable that is provided by the azure environment variables for deployed functions and the user provided value will be overridden. Refer to [Environment variables](https://learn.microsoft.com/azure/app-service/reference-app-settings?tabs=kudu%2Cdotnet#app-environment) for apps.
 
 ### Scaling for Trigger Bindings
 
-If your application containing functions with SQL trigger bindings is running as an Azure function app, it will be scaled automatically based on the amount of changes that are pending to be processed in the user table. As of today, we only support scaling of function apps running in Elastic Premium plan with 'Runtime Scale Monitoring' enabled. To enable scaling, you will need to go the function app resource's page on Azure Portal, then to Configuration > 'Function runtime settings' and turn on 'Runtime Scale Monitoring'.
+If your application containing functions with MySQL trigger bindings is running as an Azure function app, it will be scaled automatically based on the amount of changes that are pending to be processed in the user table. As of today, we only support scaling of function apps running in Elastic Premium plan with 'Runtime Scale Monitoring' enabled. To enable scaling, you will need to go the function app resource's page on Azure Portal, then to Configuration > 'Function runtime settings' and turn on 'Runtime Scale Monitoring'.
 
 There are two types of scaling available:
 
-- Incremental scaling - This scales the application serially, increasing or decreasing the workers by 1. There are a couple of checks made to decide on whether the host application needs to be scaled in or out. The rationale behind these checks is to ensure that the count of pending changes per application-worker stays below a certain maximum limit, controlled by [Sql_Trigger_MaxChangesPerWorker](#sql_trigger_maxchangesperworker), while also ensuring that the number of workers running stays minimal. The scaling decision is made based on the latest count of the pending changes and whether the last 5 samples we took were continually increasing or decreasing.
+- Incremental scaling - This scales the application serially, increasing or decreasing the workers by 1. There are a couple of checks made to decide on whether the host application needs to be scaled in or out. The rationale behind these checks is to ensure that the count of pending changes per application-worker stays below a certain maximum limit, controlled by [MySql_Trigger_MaxChangesPerWorker](#mysql_trigger_maxchangesperworker), while also ensuring that the number of workers running stays minimal. The scaling decision is made based on the latest count of the pending changes and whether the last 5 samples we took were continually increasing or decreasing.
 
-- Target Based Scaling - This type of scaling depends on the pending change count and the value of [dynamic concurrency](https://learn.microsoft.com/azure/azure-functions/functions-concurrency#dynamic-concurrency) which if not enabled is defaulted to [Sql_Trigger_MaxChangesPerWorker](#sql_trigger_maxchangesperworker). The target worker count is decided by dividing the pending changes by the concurrency value. The application scales out to the number of instances specified by the target worker count.
+- Target Based Scaling - This type of scaling depends on the pending change count and the value of [dynamic concurrency](https://learn.microsoft.com/azure/azure-functions/functions-concurrency#dynamic-concurrency) which if not enabled is defaulted to [MySql_Trigger_MaxChangesPerWorker](#mysql_trigger_maxchangesperworker). The target worker count is decided by dividing the pending changes by the concurrency value. The application scales out to the number of instances specified by the target worker count.
 
 For more information, check documentation on [Runtime Scaling](https://learn.microsoft.com/azure/azure-functions/event-driven-scaling#runtime-scaling). You can configure scaling parameters by going to 'Scale out (App Service plan)' setting on the function app's page. To understand various scale settings, please check the respective sections in [Azure Functions Premium plan](https://learn.microsoft.com/azure/azure-functions/functions-premium-plan?tabs=portal#eliminate-cold-starts)'s documentation.
 
@@ -181,7 +180,7 @@ If an exception occurs during startup then the host runtime will automatically a
 
 If the function successfully starts but then an error causes the connection to break (such as the server going offline) then the function will continue to try and reopen the connection until the function is either stopped or the connection succeeds. If the connection is successfully re-established then it will pick up processing changes where it left off.
 
-Note that these retries are outside the built in idle connection retry logic that SqlClient has which can be configured with the [ConnectRetryCount](https://learn.microsoft.com/dotnet/api/system.data.sqlclient.sqlconnectionstringbuilder.connectretrycount) and [ConnectRetryInterval](https://learn.microsoft.com/dotnet/api/system.data.sqlclient.sqlconnectionstringbuilder.connectretryinterval) connection string options. The built-in idle connection retries will be attempted first and if those fail to reconnect then the trigger binding will attempt to re-establish the connection itself.
+Note that these retries are outside the built in idle connection retry logic that MySqlClient has which can be configured with the [ConnectRetryCount](https://learn.microsoft.com/dotnet/api/system.data.mysqlclient.mysqlconnectionstringbuilder.connectretrycount) and [ConnectRetryInterval](https://learn.microsoft.com/dotnet/api/system.data.mysqlclient.mysqlconnectionstringbuilder.connectretryinterval) connection string options. The built-in idle connection retries will be attempted first and if those fail to reconnect then the trigger binding will attempt to re-establish the connection itself.
 
 #### Function or binding exception retries
 
@@ -191,7 +190,7 @@ If the function execution fails 5 times in a row for a given row then that row i
 
 You can run this query to see what rows have failed 5 times and are currently ignored, see [Leases table](./TriggerBinding.md#az_funcleasestablename) documentation for how to get the correct Leases table to query for your function.
 
-```sql
+```mysql
 SELECT * FROM [az_func].[Leases_<FunctionId>_<TableId>] WHERE _az_func_AttemptCount = 5
 ```
 
@@ -199,7 +198,7 @@ To reset a row and enable functions to try processing it again set the `_az_func
 
 e.g.
 
-```sql
+```mysql
 UPDATE [Products].[az_func].[Leases_<FunctionId>_<TableId>] SET _az_func_AttemptCount = 0 WHERE _az_func_AttemptCount = 5
 ```
 
@@ -207,7 +206,7 @@ UPDATE [Products].[az_func].[Leases_<FunctionId>_<TableId>] SET _az_func_Attempt
 
 e.g.
 
-```sql
+```mysql
 UPDATE [Products].[az_func].[Leases_<FunctionId>_<TableId>] SET _az_func_AttemptCount = 0 WHERE ProductId = 123
 ```
 
@@ -219,11 +218,11 @@ Why clean up?
 1. You renamed your function/class/method name, which causes a new lease table to be created and the old one to be obsolete.
 2. You created a trigger function that you no longer need and wish to clean up its associated data.
 3. You want to reset your environment.
-The Azure SQL Trigger does not currently handle automatically cleaning up any leftover objects, and so we have provided the below scripts to help guide you through doing that.
+The Azure MySQL Trigger does not currently handle automatically cleaning up any leftover objects, and so we have provided the below scripts to help guide you through doing that.
 
 - Delete all the lease tables that haven't been accessed in `@CleanupAgeDays` days:
 
-```sql
+```mysql
 -- Deletes all the lease tables that haven't been accessed in @CleanupAgeDays days (set below)
 -- and removes them from the GlobalState table.
 USE [<Insert DATABASE name here>]
@@ -260,11 +259,11 @@ DEALLOCATE LeaseTable_Cursor;
 
 To find the name of the lease table associated with your function, look in the log output for a line such as this which is emitted when the trigger is started.
 
-`SQL trigger Leases table: [az_func].[Leases_84d975fca0f7441a_901578250]`
+`MySQL trigger Leases table: [az_func].[Leases_84d975fca0f7441a_901578250]`
 
 This log message is at the `Information` level, so make sure your log level is set correctly.
 
-```sql
+```mysql
 -- Deletes the specified lease table and removes it from GlobalState table.
 USE [<Insert DATABASE name here>]
 GO
@@ -279,7 +278,7 @@ DELETE FROM az_func.GlobalState WHERE UserFunctionID = @UserFunctionId and UserT
 
 - Clear all trigger related data for a reset:
 
-```sql
+```mysql
 -- Deletes all the lease tables and clears them from the GlobalState table.
 USE [<Insert DATABASE name here>]
 GO
@@ -323,4 +322,4 @@ DEALLOCATE LeaseTable_Cursor;
 
 - When you’re running a function app, you want to be prepared for any issues that may arise, from 4xx errors to trigger failures. Azure Functions diagnostics is an intelligent and interactive experience to help you troubleshoot your function app with no configuration or extra cost. Follow the link for information on how to enable and use these [diagnostic capabilities](https://learn.microsoft.com/azure/azure-functions/functions-diagnostics).
 
-- If you run into any performance related issues on your SQL Server, you can use the steps described in [Troubleshooting high CPU usage issues](https://learn.microsoft.com/troubleshoot/sql/database-engine/performance/troubleshoot-high-cpu-usage-issues) to troubleshoot.
+- If you run into any performance related issues on your MySQL Server, you can use the steps described in [Troubleshooting high CPU usage issues](https://learn.microsoft.com/troubleshoot/mysql/database-engine/performance/troubleshoot-high-cpu-usage-issues) to troubleshoot.
