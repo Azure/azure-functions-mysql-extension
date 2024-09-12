@@ -117,6 +117,3 @@ The MySQL Trigger uses transactions to guarantee that changes are rolled back in
 
 Because of this, and the number of internal state tables that the trigger interacts with, there is a high chance of deadlocks occurring if two functions are attempting to make changes to the tables at the same time.
 
-To avoid this from happening the trigger utilizes the [sp_getapplock](https://learn.microsoft.com/MySQL/relational-databases/system-stored-procedures/sp-getapplock-transact-MySQL) statement to ensure that each transaction is processed serially. Before each statement in a transaction, sp_getapplock gets an Exclusive lock on the `_az_func_mysql_Trigger` resource - this ensures that for the duration of the transaction it is the only Azure Function that will be accessing any of the tables used.
-
-While this helps ensure concurrency safety for Azure Functions, other queries on the system can still cause a deadlock to occur. [This guide](https://learn.microsoft.com/MySQL/relational-databases/MySQL-server-deadlocks-guide) can help troubleshoot any issues that occur and provides some suggestions for fixing these issues. You may also utilize the sp_getapplock statement yourself with the `_az_func_mysql_Trigger` resource to synchronize requests, although doing so may have a negative impact on the performance of your Functions.
