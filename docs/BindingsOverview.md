@@ -229,7 +229,6 @@ This log message is at the `Information` level, so make sure your log level is s
 
 - [.NET (In-Proc)](./SetupGuide_Dotnet.md#trigger-binding)
 - [.NET (Isolated)](./SetupGuide_DotnetOutOfProc.md#trigger-binding)
-- [C# Script](./SetupGuide_DotnetCSharpScript.md#trigger-binding)
 - [Java](./SetupGuide_Java.md#trigger-binding)
 - [JavaScript](./SetupGuide_Javascript.md#trigger-binding)
 - [Python](./SetupGuide_Python.md#trigger-binding)
