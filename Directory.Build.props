@@ -7,6 +7,9 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <RestoreLockedMode>true</RestoreLockedMode>
+	<SignAssembly>true</SignAssembly>
+    <PublicSign>true</PublicSign>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)MySqlkey.snk</AssemblyOriginatorKeyFile>
     <Company>Microsoft</Company>
     <Authors>Microsoft</Authors>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
