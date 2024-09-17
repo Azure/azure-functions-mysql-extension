@@ -48,7 +48,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         [MySqlInlineData(0, "", 0)]
         [MySqlInlineData(-500, "ABCD", 580)]
         // Currently Java functions return null when the parameter for name is an empty string
-        // Issue link: https://github.com/Azure/azure-functions-sql-extension/issues/517
         [UnsupportedLanguages(SupportedLanguages.Java)]
         public async Task AddProductParamsTest(int id, string name, int cost, SupportedLanguages lang)
         {
@@ -128,7 +127,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // Function should add 5000 rows to the table
             await this.SendOutputGetRequest("addproducts-collector");
 
-            Assert.Equal(5000, this.ExecuteScalar("SELECT COUNT(1) FROM Products"));
+            Assert.Equal(5000, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(1) FROM Products")));
         }
 
         [Theory]

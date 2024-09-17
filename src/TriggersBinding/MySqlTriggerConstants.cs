@@ -22,6 +22,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         public const string ConfigKey_MySqlTrigger_BatchSize = "MySql_Trigger_BatchSize";
         public const string ConfigKey_MySqlTrigger_MaxBatchSize = "MySql_Trigger_MaxBatchSize";
         public const string ConfigKey_MySqlTrigger_PollingInterval = "MySql_Trigger_PollingIntervalMs";
+        public const string ConfigKey_MySqlTrigger_MaxChangesPerWorker = "MySql_Trigger_MaxChangesPerWorker";
 
         public const string LeasesTableNameFormat = SchemaName + ".Leases_{0}";
         public const string UserDefinedLeasesTableNameFormat = SchemaName + ".{0}";

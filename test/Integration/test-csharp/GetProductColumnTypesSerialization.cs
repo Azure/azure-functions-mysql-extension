@@ -2,12 +2,12 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.InputBindingSamples
 {
@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.InputBindingSamples
         {
             foreach (ProductColumnTypes item in products)
             {
-                log.LogInformation(JsonSerializer.Serialize(item));
+                log.LogInformation(JsonConvert.SerializeObject(item));
             }
 
             return new OkObjectResult(products);

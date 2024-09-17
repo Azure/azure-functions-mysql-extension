@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Globalization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.Http;
@@ -31,8 +32,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 TinyIntType = 1,
                 FloatType = 1.2,
                 RealType = 1.2f,
-                DateType = DateOnly.FromDateTime(DateTime.Now),
-                DatetimeType = DateTime.Now,
+                DateType = DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.CreateSpecificCulture("en-US")),
+                DatetimeType = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CreateSpecificCulture("en-US")),
                 TimeType = DateTime.Now.TimeOfDay,
                 CharType = "test",
                 VarcharType = "test",
