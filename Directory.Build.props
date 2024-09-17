@@ -8,8 +8,8 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <RestoreLockedMode>true</RestoreLockedMode>
 	<SignAssembly>true</SignAssembly>
-    <PublicSign>true</PublicSign>
-    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)MySqlkey.snk</AssemblyOriginatorKeyFile>
+    <DelaySign>true</DelaySign>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)35MSSharedLib1024.snk</AssemblyOriginatorKeyFile>
     <Company>Microsoft</Company>
     <Authors>Microsoft</Authors>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
