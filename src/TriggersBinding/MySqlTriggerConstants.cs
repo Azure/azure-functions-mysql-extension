@@ -24,7 +24,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         public const string ConfigKey_MySqlTrigger_PollingInterval = "MySql_Trigger_PollingIntervalMs";
         public const string ConfigKey_MySqlTrigger_MaxChangesPerWorker = "MySql_Trigger_MaxChangesPerWorker";
 
-        public const string LeasesTableNameFormat = SchemaName + ".Leases_{0}";
+        public const string LeasesTableNameFormat = SchemaName + ".`Leases_{0}`"; // function-id could have hypen(-) in name, which needs to be quoted in acute quote(`)
         public const string UserDefinedLeasesTableNameFormat = SchemaName + ".{0}";
         public const string LeasesTableChangeVersionColumnName = "_az_func_ChangeVersion";
         public const string LeasesTableAttemptCountColumnName = "_az_func_AttemptCount";
