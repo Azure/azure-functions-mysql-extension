@@ -153,7 +153,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
         }
 
-        public async Task StopAsync(CancellationToken cancellationToken)
+        public Task StopAsync(CancellationToken cancellationToken)
         {
             var stopwatch = Stopwatch.StartNew();
 
@@ -161,38 +161,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             if (previousState == ListenerStarted)
             {
-                // Clean a record from GlobalStateTableName
-                try
-                {
-                    long deleteGlobalStateTableRowDurationMs = 0L, dropLeasesTableDurationMs = 0L;
-                    using (var connection = new MySqlConnection(this._connectionString))
-                    {
-                        await connection.OpenAsyncWithMySqlErrorHandling(cancellationToken);
-                        using (MySqlTransaction transaction = connection.BeginTransaction())
-                        {
-                            // Call delete global table row for matching functionId & tableId
-                            deleteGlobalStateTableRowDurationMs = this.DeleteGlobalStateTableRowAsync(connection, transaction, this._userFunctionId, this._userTableId, cancellationToken).Result;
-                            // Call drop leases table method and wait for the result
-                            dropLeasesTableDurationMs = this.DropLeasesTableAsync(connection, transaction, this._bracketedLeasesTableName, cancellationToken).Result;
-
-                            transaction.Commit();
-                            this._logger.LogInformation($"Cleaned a record from {GlobalStateTableName}, where Function Id: {this._userFunctionId} and the Table Name: {this._userTable.FullName}.");
-                            this._logger.LogInformation($"Dropped the lease table {this._bracketedLeasesTableName}.");
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    this._logger.LogError($"Failed to clean records of trigger binding Function Id: {this._userFunctionId} and the Table Name: {this._userTable.FullName}.\n Exception: {ex.Message}");
-                    throw;
-                }
-
                 this._changeMonitor.Dispose();
                 this._listenerState = ListenerStopped;
-
             }
 
             this._logger.LogInformation($"Listener stopped. Duration(ms): {stopwatch.ElapsedMilliseconds}");
+            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -331,47 +305,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 var stopwatch = Stopwatch.StartNew();
                 await insertRowGlobalStateTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
-                return stopwatch.ElapsedMilliseconds;
-            }
-        }
-
-        /// <summary>
-        /// Delete a row for the 'user function and table' inside the global state table, if one does already exist.
-        /// </summary>
-        /// <param name="connection">The already-opened connection to use for executing the command</param>
-        /// <param name="transaction">The transaction wrapping this command</param>
-        /// <param name="userFunctionId">The ID of the azure function running on table</param>
-        /// <param name="userTableId">The ID of the table being watched</param>
-        /// <param name="cancellationToken">Cancellation token to pass to the command</param>
-        /// <returns>The time taken in ms to execute the command</returns>
-        private async Task<long> DeleteGlobalStateTableRowAsync(MySqlConnection connection, MySqlTransaction transaction, string userFunctionId, ulong userTableId, CancellationToken cancellationToken)
-        {
-            string deleteRowGlobalStateTableQuery = $"DELETE FROM {GlobalStateTableName} WHERE {GlobalStateTableUserFunctionIDColumnName} = '{userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {userTableId};";
-
-            using (var deleteRowGlobalStateTableCommand = new MySqlCommand(deleteRowGlobalStateTableQuery, connection, transaction))
-            {
-                var stopwatch = Stopwatch.StartNew();
-                await deleteRowGlobalStateTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
-                return stopwatch.ElapsedMilliseconds;
-            }
-        }
-
-        /// <summary>
-        /// Delete a row for the 'user function and table' inside the global state table, if one does already exist.
-        /// </summary>
-        /// <param name="connection">The already-opened connection to use for executing the command</param>
-        /// <param name="transaction">The transaction wrapping this command</param>
-        /// <param name="leasesTableName">The leases Table Name need to clean</param>
-        /// <param name="cancellationToken">Cancellation token to pass to the command</param>
-        /// <returns>The time taken in ms to execute the command</returns>
-        private async Task<long> DropLeasesTableAsync(MySqlConnection connection, MySqlTransaction transaction, string leasesTableName, CancellationToken cancellationToken)
-        {
-            string dropLeasesTableQuery = $"DROP TABLE {leasesTableName};";
-
-            using (var dropLeasesTableCommand = new MySqlCommand(dropLeasesTableQuery, connection, transaction))
-            {
-                var stopwatch = Stopwatch.StartNew();
-                await dropLeasesTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
                 return stopwatch.ElapsedMilliseconds;
             }
         }
