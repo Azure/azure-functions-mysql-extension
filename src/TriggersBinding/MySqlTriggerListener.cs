@@ -59,7 +59,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         {
             this._connectionString = !string.IsNullOrEmpty(connectionString) ? connectionString : throw new ArgumentNullException(nameof(connectionString));
             this._userTable = !string.IsNullOrEmpty(tableName) ? new MySqlObject(tableName) : throw new ArgumentNullException(nameof(tableName));
-            this._userDefinedLeasesTableName = userDefinedLeasesTableName;
+            this._userDefinedLeasesTableName = !string.IsNullOrEmpty(userDefinedLeasesTableName) ? new MySqlObject(userDefinedLeasesTableName).Name : userDefinedLeasesTableName;
             this._userFunctionId = !string.IsNullOrEmpty(userFunctionId) ? userFunctionId : throw new ArgumentNullException(nameof(userFunctionId));
             this._executor = executor ?? throw new ArgumentNullException(nameof(executor));
             this._mysqlOptions = mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions));
