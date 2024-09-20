@@ -116,7 +116,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         internal static string GetBracketedLeasesTableName(string userDefinedLeasesTableName, string userFunctionId, ulong userTableId)
         {
             return string.IsNullOrEmpty(userDefinedLeasesTableName) ? string.Format(CultureInfo.InvariantCulture, LeasesTableNameFormat, $"{userFunctionId}_{userTableId}") :
-                string.Format(CultureInfo.InvariantCulture, UserDefinedLeasesTableNameFormat, $"{userDefinedLeasesTableName.AsAcuteQuotedString()}");
+                string.Format(CultureInfo.InvariantCulture, UserDefinedLeasesTableNameFormat, $"{userDefinedLeasesTableName}");
         }
     }
 }
