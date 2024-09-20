@@ -106,8 +106,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     await connection.OpenAsyncWithMySqlErrorHandling(cancellationToken);
 
-                    await VerifyTableForTriggerSupported(connection, this._userTable.FullName, this._logger, cancellationToken);
+                    // get table id If exists in database
                     this._userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
+                    await VerifyTableForTriggerSupported(connection, this._userTable.FullName, this._logger, cancellationToken);
+
                     IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, this._userTable.FullName, this._logger, cancellationToken);
                     IReadOnlyList<string> userTableColumns = this.GetUserTableColumns(connection, this._userTable, cancellationToken);
 
@@ -270,19 +272,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 }
                 catch (Exception ex)
                 {
-                    var mysqlEx = ex as MySqlException;
-                    if (mysqlEx?.Number == 1050)        // ER_TABLE_EXISTS_ERROR
-                    {
-                        // This generally shouldn't happen since we check for its existence in the statement but occasionally
-                        // a race condition can make it so that multiple instances will try and create the schema at once.
-                        // In that case we can just ignore the error since all we care about is that the schema exists at all.
-                        this._logger.LogWarning($"Failed to create global state table '{GlobalStateTableName}'. Exception message: {ex.Message} This is informational only, function startup will continue as normal.");
-                    }
-                    else
-                    {
-                        this._logger.LogError($"Exception encountered while creating Global State table. Message: {ex.Message}");
-                        throw;
-                    }
+                    this._logger.LogError($"Exception encountered while creating Global State table. Message: {ex.Message}");
+                    throw;
                 }
                 return stopwatch.ElapsedMilliseconds;
             }

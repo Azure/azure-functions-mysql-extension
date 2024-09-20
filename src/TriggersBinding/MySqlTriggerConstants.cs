@@ -11,14 +11,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
         public const string SchemaName = "az_func_mysql";
 
-        public const string GlobalStateTableName = SchemaName + ".GlobalState";
+        public const string GlobalState = "GlobalState";
+        public const string GlobalStateTableName = SchemaName + "." + GlobalState;
         public const string GlobalStateTableUserFunctionIDColumnName = "UserFunctionID";
         public const string GlobalStateTableUserTableIDColumnName = "UserTableID";
         public const string GlobalStateTableLastPolledTimeColumnName = "LastPolledTime";
         public const string GlobalStateTableStartPollingTimeColumnName = "StartPollingTime";
 
         public const string SysChangeVersionColumnName = "SYS_CHANGE_VERSION";
-        public const string LastAccessTimeColumnName = "LastAccessTime";
         public const string ConfigKey_MySqlTrigger_BatchSize = "MySql_Trigger_BatchSize";
         public const string ConfigKey_MySqlTrigger_MaxBatchSize = "MySql_Trigger_MaxBatchSize";
         public const string ConfigKey_MySqlTrigger_PollingInterval = "MySql_Trigger_PollingIntervalMs";

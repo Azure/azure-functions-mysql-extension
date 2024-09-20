@@ -52,17 +52,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             using (var getObjectIdCommand = new MySqlCommand(getObjectIdQuery, connection))
             using (MySqlDataReader reader = getObjectIdCommand.ExecuteReaderWithLogging(logger))
             {
-                if (!await reader.ReadAsync(cancellationToken))
-                {
-                    throw new InvalidOperationException($"Received empty response when querying the Table ID for table: '{userTable.FullName}'.");
-                }
-
-                object userTableId = reader.GetValue(0);
-
-                if (userTableId is DBNull)
+                if (!await reader.ReadAsync(cancellationToken) || reader.GetValue(0) is DBNull)
                 {
                     throw new InvalidOperationException($"Could not find table: '{userTable.FullName}'.");
                 }
+
+                object userTableId = reader.GetValue(0);
                 logger.LogDebug($"GetUserTableId TableId={userTableId}");
                 return (ulong)userTableId;
             }
