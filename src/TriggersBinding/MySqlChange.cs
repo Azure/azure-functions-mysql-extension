@@ -36,7 +36,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     /// </summary>
     public enum MySqlChangeOperation
     {
-        Insert,
         Update
     }
 }

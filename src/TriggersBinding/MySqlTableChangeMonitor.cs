@@ -32,7 +32,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private const int MaxLeaseRenewalCount = 10;
         public const int LeaseIntervalInSeconds = 60;
         private const int LeaseRenewalIntervalInSeconds = 15;
-        //private const int MaxRetryReleaseLeases = 3;
+        private const int MaxRetryReleaseLeases = 3;
 
 
         #endregion Constants
@@ -77,7 +77,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <summary>
         /// Rows that have been processed and now need to have their leases released
         /// </summary>
-        // private IReadOnlyList<IReadOnlyDictionary<string, object>> _rowsToRelease = new List<IReadOnlyDictionary<string, object>>();
+        private IReadOnlyList<IReadOnlyDictionary<string, object>> _rowsToRelease = new List<IReadOnlyDictionary<string, object>>();
         private int _leaseRenewalCount = 0;
         private State _state = State.CheckingForChanges;
 
@@ -202,7 +202,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             }
                             if (this._state == State.ProcessingChanges)
                             {
-                                bool isProcessChangesFailed = await this.ProcessTableChangesAsync();
+                                bool isProcessChangesFailed = await this.ProcessTableChangesAsync(token);
 
                                 // If process changes is not failed, then
                                 if (isProcessChangesFailed == false)
@@ -213,7 +213,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             }
                             if (this._state == State.Cleanup)
                             {
-                                await this.ClearRowsAsync();
+                                await this.ReleaseLeasesAsync(connection, token);
                             }
                         }
                         catch (Exception e) when (connection.IsBrokenOrClosed())        // TODO: e.IsFatalMySqlException() || - check mysql corresponding 
@@ -265,8 +265,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         using (MySqlCommand updateStartPollingTimeCommand = this.BuildUpdateGlobalTableStartPollingTime(connection, transaction))
                         {
                             var commandSw = Stopwatch.StartNew();
-                            await updateStartPollingTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
-                            this._logger.LogInformation($"Updated column {GlobalStateTableStartPollingTimeColumnName} in {GlobalStateTableName} table");
+                            await updateStartPollingTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
+                            this._logger.LogInformation($"Updated {GlobalStateTableStartPollingTimeColumnName} in {GlobalStateTableName} table");
 
                             setStartPollingTimeDurationMs = commandSw.ElapsedMilliseconds;
                         }
@@ -279,7 +279,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                             this._logger.LogInformation($"Looking for latest changes in Table having ID : {this._userTableId}");
 
-                            using (MySqlDataReader reader = getChangesCommand.ExecuteReaderWithLogging(this._logger, true))
+                            using (MySqlDataReader reader = getChangesCommand.ExecuteReaderWithLogging(this._logger))
                             {
                                 while (reader.Read())
                                 {
@@ -355,11 +355,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     {
                         var rows = new List<IReadOnlyDictionary<string, object>>();
 
-                        // Use the version number to query for new changes.
-                        using (MySqlCommand updateLastPolledTimeCommand = this.BuildUpdateGlobalStateTablePollingTime(connection, transaction))
+                        // update last polled time in 'globalstate' table.
+                        using (MySqlCommand updateLastPolledTimeCommand = this.BuildUpdateGlobalStateTableLastPollingTime(connection, transaction))
                         {
                             var commandSw = Stopwatch.StartNew();
-                            int rowsAffected = await updateLastPolledTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
+                            int rowsAffected = await updateLastPolledTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
                             if (rowsAffected > 0)
                             {
                                 // Only send an event if we actually updated rows to reduce the overall number of events we send
@@ -398,7 +398,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
         }
 
-        private async Task<bool> ProcessTableChangesAsync()
+        private async Task<bool> ProcessTableChangesAsync(CancellationToken token)
         {
             bool isProcessChangesFailed = false;
 
@@ -420,7 +420,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     // that this is not a case we expect would happen during normal execution we'll err on the side of caution for
                     // now and just retry getting the whole set of changes.
                     this._logger.LogError($"Failed to compose trigger parameter value for table: '{this._userTable.FullName} due to exception: {e.GetType()}. Exception message: {e.Message}");
-                    await this.ClearRowsAsync();
+                    await this.ClearRowsAsync(token);
                 }
 
                 if (changes != null)
@@ -434,7 +434,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     if (result.Succeeded)
                     {
                         this._logger.LogInformation("Function Trigger executed successfully.");
+                        await this._rowsLock.WaitAsync(token);
+                        this._rowsToRelease = this._rowsToProcess;
                         this._rowsToProcess = new List<IReadOnlyDictionary<string, object>>();
+                        this._rowsLock.Release();
                     }
                     else
                     {
@@ -450,7 +453,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 // This ideally should never happen, but as a safety measure ensure that if we tried to process changes but there weren't
                 // any we still ensure everything is reset to a clean state
-                await this.ClearRowsAsync();
+                await this.ClearRowsAsync(token);
             }
             return isProcessChangesFailed;
         }
@@ -529,7 +532,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         using (MySqlCommand renewLeasesCommand = this.BuildRenewLeasesCommand(connection, transaction))
                         {
                             var stopwatch = Stopwatch.StartNew();
-                            int rowsAffected = await renewLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
+                            int rowsAffected = await renewLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
                             long durationMs = stopwatch.ElapsedMilliseconds;
 
                             if (rowsAffected > 0)
@@ -538,6 +541,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                                 this._logger.LogInformation($"Updated the Leases table {this._leasesTableName}");
                             }
                             transaction.Commit();
+                            this._logger.LogDebug($"The lease expiration time renewed by {LeaseRenewalIntervalInSeconds} seconds, for the rows(under process) in {this._leasesTableName} table");
                         }
                     }
                     catch (Exception e)
@@ -587,14 +591,73 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <summary>
         /// Resets the in-memory state of the change monitor and sets it to start polling for changes again.
         /// </summary>
-        private async Task ClearRowsAsync()
+        /// <param name="token">Cancellation token</param>
+        private async Task ClearRowsAsync(CancellationToken token)
         {
-            await this._rowsLock.WaitAsync();
-
+            await this._rowsLock.WaitAsync(token);
+            this._leaseRenewalCount = 0;
             this._state = State.CheckingForChanges;
+            if (this._rowsToProcess.Count > 0)
+            {
+                this._logger.LogDebug($"Clearing internal state for {this._rowsToProcess.Count} rows");
+            }
             this._rowsToProcess = new List<IReadOnlyDictionary<string, object>>();
-
             this._rowsLock.Release();
+        }
+
+        /// <summary>
+        /// Releases the leases held on "_rowsToRelease" and updates the state tables with the latest sync version we've processed up to.
+        /// </summary>
+        /// <returns></returns>
+        private async Task ReleaseLeasesAsync(MySqlConnection connection, CancellationToken token)
+        {
+            if (this._rowsToRelease.Count > 0)
+            {
+                bool retrySucceeded = false;
+
+                for (int retryCount = 1; retryCount <= MaxRetryReleaseLeases && !retrySucceeded; retryCount++)
+                {
+                    using (MySqlTransaction transaction = connection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead))
+                    {
+                        try
+                        {
+                            // Release the leases held on "_rowsToRelease".
+                            using (MySqlCommand releaseLeasesCommand = this.BuildReleaseLeasesCommand(connection, transaction))
+                            {
+                                var commandSw = Stopwatch.StartNew();
+                                int rowsUpdated = await releaseLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
+                                long releaseLeasesDurationMs = commandSw.ElapsedMilliseconds;
+                            }
+
+                            transaction.Commit();
+
+                            retrySucceeded = true;
+                            this._rowsToRelease = new List<IReadOnlyDictionary<string, object>>();
+                        }
+                        catch (Exception ex)
+                        {
+                            if (retryCount < MaxRetryReleaseLeases)
+                            {
+                                this._logger.LogError($"Failed to execute MySQL commands to release leases in attempt: {retryCount} for table '{this._userTable.FullName}' due to exception: {ex.GetType()}. Exception message: {ex.Message}");
+                            }
+                            else
+                            {
+                                this._logger.LogError($"Failed to release leases for table '{this._userTable.FullName}' after {MaxRetryReleaseLeases} attempts due to exception: {ex.GetType()}. Exception message: {ex.Message}");
+                            }
+
+                            try
+                            {
+                                transaction.Rollback();
+                            }
+                            catch (Exception ex2)
+                            {
+                                this._logger.LogError($"Failed to rollback transaction due to exception: {ex2.GetType()}. Exception message: {ex2.Message}");
+                            }
+                        }
+                    }
+                }
+            }
+            await this.ClearRowsAsync(token);
         }
 
         /// <summary>
@@ -652,9 +715,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         FROM {this._userTable.AcuteQuotedFullName} AS u
                         LEFT JOIN {this._leasesTableName} AS l ON {leasesTableJoinCondition}
                         WHERE 
-                            ({UpdateAtColumnName} > (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId}))
+                            ({UpdateAtColumnName} >= (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId}))
                             AND
-                            ({UpdateAtColumnName} <= (select {GlobalStateTableStartPollingTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId}))
+                            ({UpdateAtColumnName} < (select {GlobalStateTableStartPollingTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId}))
                             AND
                             (   (l.{LeasesTableLeaseExpirationTimeColumnName} IS NULL) 
                                 OR
@@ -678,7 +741,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="connection">The connection to add to the returned MySqlCommand</param>
         /// <param name="transaction">The transaction to add to the returned MySqlCommand</param>
         /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
-        private MySqlCommand BuildUpdateGlobalStateTablePollingTime(MySqlConnection connection, MySqlTransaction transaction)
+        private MySqlCommand BuildUpdateGlobalStateTableLastPollingTime(MySqlConnection connection, MySqlTransaction transaction)
         {
             string getChangesQuery = $@"UPDATE {GlobalStateTableName}
                         SET {GlobalStateTableLastPolledTimeColumnName} = {GlobalStateTableStartPollingTimeColumnName}
@@ -721,7 +784,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                                             {rowDataFormatted}
                                         ON DUPLICATE KEY UPDATE
                                             {LeasesTableAttemptCountColumnName} = {LeasesTableAttemptCountColumnName} + 1,
-                                            {LeasesTableLeaseExpirationTimeColumnName} = DATE_ADD({LeasesTableLeaseExpirationTimeColumnName}, INTERVAL {LeaseIntervalInSeconds} SECOND)
+                                            {LeasesTableLeaseExpirationTimeColumnName} = DATE_ADD({MYSQL_FUNC_CURRENTTIME}, INTERVAL {LeaseIntervalInSeconds} SECOND)
                                         ;";
 
             var acquireLeasesCommand = new MySqlCommand(acquireLeasesQuery, connection, transaction);
@@ -749,6 +812,30 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                                         ;";
 
             return new MySqlCommand(renewLeasesQuery, connection, transaction);
+        }
+
+        /// <summary>
+        /// Builds the query to release leases on the rows in "_rowsToRelease" after successful invocation of the user's function
+        /// (<see cref="RunChangeConsumptionLoopAsync()"/>).
+        /// </summary>
+        /// <param name="connection">The connection to add to the returned SqlCommand</param>
+        /// <param name="transaction">The transaction to add to the returned SqlCommand</param>
+        /// <returns>The SqlCommand populated with the query and appropriate parameters</returns>
+        private MySqlCommand BuildReleaseLeasesCommand(MySqlConnection connection, MySqlTransaction transaction)
+        {
+            IEnumerable<string> listMatchCondition = this._rowsToRelease.Select(row => $"( {string.Join(" AND ", row.Where(kvp => this._primaryKeyColumnNames.Contains(kvp.Key)).Select(kp => $"{kp.Key} = {kp.Value}"))} )");
+
+            string combinedMatchConditions = string.Join(" OR ", listMatchCondition);
+
+            string releaseLeasesQuery = $@"UPDATE {this._leasesTableName}
+                                        SET
+                                            {LeasesTableAttemptCountColumnName} = 0,
+                                            {LeasesTableLeaseExpirationTimeColumnName} = NULL
+                                        WHERE
+                                            {combinedMatchConditions}
+                                        ;";
+
+            return new MySqlCommand(releaseLeasesQuery, connection, transaction);
         }
 
         private enum State
