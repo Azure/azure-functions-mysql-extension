@@ -70,7 +70,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         internal class MySqlObjectNameParser
         {
-            // followed the reference to validate identifier https://dev.mysql.com/doc/refman/8.0/en/identifiers.html
+            // followed the reference to validate identifier
+            private const string urlIdentifier = "https://dev.mysql.com/doc/refman/8.0/en/identifiers.html";
+
             // regex expression to match following example expressions
             // 1) `mys`adgasg`chema`.`mytable` 2) `myschema`.mytable 3) myschema.`mytable` 4) myschema.mytable
             // 5) `mytable` 6) mytable
@@ -101,12 +103,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         this.schemaName = null;
                         this.objectName = null;
                         // throw error message
-                        string errorMessages = "Encountered error(s) while parsing object name:\n";
+                        string errorMessages = $"Encountered error while parsing object name: {objectFullName}\n Please refer {urlIdentifier} for correct a naming format";
                         throw new InvalidOperationException(errorMessages);
                     }
                 }
             }
         }
     }
-
 }

@@ -96,7 +96,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private MySqlCommand BuildGetUnprocessedChangesCommand(MySqlConnection connection, MySqlTransaction transaction, IReadOnlyList<(string name, string type)> primaryKeyColumns, ulong userTableId)
         {
             string leasesTableJoinCondition = string.Join(" AND ", primaryKeyColumns.Select(col => $"u.{col.name.AsAcuteQuotedString()} = l.{col.name.AsAcuteQuotedString()}"));
-            string leasesTableName = GetLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
+            string leasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
 
 
             string getUnprocessedChangesQuery = $@"
@@ -104,9 +104,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         FROM {this._userTable.AcuteQuotedFullName} AS u
                         LEFT JOIN {leasesTableName} AS l ON {leasesTableJoinCondition}
                         WHERE 
-                            ({UpdateAtColumnName} > (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {userTableId}))
-                            AND
-                            ({UpdateAtColumnName} <= (select {GlobalStateTableStartPollingTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {userTableId}))
+                            ({UpdateAtColumnName} >= (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {userTableId}))
                             AND
                             (   (l.{LeasesTableLeaseExpirationTimeColumnName} IS NULL) 
                                 OR

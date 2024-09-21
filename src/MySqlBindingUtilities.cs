@@ -76,7 +76,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 if (!await reader.ReadAsync(cancellationToken))
                 {
-                    throw new InvalidOperationException($"The Table doesnot contain the column '{UpdateAtColumnName}', hence a trigger cannot be created on this table.");
+                    throw new InvalidOperationException($"The Table '{tableName}' does not have the column named '{UpdateAtColumnName}', hence trigger binding cannot be created on this table.");
                 }
             }
         }
