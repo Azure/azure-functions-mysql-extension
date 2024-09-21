@@ -8,7 +8,7 @@ import azure.functions as func
 # The Parameters argument passes the `{cost}` specified in the URL that triggers the function,
 # `getproducts/{cost}`, as the value of the `@Cost` parameter in the query.
 # CommandType is set to `Text`, since the constructor argument of the binding is a raw query.
-def main(req: func.HttpRequest, products: func.SqlRowList) -> func.HttpResponse:
+def main(req: func.HttpRequest, products: func.MySqlRowList) -> func.HttpResponse:
     rows = list(map(lambda r: json.loads(r.to_json()), products))
 
     return func.HttpResponse(

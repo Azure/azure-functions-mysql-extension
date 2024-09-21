@@ -7,7 +7,7 @@ import azure.functions as func
 # If the `{name}` specified in the `getproducts-namenull/{name}` URL is "null", the
 # query returns all rows for which the Name column is `NULL`. Otherwise, it returns
 # all rows for which the value of the Name column matches the string passed in `{name}`
-def main(req: func.HttpRequest, products: func.SqlRowList) -> func.HttpResponse:
+def main(req: func.HttpRequest, products: func.MySqlRowList) -> func.HttpResponse:
     rows = list(map(lambda r: json.loads(r.to_json()), products))
 
     return func.HttpResponse(
