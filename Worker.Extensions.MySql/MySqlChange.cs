@@ -21,7 +21,7 @@ namespace Microsoft.Azure.Functions.Worker.Extensions.MySql
         }
 
         /// <summary>
-        /// Change operation (insert, update, or delete).
+        /// Change operation (insert or update).
         /// </summary>
         public MySqlChangeOperation Operation { get; }
 
