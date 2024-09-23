@@ -1,0 +1,13 @@
+{
+    "bindings": [
+      {
+        "name": "changes",
+        "type": "mysqlTrigger",
+        "direction": "in",
+        "tableName": "Products",
+        "connectionStringSetting": "MySqlConnectionString",
+        "leasesTableName": "Leases"
+      }
+    ],
+    "disabled": false
+  }
