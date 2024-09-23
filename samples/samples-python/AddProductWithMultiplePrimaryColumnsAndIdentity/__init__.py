@@ -4,7 +4,7 @@
 import azure.functions as func
 from Common.multiplePrimaryKeyProductWithoutId import MultiplePrimaryKeyProductWithoutId
 
-def main(req: func.HttpRequest, product: func.Out[func.SqlRow]) -> func.HttpResponse:
+def main(req: func.HttpRequest, product: func.Out[func.MySqlRow]) -> func.HttpResponse:
     """This shows an example of a MySql Output binding where the target table has a primary key
     which is comprised of multiple columns, with one of them being an identity column. In
     such a case the identity column is not required to be in the object used by the binding
@@ -12,7 +12,7 @@ def main(req: func.HttpRequest, product: func.Out[func.SqlRow]) -> func.HttpResp
     All other primary key columns are required to be in the object.
     """
 
-    row_obj = func.SqlRow(MultiplePrimaryKeyProductWithoutId(req.params["externalId"],
+    row_obj = func.MySqlRow(MultiplePrimaryKeyProductWithoutId(req.params["externalId"],
         req.params["name"], req.params["cost"]))
     product.set(row_obj)
 
