@@ -30,7 +30,7 @@ public class AddProductWithIdentityColumnIncluded {
                 HttpRequestMessage<Optional<String>> request,
             @MySqlOutput(
                 name = "product",
-                tableName = "ProductsWithIdentity",
+                commandText = "ProductsWithIdentity",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<ProductWithOptionalId> product) {
 

@@ -29,7 +29,7 @@ public class AddProductsWithIdentityColumnArray {
                 route = "addproductswithidentitycolumnarray") HttpRequestMessage<Optional<String>> request,
             @MySqlOutput(
                 name = "products",
-                tableName = "dbo.ProductsWithIdentity",
+                commandText = "dbo.ProductsWithIdentity",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<ProductWithoutId[]> products) {
 
