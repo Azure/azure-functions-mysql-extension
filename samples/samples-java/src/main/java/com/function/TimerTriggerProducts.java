@@ -21,7 +21,7 @@ public class TimerTriggerProducts {
                 String timerInfo,
             @MySqlOutput(
                 name = "products",
-                tableName = "Products",
+                commandText = "Products",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<Product[]> products) {
 

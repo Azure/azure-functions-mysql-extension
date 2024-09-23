@@ -29,7 +29,7 @@ public class AddProductWithMultiplePrimaryColumnsAndIdentity {
                 HttpRequestMessage<Optional<String>> request,
             @MySqlOutput(
                 name = "product",
-                tableName = "ProductsWithMultiplePrimaryColumnsAndIdentity",
+                commandText = "ProductsWithMultiplePrimaryColumnsAndIdentity",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<MultiplePrimaryKeyProductWithoutId> product) {
 

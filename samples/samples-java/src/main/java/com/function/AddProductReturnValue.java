@@ -24,7 +24,7 @@ public class AddProductReturnValue {
     @FunctionName("AddProductReturnValue")
     @MySqlOutput(
         name = "product",
-        tableName = "Products",
+        commandText = "Products",
         connectionStringSetting = "MySqlConnectionString")
     public Product run(
             @HttpTrigger(

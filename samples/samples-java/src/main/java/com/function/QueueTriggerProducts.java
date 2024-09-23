@@ -22,7 +22,7 @@ public class QueueTriggerProducts {
             String queueMessage,
             @MySqlOutput(
                 name = "products",
-                tableName = "Products",
+                commandText = "Products",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<Product[]> products) {
 

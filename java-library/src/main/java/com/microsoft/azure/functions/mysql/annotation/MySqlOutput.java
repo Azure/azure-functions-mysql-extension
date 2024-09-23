@@ -26,7 +26,7 @@ public @interface MySqlOutput {
     /**
      * Name of the table to upsert data to.
      */
-    String tableName() default "";
+    String commandText() default "";
 
     /**
      * Setting name for MySql connection string.
