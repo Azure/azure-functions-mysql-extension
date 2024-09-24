@@ -11,6 +11,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     /// </summary>
     [Binding]
     [AttributeUsage(AttributeTargets.Parameter)]
+    // The class to define MySql Trigger Attributes
     public sealed class MySqlTriggerAttribute : Attribute
     {
         /// <summary>

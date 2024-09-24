@@ -70,9 +70,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         public async Task AddProductArrayTest(SupportedLanguages lang)
         {
             // First insert some test data
-            this.ExecuteNonQuery("INSERT INTO Products VALUES (1, 'test', 100)");
-            this.ExecuteNonQuery("INSERT INTO Products VALUES (2, 'test', 100)");
-            this.ExecuteNonQuery("INSERT INTO Products VALUES (3, 'test', 100)");
+            this.ExecuteNonQuery("INSERT INTO Products (ProductId, Name, Cost) VALUES (1, 'test', 100)");
+            this.ExecuteNonQuery("INSERT INTO Products (ProductId, Name, Cost) VALUES (2, 'test', 100)");
+            this.ExecuteNonQuery("INSERT INTO Products (ProductId, Name, Cost) VALUES (3, 'test', 100)");
 
             Product[] prods = new[]
             {

@@ -7,6 +7,7 @@ using Microsoft.Azure.Functions.Worker.Extensions.Abstractions;
 
 namespace Microsoft.Azure.Functions.Worker.Extensions.MySql
 {
+    // The class to define MySql Input Attributes
     public sealed class MySqlInputAttribute : InputBindingAttribute
     {
         /// <summary>
