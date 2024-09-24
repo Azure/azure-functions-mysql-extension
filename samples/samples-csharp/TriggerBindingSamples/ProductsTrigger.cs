@@ -12,7 +12,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.TriggerBindingSamples
     {
         [FunctionName(nameof(ProductsTrigger))]
         public static void Run(
-            [MySqlTrigger("Products", "MySqlConnectionString")]
+            [MySqlTrigger("CARTESIAN", "MySqlConnectionString")]
             IReadOnlyList<MySqlChange<Product>> changes,
             ILogger logger)
         {
