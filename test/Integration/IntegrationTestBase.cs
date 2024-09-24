@@ -336,7 +336,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             var queryBuilder = new StringBuilder();
             foreach (Product p in products)
             {
-                queryBuilder.AppendLine($"INSERT INTO Products VALUES({p.ProductId}, '{p.Name}', {p.Cost});");
+                queryBuilder.AppendLine($"INSERT INTO Products (ProductId, Name, Cost) VALUES ({p.ProductId}, '{p.Name}', {p.Cost});");
             }
 
             this.ExecuteNonQuery(queryBuilder.ToString(), $"Inserting {products.Length} products");
