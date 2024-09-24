@@ -30,7 +30,7 @@ public class AddProductsNoPartialUpsert {
                 HttpRequestMessage<Optional<String>> request,
             @MySqlOutput(
                 name = "products",
-                tableName = "ProductsNameNotNull",
+                commandText = "ProductsNameNotNull",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<Product[]> products) {
 

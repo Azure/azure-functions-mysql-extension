@@ -34,7 +34,7 @@ public class AddProduct {
                 HttpRequestMessage<Optional<String>> request,
             @MySqlOutput(
                 name = "product",
-                tableName = "Products",
+                commandText = "Products",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<Product> product) throws JsonParseException, JsonMappingException, IOException {
 

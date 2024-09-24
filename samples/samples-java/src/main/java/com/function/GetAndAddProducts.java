@@ -43,7 +43,7 @@ public class GetAndAddProducts {
                 Product[] products,
             @MySqlOutput(
                 name = "productsWithIdentity",
-                tableName = "ProductsWithIdentity",
+                commandText = "ProductsWithIdentity",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<Product[]> productsWithIdentity) {
 

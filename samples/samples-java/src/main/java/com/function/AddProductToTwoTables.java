@@ -38,12 +38,12 @@ public class AddProductToTwoTables {
                 HttpRequestMessage<Optional<String>> request,
             @MySqlOutput(
                 name = "product",
-                tableName = "Products",
+                commandText = "Products",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<Product> product,
             @MySqlOutput(
                 name = "productWithIdentity",
-                tableName = "ProductsWithIdentity",
+                commandText = "ProductsWithIdentity",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<Product> productWithIdentity) throws JsonParseException, JsonMappingException, IOException {
 

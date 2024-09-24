@@ -30,7 +30,7 @@ public class AddProductMissingColumns {
                 HttpRequestMessage<Optional<String>> request,
             @MySqlOutput(
                 name = "product",
-                tableName = "Products",
+                commandText = "Products",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<ProductMissingColumns> product) {
 

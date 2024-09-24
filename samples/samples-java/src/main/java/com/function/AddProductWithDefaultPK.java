@@ -34,7 +34,7 @@ public class AddProductWithDefaultPK {
                 HttpRequestMessage<Optional<String>> request,
             @MySqlOutput(
                 name = "product",
-                tableName = "ProductsWithDefaultPK",
+                commandText = "ProductsWithDefaultPK",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<ProductWithDefaultPK> product) throws JsonParseException, JsonMappingException, IOException {
 

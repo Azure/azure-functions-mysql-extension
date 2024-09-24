@@ -33,7 +33,7 @@ public class AddProductMissingColumnsExceptionFunction {
                 HttpRequestMessage<Optional<String>> request,
             @MySqlOutput(
                 name = "product",
-                tableName = "ProductsCostNotNull",
+                commandText = "ProductsCostNotNull",
                 connectionStringSetting = "MySqlConnectionString")
                 OutputBinding<ProductMissingColumns> product) {
 
