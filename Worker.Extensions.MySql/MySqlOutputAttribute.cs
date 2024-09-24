@@ -6,6 +6,7 @@ using Microsoft.Azure.Functions.Worker.Extensions.Abstractions;
 
 namespace Microsoft.Azure.Functions.Worker.Extensions.MySql
 {
+    // The class to define MySql Output Attributes
     public class MySqlOutputAttribute : OutputBindingAttribute
     {
         /// <summary>

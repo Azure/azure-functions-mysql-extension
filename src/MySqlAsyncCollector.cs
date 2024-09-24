@@ -228,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         GenerateDataQueryForMerge(tableInfo, batch, columnNamesFromItem, out string newDataQuery);
                         command.CommandText = $"{insertQuery} {newDataQuery} {duplicateUpdateQuery};";
 
-                        await command.ExecuteNonQueryAsyncWithLogging(this._logger, CancellationToken.None);
+                        await command.ExecuteNonQueryAsyncWithLogging(this._logger, CancellationToken.None, true);
                     }
                     transaction.Commit();
                     transactionSw.Stop();
@@ -530,7 +530,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             columnDefinitionsFromMySQL.Add(columnName, rdr[ColumnDefinition].ToString());
                         }
                         columnDefinitionsSw.Stop();
-                        logger.LogInformation($"Time Taken to get column definitions: {columnDefinitionsSw.ElapsedMilliseconds}");
+                        logger.LogInformation($"Time taken (ms) to get column definitions: {columnDefinitionsSw.ElapsedMilliseconds}");
                     }
 
                 }
@@ -595,7 +595,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 // generate the MERGE statement correctly
                 if (!hasIdentityColumnPrimaryKeys && !hasDefaultColumnPrimaryKeys && missingPrimaryKeysFromItem.Any())
                 {
-                    string message = $"All primary keys for MySQL table {table} need to be found in '{typeof(T)}.' Missing primary keys: [{string.Join(",", missingPrimaryKeysFromItem)}]";
+                    string message = $"All primary keys for MySQL table {table} need to be found in '{typeof(T)}'.\nMissing primary keys: [{string.Join(",", missingPrimaryKeysFromItem)}]";
                     var ex = new InvalidOperationException(message);
                     logger.LogError($"Missing Primary Keys for table: {table}");
                     throw ex;
@@ -603,7 +603,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                 tableInfoSw.Stop();
                 logger.LogInformation($"Time taken(ms) to get Table {table} information: {tableInfoSw.ElapsedMilliseconds}");
-                logger.LogDebug($"RetrieveTableInformation DB and Table: {mysqlConnection.Database}.{fullName}. Primary keys: [{string.Join(",", primaryKeys.Select(pk => pk.Name))}].\nMySQL Column and Definitions:  [{string.Join(",", columnDefinitionsFromMySQL)}]\nObject columns: [{string.Join(",", objectColumnNames)}]");
+                logger.LogDebug($"RetrieveTableInformation for the Table: {table.FullName}.\nPrimary keys: [{string.Join(",", primaryKeys.Select(pk => pk.Name))}].\nMySQL Column and Definitions:  [{string.Join(",", columnDefinitionsFromMySQL)}]\nObject columns: [{string.Join(",", objectColumnNames)}]");
                 return new TableInformation(primaryKeys, primaryKeyProperties, columnDefinitionsFromMySQL, hasIdentityColumnPrimaryKeys);
             }
         }

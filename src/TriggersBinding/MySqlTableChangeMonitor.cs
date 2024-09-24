@@ -266,8 +266,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         {
                             var commandSw = Stopwatch.StartNew();
                             await updateStartPollingTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
-                            this._logger.LogInformation($"Updated {GlobalStateTableStartPollingTimeColumnName} in {GlobalStateTableName} table");
-
                             setStartPollingTimeDurationMs = commandSw.ElapsedMilliseconds;
                         }
 
@@ -276,8 +274,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         using (MySqlCommand getChangesCommand = this.BuildGetChangesCommand(connection, transaction))
                         {
                             var commandSw = Stopwatch.StartNew();
-
-                            this._logger.LogInformation($"Looking for latest changes in Table having ID : {this._userTableId}");
+                            this._logger.LogInformation($"Looking for latest changes in Table: {this._userTable.FullName}");
 
                             using (MySqlDataReader reader = getChangesCommand.ExecuteReaderWithLogging(this._logger))
                             {
@@ -298,7 +295,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             using (MySqlCommand acquireLeasesCommand = this.BuildAcquireLeasesCommand(connection, transaction, rows))
                             {
                                 var commandSw = Stopwatch.StartNew();
-                                await acquireLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
+                                this._logger.LogDebug($"Acquiring lease ...");
+                                await acquireLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
                                 acquireLeasesDurationMs = commandSw.ElapsedMilliseconds;
                             }
                         }
@@ -532,7 +530,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         using (MySqlCommand renewLeasesCommand = this.BuildRenewLeasesCommand(connection, transaction))
                         {
                             var stopwatch = Stopwatch.StartNew();
-                            int rowsAffected = await renewLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
+                            this._logger.LogDebug($"Renewing lease ...");
+                            int rowsAffected = await renewLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
                             long durationMs = stopwatch.ElapsedMilliseconds;
 
                             if (rowsAffected > 0)
@@ -625,6 +624,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             using (MySqlCommand releaseLeasesCommand = this.BuildReleaseLeasesCommand(connection, transaction))
                             {
                                 var commandSw = Stopwatch.StartNew();
+                                this._logger.LogDebug($"Releasing lease ...");
                                 int rowsUpdated = await releaseLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
                                 long releaseLeasesDurationMs = commandSw.ElapsedMilliseconds;
                             }
@@ -788,7 +788,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                                         ;";
 
             var acquireLeasesCommand = new MySqlCommand(acquireLeasesQuery, connection, transaction);
-
             return acquireLeasesCommand;
         }
 
@@ -811,7 +810,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                                             {combinedMatchConditions}
                                         ;";
 
-            return new MySqlCommand(renewLeasesQuery, connection, transaction);
+            var renewLeasesCommand = new MySqlCommand(renewLeasesQuery, connection, transaction);
+            return renewLeasesCommand;
         }
 
         /// <summary>
@@ -835,7 +835,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                                             {combinedMatchConditions}
                                         ;";
 
-            return new MySqlCommand(releaseLeasesQuery, connection, transaction);
+            var releaseLeasesCommand = new MySqlCommand(releaseLeasesQuery, connection, transaction);
+            return releaseLeasesCommand;
         }
 
         private enum State

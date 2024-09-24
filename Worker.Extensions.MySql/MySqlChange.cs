@@ -36,7 +36,6 @@ namespace Microsoft.Azure.Functions.Worker.Extensions.MySql
     /// </summary>
     public enum MySqlChangeOperation
     {
-        Insert,
         Update
     }
 }
