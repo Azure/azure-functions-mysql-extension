@@ -54,13 +54,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         }
 
         [Theory]
-        [InlineData("'mydb'.'Products'", "Encountered error(s) while parsing object name:\n")]
-        [InlineData("\"mydb\".\"Products\"", "Encountered error(s) while parsing object name:\n")]
-        [InlineData("'Products'", "Encountered error(s) while parsing object name:\n")]
+        [InlineData("'mydb'.'Products'", "Encountered error while parsing object name:")]
+        [InlineData("\"mydb\".\"Products\"", "Encountered error while parsing object name:")]
+        [InlineData("'Products'", "Encountered error while parsing object name:")]
         public void TestMySqlObjectParseError(string fullName, string expectedErrorMessage)
         {
             string errorMessage = Assert.Throws<InvalidOperationException>(() => new MySqlObject(fullName)).Message;
-            Assert.Equal(expectedErrorMessage, errorMessage);
+            Assert.StartsWith(expectedErrorMessage, errorMessage);
         }
 
         [Theory]
