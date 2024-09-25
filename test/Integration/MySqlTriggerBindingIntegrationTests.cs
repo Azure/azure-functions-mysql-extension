@@ -543,7 +543,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         {
             this.SetChangeTrackingForTable("ProductsColumnTypes");
             this.StartFunctionHost(nameof(ProductsColumnTypesTrigger), lang, true);
-            ProductColumnTypes expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes>(/*lang=json,strict*/ "{\"ProductId\":999,\"BigInt\":999,\"Bit\":true,\"DecimalType\":1.2345,\"Money\":1.2345,\"Numeric\":1.2345,\"SmallInt\":1,\"SmallMoney\":1.2345,\"TinyInt\":1,\"FloatType\":0.1,\"Real\":0.1,\"Date\":\"2022-10-20T00:00:00.000Z\",\"Datetime\":\"2022-10-20T12:39:13.123Z\",\"Datetime2\":\"2022-10-20T12:39:13.123Z\",\"DatetimeOffset\":\"2022-10-20T12:39:13.123Z\",\"SmallDatetime\":\"2022-10-20T12:39:00.000Z\",\"Time\":\"12:39:13.1230000\",\"CharType\":\"test\",\"Varchar\":\"test\",\"Nchar\":\"test\",\"Nvarchar\":\"test\",\"Binary\":\"dGVzdA==\",\"Varbinary\":\"dGVzdA==\"}");
+            ProductColumnTypes expectedResponse = Utils.JsonDeserializeObject<ProductColumnTypes>(/*lang=json,strict*/ "{\"ProductId\":999,\"BigIntType\":999,\"BitType\":1,\"DecimalType\":1.2345,\"NumericType\":1.2345,\"SmallIntType\":1,\"TinyIntType\":1,\"FloatType\":0.1,\"RealType\":0.1,\"DateType\":\"2022-10-20T00:00:00\",\"DatetimeType\":\"2022-10-20T12:39:13\",\"TimeType\":\"12:39:13\",\"CharType\":\"test\",\"VarcharType\":\"test\",\"NcharType\":\"test\",\"NvarcharType\":\"test\",\"BinaryType\":\"dGVzdA==\",\"VarbinaryType\":\"dGVzdA==\"}");
             int index = 0;
             string messagePrefix = "MySQL Changes: ";
 
@@ -583,25 +583,29 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 
             // Now that we've set up our listener trigger the actions to monitor
             string datetime = "2022-10-20 12:39:13.123";
-            this.ExecuteNonQuery("INSERT INTO ProductsColumnTypes VALUES (" +
+            this.ExecuteNonQuery("INSERT INTO ProductsColumnTypes " +
+                "(ProductId, BigIntType, BitType, DecimalType, NumericType, SmallIntType, TinyIntType, " +
+                "FloatType, RealType, DateType, DatetimeType, TimeType, " +
+                "CharType, VarcharType, NcharType, NvarcharType, BinaryType, VarbinaryType)" +
+                " VALUES (" +
                 "999, " + // ProductId,
-                "999, " + // BigInt
-                "1, " + // Bit
+                "999, " + // BigIntType
+                "1, " + // BitType
                 "1.2345, " + // DecimalType
-                "1.2345, " + // Numeric
-                "1, " + // SmallInt
-                "1, " + // TinyInt
+                "1.2345, " + // NumericType
+                "1, " + // SmallIntType
+                "1, " + // TinyIntType
                 ".1, " + // FloatType
-                ".1, " + // Real
-                $"DATE('{datetime}')," +
-                $"'{datetime}'," +
-                $"TIME('{datetime}')," +
+                ".1, " + // RealType
+                $"DATE('{datetime}')," + // DateType
+                $"'{datetime}'," + // DatetimeType
+                $"TIME('{datetime}')," + // TimeType
                 "'test', " + // CharType
-                "'test', " + // Varchar
-                "'test', " + // Nchar
-                "'test', " +  // Nvarchar
-                "'test', " + // Binary
-                "'test')"); // Varbinary
+                "'test', " + // VarcharType
+                "'test', " + // NcharType
+                "'test', " +  // NvarcharType
+                "'test', " + // BinaryType
+                "'test')"); // VarbinaryType
 
             // Now wait until either we timeout or we've gotten all the expected changes, whichever comes first
             this.LogOutput($"[{DateTime.UtcNow:u}] Waiting for Insert changes (10000ms)");
