@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
+
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     internal static class MySqlTriggerConstants
@@ -34,5 +36,19 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// The maximum number of times that we'll attempt to renew a lease be
         /// </summary>
         public const int MaxChangeProcessAttemptCount = 5;
+
+        /// <summary>
+        /// The column names that are used in internal state tables and so can't exist in the target table
+        /// since that shares column names with the primary keys from each user table being monitored.
+        /// </summary>
+        public static readonly string[] ReservedColumnNames = new string[]
+        {
+                    LeasesTableAttemptCountColumnName,
+                    LeasesTableLeaseExpirationTimeColumnName
+        };
+
+        //list unsupported data types
+        public static HashSet<string> UnsupportedColumnDataTypes = new HashSet<string>()
+        { "geometry", "geometrycollection" };
     }
 }

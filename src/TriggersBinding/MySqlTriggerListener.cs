@@ -176,9 +176,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         private IReadOnlyList<string> GetUserTableColumns(MySqlConnection connection, MySqlObject userTable, CancellationToken cancellationToken)
         {
-            const int NameIndex = 0;
+            const int NameIndex = 0, TypeIndex = 1;
             string getUserTableColumnsQuery = $@"
-                    SELECT COLUMN_NAME 
+                    SELECT COLUMN_NAME, DATA_TYPE
                     FROM INFORMATION_SCHEMA.COLUMNS
                     WHERE table_name = {userTable.SingleQuotedName}
                     AND table_schema = {userTable.SingleQuotedSchema}
@@ -195,7 +195,30 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     string columnName = reader.GetString(NameIndex);
+                    string columnType = reader.GetString(TypeIndex);
+
                     userTableColumns.Add(columnName);
+
+                    // if column data type in a list of unsupported data types then 
+                    if (UnsupportedColumnDataTypes.Contains(columnType))
+                    {
+                        userDefinedTypeColumns.Add((columnName, columnType));
+                    }
+                }
+
+                if (userDefinedTypeColumns.Count > 0)
+                {
+                    string columnNamesAndTypes = string.Join(", ", userDefinedTypeColumns.Select(col => $"'{col.name}' (type: {col.type})"));
+                    throw new InvalidOperationException($"Found column(s) with unsupported type(s): {columnNamesAndTypes} in table: '{this._userTable.FullName}'.");
+                }
+
+                var conflictingColumnNames = userTableColumns.Intersect(ReservedColumnNames).ToList();
+
+                if (conflictingColumnNames.Count > 0)
+                {
+                    string columnNames = string.Join(", ", conflictingColumnNames.Select(col => $"'{col}'"));
+                    throw new InvalidOperationException($"Found reserved column name(s): {columnNames} in table: '{this._userTable.FullName}'." +
+                        " Please rename them to be able to use trigger binding.");
                 }
 
                 this._logger.LogDebug($"GetUserTableColumns ColumnNames = {string.Join(", ", userTableColumns.Select(col => $"'{col}'"))}.");
