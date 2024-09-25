@@ -49,6 +49,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
         //list unsupported data types
         public static HashSet<string> UnsupportedColumnDataTypes = new HashSet<string>()
-        { "geometry", "geometrycollection" };
+        { "point", "multipoint", "linestring", "multilinestring",
+           "polygon", "multipolygon", "geometry", "geometrycollection"
+        };
     }
 }

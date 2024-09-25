@@ -437,7 +437,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 nameof(UnsupportedColumnTypesTrigger),
                 lang,
                 true,
-                "Found column(s) with unsupported type(s): 'Geometry' (type: geometry), 'GeometryCollection' (type: geometrycollection)" +
+                "Found column(s) with unsupported type(s): " +
+                "'Point' (type: point), 'MultiPoint' (type: multipoint), " +
+                "'LineString' (type: linestring), 'MultiLineString' (type: multilinestring), " +
+                "'Polygon' (type: polygon), 'MultiPolygon' (type: multipolygon), " +
+                "'Geometry' (type: geometry), 'GeometryCollection' (type: geometrycollection)" +
                 " in table: 'ProductsWithUnsupportedColumnTypes'.");
         }
 
