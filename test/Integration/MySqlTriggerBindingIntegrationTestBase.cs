@@ -28,14 +28,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             {
                 this.ExecuteNonQuery($@"
                 ALTER TABLE {tableName}
-                ADD updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+                ADD az_func_updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
                 ");
             }
             else
             {
                 this.ExecuteNonQuery($@"
                 ALTER TABLE {tableName}
-                DROP updated_at;
+                DROP az_func_updated_at;
                 ");
             }
         }
