@@ -9,7 +9,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     {
         public const string MYSQL_FUNC_CURRENTTIME = "CURRENT_TIMESTAMP";
 
-        public const string UpdateAtColumnName = "updated_at";
+        public const string UpdateAtColumnName = "az_func_updated_at";
 
         public const string SchemaName = "az_func_mysql";
 
