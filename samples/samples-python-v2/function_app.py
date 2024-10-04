@@ -43,7 +43,7 @@ def add_product(req: func.HttpRequest, product: func.Out[func.MySqlRow]) -> func
     )
 
 
-# The function gets triggered when a change (Insert, Update, or Delete)
+# The function gets triggered when a change (Insert, Update)
 # is made to the Products table.
 @app.function_name(name="ProductsTrigger")
 @app.generic_trigger(arg_name="products",
