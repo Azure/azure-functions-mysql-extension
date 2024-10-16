@@ -75,7 +75,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             _ = context ?? throw new ArgumentNullException(nameof(context), "Missing listener context");
 
             string userFunctionId = this.GetUserFunctionIdAsync();
-            var mySqlTriggerListener = new MySqlTriggerListener<T>(this._connectionString, this._tableName, this._leasesTableName, userFunctionId, context.Executor, this._mysqlOptions, this._logger, this._configuration); ;
+            var mySqlTriggerListener = new MySqlTriggerListener<T>(this._connectionString, this._tableName, this._leasesTableName, userFunctionId, context.Executor, this._mysqlOptions, this._logger, this._configuration);
             return Task.FromResult<IListener>(mySqlTriggerListener);
         }
 
