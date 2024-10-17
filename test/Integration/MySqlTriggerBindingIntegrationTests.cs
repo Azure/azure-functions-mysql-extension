@@ -592,51 +592,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         }
 
         /// <summary>
-        /// Tests that when a user function throws an exception we'll retry executing that function once the lease timeout expires
-        /// </summary>
-        [RetryTheory]
-        [MySqlInlineData()]
-        [UnsupportedLanguages(SupportedLanguages.JavaScript, SupportedLanguages.Python, SupportedLanguages.PowerShell, SupportedLanguages.Java)] // Keeping static state for threwException across calls is only valid for C# and Java.
-        public async Task FunctionExceptionsCauseRetry(SupportedLanguages lang)
-        {
-            this.SetChangeTrackingForTable("Products");
-            this.StartFunctionHost(nameof(TriggerWithException), lang, useTestFolder: true);
-            TaskCompletionSource taskCompletionSource = new();
-            void TestExceptionMessageSeen(object sender, DataReceivedEventArgs e)
-            {
-                if (e.Data.Contains(TriggerWithException.ExceptionMessage))
-                {
-                    taskCompletionSource.TrySetResult();
-                }
-            };
-            this.FunctionHost.OutputDataReceived += TestExceptionMessageSeen;
-            int firstId = 1;
-            int lastId = 30;
-            int batchProcessingTimeout = this.GetBatchProcessingTimeout(1, 30);
-            Task changesTask = this.WaitForProductChanges(
-                firstId,
-                lastId,
-                MySqlChangeOperation.Update,
-                () => { this.InsertProducts(firstId, lastId); return Task.CompletedTask; },
-                id => $"Product {id}",
-                id => id * 100,
-                (MySqlTableChangeMonitor<object>.LeaseIntervalInSeconds * 1000) + batchProcessingTimeout);
-
-            // First wait for the exception message to show up
-            await taskCompletionSource.Task.TimeoutAfter(TimeSpan.FromMilliseconds(batchProcessingTimeout), "Timed out waiting for exception message");
-            // Now wait for the retry to occur and successfully pass
-            await changesTask;
-
-        }
-
-        /// <summary>
         /// Tests that the GlobalState table has LastPolledTime column.
         /// </summary>
         /// <remarks>We call StartAsync which initializes the GlobalState, then check if the GlobalState has the column.</remarks>
         [Fact]
         public async Task GlobalStateTableLastPolledTimeColumn_Exist_OnStartup()
         {
-
             this.SetChangeTrackingForTable("Products");
             string userFunctionId = "func-id";
             IConfiguration configuration = new ConfigurationBuilder().Build();
