@@ -117,6 +117,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
 
             // Set MySqlConnectionString env var for the tests to use
             Environment.SetEnvironmentVariable("MySqlConnectionString", connectionStringBuilder.ToString());
+            Environment.SetEnvironmentVariable("WEBSITE_SITE_NAME", "TestMySqlFunction");
             MasterConnectionString = masterConnectionString;
             DatabaseName = databaseName;
         }

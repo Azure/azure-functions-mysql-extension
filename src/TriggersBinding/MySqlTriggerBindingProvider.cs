@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Configuration;
@@ -21,7 +20,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     internal sealed class MySqlTriggerBindingProvider : ITriggerBindingProvider
     {
         private readonly IConfiguration _configuration;
-        private readonly IHostIdProvider _hostIdProvider;
         private readonly ILogger _logger;
         private readonly IOptions<MySqlOptions> _mysqlOptions;
 
@@ -29,13 +27,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// Initializes a new instance of the <see cref="MySqlTriggerBindingProvider"/> class.
         /// </summary>
         /// <param name="configuration">Configuration to retrieve settings from</param>
-        /// <param name="hostIdProvider">Provider of unique host identifier</param>
         /// <param name="loggerFactory">Used to create logger instance</param>
         /// <param name="mysqlOptions"></param>
-        public MySqlTriggerBindingProvider(IConfiguration configuration, IHostIdProvider hostIdProvider, ILoggerFactory loggerFactory, IOptions<MySqlOptions> mysqlOptions)
+        public MySqlTriggerBindingProvider(IConfiguration configuration, ILoggerFactory loggerFactory, IOptions<MySqlOptions> mysqlOptions)
         {
             this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            this._hostIdProvider = hostIdProvider ?? throw new ArgumentNullException(nameof(hostIdProvider));
             this._mysqlOptions = mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions));
             this._logger = loggerFactory?.CreateLogger(LogCategories.CreateTriggerCategory("MySql")) ?? throw new ArgumentNullException(nameof(loggerFactory));
         }
@@ -90,10 +86,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 bindingType = typeof(MySqlTriggerBinding<>).MakeGenericType(userType);
             }
 
-            var constructorParameterTypes = new Type[] { typeof(string), typeof(string), typeof(string), typeof(ParameterInfo), typeof(IOptions<MySqlOptions>), typeof(IHostIdProvider), typeof(ILogger), typeof(IConfiguration) };
+            var constructorParameterTypes = new Type[] { typeof(string), typeof(string), typeof(string), typeof(ParameterInfo), typeof(IOptions<MySqlOptions>), typeof(ILogger), typeof(IConfiguration) };
             ConstructorInfo bindingConstructor = bindingType.GetConstructor(constructorParameterTypes);
 
-            object[] constructorParameterValues = new object[] { connectionString, attribute.TableName, attribute.LeasesTableName, parameter, this._mysqlOptions, this._hostIdProvider, this._logger, this._configuration };
+            object[] constructorParameterValues = new object[] { connectionString, attribute.TableName, attribute.LeasesTableName, parameter, this._mysqlOptions, this._logger, this._configuration };
             var triggerBinding = (ITriggerBinding)bindingConstructor.Invoke(constructorParameterValues);
 
             return Task.FromResult(triggerBinding);

@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Triggers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -94,7 +93,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         {
             var provider = new MySqlTriggerBindingProvider(
                 Mock.Of<IConfiguration>(c => c["testConnectionStringSetting"] == "testConnectionString"),
-                Mock.Of<IHostIdProvider>(),
                 Mock.Of<ILoggerFactory>(f => f.CreateLogger(It.IsAny<string>()) == Mock.Of<ILogger>()),
                 Mock.Of<Microsoft.Extensions.Options.IOptions<MySqlOptions>>());
 

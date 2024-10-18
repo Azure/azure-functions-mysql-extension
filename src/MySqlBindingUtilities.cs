@@ -59,7 +59,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 throw new ArgumentNullException(nameof(configuration));
             }
-            return configuration.GetConnectionStringOrSetting(MySqlBindingConstants.WEBSITENAME);
+            string websitename = configuration.GetConnectionStringOrSetting(MySqlBindingConstants.WEBSITENAME);
+            // We require a WEBSITE_SITE_NAME for avoiding duplicates if users use the same function name accross apps.
+            if (string.IsNullOrEmpty(websitename))
+            {
+                throw new ArgumentException($"WEBSITE_SITE_NAME cannot be null or empty in your function app settings, please update the setting with a string value.");
+            }
+            return websitename;
         }
 
         /// <summary>

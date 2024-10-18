@@ -265,15 +265,6 @@
           "Microsoft.Azure.WebJobs": "3.0.32"
         }
       },
-      "Microsoft.Azure.WebJobs.Host.Storage": {
-        "type": "Transitive",
-        "resolved": "3.0.14",
-        "contentHash": "1M9VzF4/skqaFezaNI6QUo5ftI1ifGAc6TQfbDdi94lUkUcnSnlBq/uBzx1P73SQgY9WzIE0KZn2+DOx6CL9Sg==",
-        "dependencies": {
-          "Microsoft.Azure.WebJobs": "3.0.14",
-          "WindowsAzure.Storage": "9.3.1"
-        }
-      },
       "Microsoft.Bcl.AsyncInterfaces": {
         "type": "Transitive",
         "resolved": "1.1.1",
@@ -1645,6 +1636,16 @@
           "Newtonsoft.Json": "13.0.1",
           "System.Memory.Data": "1.0.2",
           "System.Threading.Tasks.Dataflow": "4.8.0"
+        }
+      },
+      "Microsoft.Azure.WebJobs.Host.Storage": {
+        "type": "CentralTransitive",
+        "requested": "[5.0.0, )",
+        "resolved": "3.0.14",
+        "contentHash": "1M9VzF4/skqaFezaNI6QUo5ftI1ifGAc6TQfbDdi94lUkUcnSnlBq/uBzx1P73SQgY9WzIE0KZn2+DOx6CL9Sg==",
+        "dependencies": {
+          "Microsoft.Azure.WebJobs": "3.0.14",
+          "WindowsAzure.Storage": "9.3.1"
         }
       },
       "Microsoft.Azure.WebJobs.Script.ExtensionsMetadataGenerator": {
