@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
             catch (Exception ex)
             {
-                this._logger.LogError($"Failed to get scale status for table '{this._userTable.FullName}' due to exception: {ex.GetType()}. Exception message: {ex.Message}");
+                this._logger.LogError($"Failed to get scale status for the specified table due to exception: {ex.GetType()}. Exception message: {ex.Message}");
             }
 
             return status;
@@ -110,7 +110,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             if (lastUnprocessedChangeCount > workerCount * this._maxChangesPerWorker)
             {
                 status.Vote = ScaleVote.ScaleOut;
-                this._logger.LogDebug($"Requesting scale-out: Found too many unprocessed changes: {lastUnprocessedChangeCount} for table: '{this._userTable.FullName}' relative to the number of workers.");
+                this._logger.LogDebug($"Requesting scale-out: Found too many unprocessed changes: {lastUnprocessedChangeCount} for the specified table relative to the number of workers.");
                 return status;
             }
 
@@ -133,7 +133,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 if (expectedUnprocessedChangeCount > workerCount * this._maxChangesPerWorker)
                 {
                     status.Vote = ScaleVote.ScaleOut;
-                    this._logger.LogDebug($"Requesting scale-out: Found the unprocessed changes for table: '{this._userTable.FullName}' to be continuously increasing" +
+                    this._logger.LogDebug($"Requesting scale-out: Found the unprocessed changes for the specified table to be continuously increasing" +
                         " and may exceed the maximum limit set for the workers.");
                     return status;
                 }
@@ -145,7 +145,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 if (lastUnprocessedChangeCount <= (workerCount - 1) * this._maxChangesPerWorker)
                 {
                     status.Vote = ScaleVote.ScaleIn;
-                    this._logger.LogDebug($"Requesting scale-in: Found table: '{this._userTable.FullName}' to be either idle or the unprocessed changes to be continuously decreasing.");
+                    this._logger.LogDebug($"Requesting scale-in: The specified table is found to be either idle or the unprocessed changes to be continuously decreasing.");
                     return status;
                 }
             }

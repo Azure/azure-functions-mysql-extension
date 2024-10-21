@@ -23,7 +23,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="arguments">Collection of function arguments (unused)</param>
         public override string GetTriggerReason(IDictionary<string, string> arguments)
         {
-            return $"New change detected on table '{this.TableName}' at {DateTime.UtcNow:o}.";
+            return $"New change detected on the specified table at {DateTime.UtcNow:o}.";
         }
     }
 }

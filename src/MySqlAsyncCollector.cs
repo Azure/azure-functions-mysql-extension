@@ -85,8 +85,15 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             this._logger = logger;
             using (MySqlConnection connection = BuildConnection(attribute.ConnectionStringSetting, configuration))
             {
+                AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(this.HandleException);
                 connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None).Wait();
             }
+        }
+
+        public void HandleException(object sender, UnhandledExceptionEventArgs e)
+        {
+            this._logger.LogError($"Unable to establish connection with the provided connection string. Exception: {e.ExceptionObject}");
+            Environment.Exit(0);
         }
 
         /// <summary>
@@ -200,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 IEnumerable<string> extraProperties = GetExtraProperties(tableInfo.Columns, rows.First());
                 if (extraProperties.Any())
                 {
-                    string message = $"The following properties in {typeof(T)} do not exist in the table {fullTableName}: {string.Join(", ", extraProperties.ToArray())}.";
+                    string message = $"The following properties in {typeof(T)} do not exist in the specified table";
                     var ex = new InvalidOperationException(message);
                     throw ex;
                 }
@@ -538,15 +545,15 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     logger.LogError($"Exception encountered during GetColumnDefinitions. Message:{ex.Message}");
                     // Throw a custom error so that it's easier to decipher.
-                    string message = $"Encountered exception while retrieving column names and types for table {table}. Cannot generate upsert command without them.";
+                    string message = $"Encountered exception while retrieving column names and types for the given table. Cannot generate upsert command without them.";
                     throw new InvalidOperationException(message, ex);
                 }
 
                 if (columnDefinitionsFromMySQL.Count == 0)
                 {
-                    string message = $"Table {table} does not exist.";
+                    string message = $"Specified table does not exist.";
                     var ex = new InvalidOperationException(message);
-                    logger.LogError($"Column Definition does not exist for table: {table}");
+                    logger.LogError($"Column Definition does not exist for the given table");
                     throw ex;
                 }
 
@@ -565,22 +572,22 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             primaryKeys.Add(new PrimaryKey(columnName, bool.Parse(rdr[IsAutoIncrement].ToString()), bool.Parse(rdr[HasDefault].ToString())));
                         }
                         primaryKeysSw.Stop();
-                        logger.LogInformation($"Time taken (ms) to get PrimaryKeys for table {table}: {primaryKeysSw.ElapsedMilliseconds}");
+                        logger.LogInformation($"Time taken (ms) to get PrimaryKeys for the specified table: {primaryKeysSw.ElapsedMilliseconds}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError($"Exception encountered while fetching the primary keys for table {table}. Message: {ex.Message}");
+                    logger.LogError($"Exception encountered while fetching the primary keys for the specified table. Message: {ex.Message}");
                     // Throw a custom error so that it's easier to decipher.
-                    string message = $"Encountered exception while retrieving primary keys for table {table}. Cannot generate upsert command without them.";
+                    string message = $"Encountered exception while retrieving primary keys for the specified table. Cannot generate upsert command without them.";
                     throw new InvalidOperationException(message, ex);
                 }
 
                 if (!primaryKeys.Any())
                 {
-                    string message = $"Did not retrieve any primary keys for {table}. Cannot generate upsert command without them.";
+                    string message = $"Did not retrieve any primary keys for the specified table. Cannot generate upsert command without them.";
                     var ex = new InvalidOperationException(message);
-                    logger.LogError($"Unable to get primary keys for table {table}");
+                    logger.LogError($"Unable to get primary keys for the specified table");
                     throw ex;
                 }
 
@@ -595,15 +602,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 // generate the MERGE statement correctly
                 if (!hasIdentityColumnPrimaryKeys && !hasDefaultColumnPrimaryKeys && missingPrimaryKeysFromItem.Any())
                 {
-                    string message = $"All primary keys for MySQL table {table} need to be found in '{typeof(T)}'.\nMissing primary keys: [{string.Join(",", missingPrimaryKeysFromItem)}]";
+                    string message = $"All primary keys for the specified table need to be found in '{typeof(T)}'";
                     var ex = new InvalidOperationException(message);
-                    logger.LogError($"Missing Primary Keys for table: {table}");
+                    logger.LogError($"Missing Primary Keys for the specified table");
                     throw ex;
                 }
 
                 tableInfoSw.Stop();
-                logger.LogInformation($"Time taken(ms) to get Table {table} information: {tableInfoSw.ElapsedMilliseconds}");
-                logger.LogDebug($"RetrieveTableInformation for the Table: {table.FullName}.\nPrimary keys: [{string.Join(",", primaryKeys.Select(pk => pk.Name))}].\nMySQL Column and Definitions:  [{string.Join(",", columnDefinitionsFromMySQL)}]\nObject columns: [{string.Join(",", objectColumnNames)}]");
+                logger.LogInformation($"Time taken(ms) to get Table information: {tableInfoSw.ElapsedMilliseconds}");
                 return new TableInformation(primaryKeys, primaryKeyProperties, columnDefinitionsFromMySQL, hasIdentityColumnPrimaryKeys);
             }
         }

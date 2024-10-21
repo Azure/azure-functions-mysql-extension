@@ -82,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 if (!await reader.ReadAsync(cancellationToken))
                 {
-                    throw new InvalidOperationException($"The Table '{tableName}' does not have the column named '{UpdateAtColumnName}', hence trigger binding cannot be created on this table.");
+                    throw new InvalidOperationException($"The specified table does not have the column named '{UpdateAtColumnName}', hence trigger binding cannot be created on this table.");
                 }
             }
         }
@@ -324,13 +324,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 if (logCommand)
                 {
-                    logger.LogDebug($"Executing query={cmd.CommandText}");
+                    logger.LogDebug($"Executing query");
                 }
                 return await cmd.ExecuteScalarAsync(cancellationToken);
             }
             catch (Exception e)
             {
-                logger.LogError($"Exception executing query. Message={e.Message}\nQuery={cmd.CommandText}");
+                logger.LogError($"Exception executing query. Message={e.Message}");
                 throw;
             }
         }
@@ -349,13 +349,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 if (logCommand)
                 {
-                    logger.LogDebug($"Executing query={cmd.CommandText}");
+                    logger.LogDebug($"Executing query.");
                 }
                 return await cmd.ExecuteNonQueryAsync(cancellationToken);
             }
             catch (Exception e)
             {
-                logger.LogError($"Exception executing query. Message={e.Message}\nQuery={cmd.CommandText}");
+                logger.LogError($"Exception executing query. Message={e.Message}");
                 throw;
             }
         }
@@ -373,13 +373,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 if (logCommand)
                 {
-                    logger.LogDebug($"Executing query={cmd.CommandText}");
+                    logger.LogDebug($"Executing query");
                 }
                 return cmd.ExecuteReader();
             }
             catch (Exception e)
             {
-                logger.LogError($"Exception executing query. Message={e.Message}\nQuery={cmd.CommandText}");
+                logger.LogError($"Exception executing query. Message={e.Message}");
                 throw;
             }
         }

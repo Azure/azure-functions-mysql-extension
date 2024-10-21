@@ -274,7 +274,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         using (MySqlCommand getChangesCommand = this.BuildGetChangesCommand(connection, transaction))
                         {
                             var commandSw = Stopwatch.StartNew();
-                            this._logger.LogInformation($"Looking for latest changes in Table: {this._userTable.FullName}");
+                            this._logger.LogInformation($"Looking for latest changes on the configured table");
 
                             using (MySqlDataReader reader = getChangesCommand.ExecuteReaderWithLogging(this._logger))
                             {
@@ -331,7 +331,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 this._rowsToProcess = new List<IReadOnlyDictionary<string, object>>();
                 this._rowsLock.Release();
 
-                this._logger.LogError($"Failed to check for changes in table '{this._userTable.FullName}' due to exception: {e.GetType()}. Exception message: {e.Message}");
+                this._logger.LogError($"Failed to check for changes in the specified table due to exception: {e.GetType()}. Exception message: {e.Message}");
                 if (connection.IsBrokenOrClosed())      // TODO: e.IsFatalMySqlException() || - check mysql corresponding
                 {
                     // If we get a fatal MySQL Client exception or the connection is broken let it bubble up so we can try to re-establish the connection
@@ -361,7 +361,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             if (rowsAffected > 0)
                             {
                                 // Only send an event if we actually updated rows to reduce the overall number of events we send
-                                this._logger.LogInformation($"Updated {GlobalStateTableLastPolledTimeColumnName} in {GlobalStateTableName} table");
+                                this._logger.LogDebug($"Updated global state table");
                             }
                         }
 
@@ -386,7 +386,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 // If there's an exception in any part of the process, we want to clear all of our data in memory and
                 // retry checking for changes again.
                 this._rowsToProcess = new List<IReadOnlyDictionary<string, object>>();
-                this._logger.LogError($"Failed to check for changes in table '{this._userTable.FullName}' due to exception: {e.GetType()}. Exception message: {e.Message}");
+                this._logger.LogError($"Failed to check for changes in the specified table due to exception: {e.GetType()}. Exception message: {e.Message}");
 
                 if (connection.IsBrokenOrClosed())      // TODO: e.IsFatalMySqlException() || - check mysql corresponding
                 {
@@ -417,7 +417,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     // We could probably send up the changes we were able to process and just skip the ones we couldn't, but given
                     // that this is not a case we expect would happen during normal execution we'll err on the side of caution for
                     // now and just retry getting the whole set of changes.
-                    this._logger.LogError($"Failed to compose trigger parameter value for table: '{this._userTable.FullName} due to exception: {e.GetType()}. Exception message: {e.Message}");
+                    this._logger.LogError($"Failed to compose trigger parameter value for the specified table due to exception: {e.GetType()}. Exception message: {e.Message}");
                     await this.ClearRowsAsync(token);
                 }
 
@@ -537,10 +537,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             if (rowsAffected > 0)
                             {
                                 // Only send an event if we actually updated rows to reduce the overall number of events we send
-                                this._logger.LogInformation($"Updated the Leases table {this._leasesTableName}");
+                                this._logger.LogInformation($"Updated the Leases table");
                             }
                             transaction.Commit();
-                            this._logger.LogDebug($"The lease expiration time renewed by {LeaseRenewalIntervalInSeconds} seconds, for the rows(under process) in {this._leasesTableName} table");
+                            this._logger.LogDebug($"The lease expiration time renewed by {LeaseRenewalIntervalInSeconds} seconds, for the rows(under process) in the lease table");
                         }
                     }
                     catch (Exception e)
@@ -638,11 +638,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         {
                             if (retryCount < MaxRetryReleaseLeases)
                             {
-                                this._logger.LogError($"Failed to execute MySQL commands to release leases in attempt: {retryCount} for table '{this._userTable.FullName}' due to exception: {ex.GetType()}. Exception message: {ex.Message}");
+                                this._logger.LogError($"Failed to execute MySQL commands to release leases in attempt: {retryCount} for the specified table due to exception: {ex.GetType()}. Exception message: {ex.Message}");
                             }
                             else
                             {
-                                this._logger.LogError($"Failed to release leases for table '{this._userTable.FullName}' after {MaxRetryReleaseLeases} attempts due to exception: {ex.GetType()}. Exception message: {ex.Message}");
+                                this._logger.LogError($"Failed to release leases for the specified table after {MaxRetryReleaseLeases} attempts due to exception: {ex.GetType()}. Exception message: {ex.Message}");
                             }
 
                             try
