@@ -296,7 +296,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             {
                                 var commandSw = Stopwatch.StartNew();
                                 this._logger.LogDebug($"Acquiring lease ...");
-                                await acquireLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
+                                await acquireLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
                                 acquireLeasesDurationMs = commandSw.ElapsedMilliseconds;
                             }
                         }
@@ -531,7 +531,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         {
                             var stopwatch = Stopwatch.StartNew();
                             this._logger.LogDebug($"Renewing lease ...");
-                            int rowsAffected = await renewLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
+                            int rowsAffected = await renewLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
                             long durationMs = stopwatch.ElapsedMilliseconds;
 
                             if (rowsAffected > 0)
@@ -625,7 +625,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             {
                                 var commandSw = Stopwatch.StartNew();
                                 this._logger.LogDebug($"Releasing lease ...");
-                                int rowsUpdated = await releaseLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token, true);
+                                int rowsUpdated = await releaseLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
                                 long releaseLeasesDurationMs = commandSw.ElapsedMilliseconds;
                             }
 
