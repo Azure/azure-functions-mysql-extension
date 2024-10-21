@@ -104,6 +104,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 using (var connection = new MySqlConnection(this._connectionString))
                 {
+                    AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(this.HandleException);
                     await connection.OpenAsyncWithMySqlErrorHandling(cancellationToken);
 
                     // get table id If exists in database
@@ -141,7 +142,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         this._configuration);
 
                     this._listenerState = ListenerStarted;
-                    this._logger.LogDebug($"Started MySQL trigger listener for table: '{this._userTable.FullName}', function ID: {this._userFunctionId}");
+                    this._logger.LogDebug($"Started MySQL trigger listener for the specified table, function ID: {this._userFunctionId}");
 
                     this._logger.LogInformation($"CreatedSchemaDurationMs {createdSchemaDurationMs}. CreateGlobalStateTableDurationMs: {createGlobalStateTableDurationMs}. " +
                         $"InsertGlobalStateTableRowDurationMs: {insertGlobalStateTableRowDurationMs}");
@@ -150,9 +151,15 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             catch (Exception ex)
             {
                 this._listenerState = ListenerNotStarted;
-                this._logger.LogError($"Failed to start MySQL trigger listener for table: '{this._userTable.FullName}', function ID: '{this._userFunctionId}'. Exception: {ex}");
+                this._logger.LogError($"Failed to start MySQL trigger listener for the specified table', function ID: '{this._userFunctionId}'. Exception: {ex}");
                 throw;
             }
+        }
+
+        public void HandleException(object sender, UnhandledExceptionEventArgs e)
+        {
+            this._logger.LogError($"Unable to establish connection with the provided connection string. Exception: {e.ExceptionObject}");
+            Environment.Exit(0);
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -221,7 +228,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         " Please rename them to be able to use trigger binding.");
                 }
 
-                this._logger.LogDebug($"GetUserTableColumns ColumnNames = {string.Join(", ", userTableColumns.Select(col => $"'{col}'"))}.");
+                this._logger.LogDebug($"Fetching Table Columns");
                 return userTableColumns;
             }
         }

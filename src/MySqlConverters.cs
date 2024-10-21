@@ -136,16 +136,15 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             public virtual async Task<string> BuildItemFromAttributeAsync(MySqlAttribute attribute)
             {
                 using (MySqlConnection connection = MySqlBindingUtilities.BuildConnection(attribute.ConnectionStringSetting, this._configuration))
-                // Ideally, we would like to move away from using MySqlDataAdapter both here and in the
-                // MySqlAsyncCollector since it does not support asynchronous operations.
                 using (var adapter = new MySqlDataAdapter())
                 using (MySqlCommand command = MySqlBindingUtilities.BuildCommand(attribute, connection))
                 {
+                    AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(this.HandleException);
                     adapter.SelectCommand = command;
                     await connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None);
                     var dataTable = new DataTable();
                     adapter.Fill(dataTable);
-                    this.logger.LogInformation($"{dataTable.Rows.Count} row(s) queried from database: {connection.Database} using Command: {command.CommandText}");
+                    this.logger.LogInformation($"{dataTable.Rows.Count} row(s) queried from the query");
                     // Serialize any DateTime objects in UTC format
                     var jsonSerializerSettings = new JsonSerializerSettings()
                     {
@@ -154,6 +153,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     return Utils.JsonSerializeObject(dataTable, jsonSerializerSettings);
                 }
 
+            }
+
+            public void HandleException(object sender, UnhandledExceptionEventArgs e)
+            {
+                this.logger.LogError($"Unable to establish connection with the provided connection string. Exception: {e.ExceptionObject}");
+                Environment.Exit(0);
             }
 
             IAsyncEnumerable<T> IConverter<MySqlAttribute, IAsyncEnumerable<T>>.Convert(MySqlAttribute attribute)

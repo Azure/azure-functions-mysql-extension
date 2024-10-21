@@ -87,7 +87,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
             catch (Exception ex)
             {
-                this._logger.LogError($"Failed to query count of unprocessed changes for table '{this._userTable.FullName}' due to exception: {ex.GetType()}. Exception message: {ex.Message}");
+                this._logger.LogError($"Failed to query count of unprocessed changes for the specified table' due to exception: {ex.GetType()}. Exception message: {ex.Message}");
                 throw;
             }
 

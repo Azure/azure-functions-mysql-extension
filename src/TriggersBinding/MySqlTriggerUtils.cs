@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -54,11 +53,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 if (!await reader.ReadAsync(cancellationToken) || reader.GetValue(0) is DBNull)
                 {
-                    throw new InvalidOperationException($"Could not find table: '{userTable.FullName}'.");
+                    throw new InvalidOperationException($"Could not find the specified table in the database.");
                 }
 
                 object userTableId = reader.GetValue(0);
-                logger.LogDebug($"GetUserTableId TableId={userTableId}");
                 return (ulong)userTableId;
             }
         }
@@ -94,10 +92,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                 if (primaryKeyColumns.Count == 0)
                 {
-                    throw new InvalidOperationException($"Could not find primary key created in table: '{userTableName}'.");
+                    throw new InvalidOperationException($"Could not find primary key(s) for the given table.");
                 }
-
-                logger.LogDebug($"GetPrimaryKeyColumns ColumnNames(types) = {string.Join(", ", primaryKeyColumns.Select(col => $"'{col.name}({col.type})'"))}.");
                 return primaryKeyColumns;
             }
         }
