@@ -80,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
             ScaleStatus scaleStatus = monitor.GetScaleStatus(context);
 
             Assert.Equal(ScaleVote.ScaleOut, scaleStatus.Vote);
-            Assert.Contains($"Requesting scale-out: Found too many unprocessed changes: {unprocessedChangeCounts.Last()} for table: 'testTableName' relative to the number of workers.", string.Join(" ", logMessages));
+            Assert.Contains($"Requesting scale-out: Found too many unprocessed changes: {unprocessedChangeCounts.Last()} for the specified table relative to the number of workers.", string.Join(" ", logMessages));
         }
 
         /// <summary>
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
             ScaleStatus scaleStatus = monitor.GetScaleStatus(context);
 
             Assert.Equal(ScaleVote.ScaleOut, scaleStatus.Vote);
-            Assert.Contains("Requesting scale-out: Found the unprocessed changes for table: 'testTableName' to be continuously increasing and may exceed the maximum limit set for the workers.", logMessages);
+            Assert.Contains("Requesting scale-out: Found the unprocessed changes for the specified table to be continuously increasing and may exceed the maximum limit set for the workers.", logMessages);
         }
 
         /// <summary>
@@ -155,7 +155,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
             ScaleStatus scaleStatus = monitor.GetScaleStatus(context);
 
             Assert.Equal(ScaleVote.ScaleIn, scaleStatus.Vote);
-            Assert.Contains("Requesting scale-in: Found table: 'testTableName' to be either idle or the unprocessed changes to be continuously decreasing.", logMessages);
+            Assert.Contains("Requesting scale-in: The specified table is found to be either idle or the unprocessed changes to be continuously decreasing.", logMessages);
         }
 
         /// <summary>
