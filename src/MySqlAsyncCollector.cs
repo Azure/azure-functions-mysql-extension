@@ -272,11 +272,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             if (typeof(T) == typeof(JObject))
             {
                 Dictionary<string, string> dictObj = (rowItem as JObject).ToObject<Dictionary<string, string>>();
-                return dictObj.Keys.Where(prop => !columns.ContainsKey(prop))
+                return dictObj.Keys.Where(prop => !columns.ContainsKey(MySqlObject.GetMySqlColNameFormatted(prop)))
                 .Select(prop => prop);
             }
             return typeof(T).GetProperties().ToList()
-                .Where(prop => !columns.ContainsKey(prop.Name))
+                .Where(prop => !columns.ContainsKey(MySqlObject.GetMySqlColNameFormatted(prop.Name)))
                 .Select(prop => prop.Name);
         }
         /// <summary>
@@ -593,9 +593,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                 // Match MySQL Primary Key column names to POCO property objects. Ensure none are missing.
                 IEnumerable<PropertyInfo> primaryKeyProperties = typeof(T).GetProperties().Where(f => primaryKeys.Any(k => string.Equals(k.Name, f.Name, StringComparison.Ordinal)));
-                IEnumerable<string> primaryKeysFromObject = objectColumnNames.Where(f => primaryKeys.Any(k => string.Equals(k.Name, f, StringComparison.Ordinal)));
-                IEnumerable<PrimaryKey> missingPrimaryKeysFromItem = primaryKeys
-                    .Where(k => !primaryKeysFromObject.Contains(k.Name));
+                IEnumerable<string> primaryKeysFromObject = objectColumnNames.Where(f => primaryKeys.Any(k => string.Equals(k.Name, MySqlObject.GetMySqlColNameFormatted(f), StringComparison.Ordinal)));
+                IEnumerable<PrimaryKey> missingPrimaryKeysFromItem = primaryKeys.Where(pk => !objectColumnNames.Any(k => string.Equals(pk.Name, MySqlObject.GetMySqlColNameFormatted(k), StringComparison.Ordinal)));
+
                 bool hasIdentityColumnPrimaryKeys = primaryKeys.Any(k => k.IsAutoIncrement);
                 bool hasDefaultColumnPrimaryKeys = primaryKeys.Any(k => k.HasDefault);
                 // If none of the primary keys are an identity column or have a default value then we require that all primary keys be present in the POCO so we can

@@ -413,7 +413,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 nameof(TableNotPresentTrigger),
                 lang,
                 true,
-                "Could not find table: 'TableNotPresent'.");
+                "Could not find the specified table in the database.");
         }
 
         /// <summary>
@@ -429,7 +429,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 nameof(PrimaryKeyNotPresentTrigger),
                 lang,
                 true,
-                "Could not find primary key created in table: 'ProductsWithoutPrimaryKey'.");
+                "Could not find primary key(s) for the given table.");
         }
 
         /// <summary>
@@ -464,7 +464,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 nameof(ProductsTrigger),
                 lang,
                 false,
-                $"The Table 'Products' does not have the column named '{UpdateAtColumnName}', hence trigger binding cannot be created on this table.");
+                $"The specified table does not have the column named '{UpdateAtColumnName}', hence trigger binding cannot be created on this table.");
         }
 
         /// <summary>

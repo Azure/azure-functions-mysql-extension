@@ -46,6 +46,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         public readonly string AcuteQuotedFullName;
 
+        // regex expression to match following example expressions
+        // 1) `mys`adgasg`chema`.`mytable` 2) `myschema`.mytable 3) myschema.`mytable` 4) myschema.mytable
+        // 5) `mytable` 6) mytable
+        private const string patternSchemaAndObject = @"(`(?<schema>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<schema>[\w$\u0080-\uFFFF]+))\.(`(?<object>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<object>[\w$\u0080-\uFFFF]+))";
+        private const string patternObjectWithoutSchema = @"`(?<object>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<object>^(?!')[\w$]+(?!')$)";
+
         /// <summary>
         /// A MySqlObject which contains information about the name and schema of the given object full name.
         /// </summary>
@@ -65,6 +71,23 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             this.AcuteQuotedFullName = this.Schema == SCHEMA_NAME_FUNCTION ? this.Name.AsAcuteQuotedString() : $"{this.Schema.AsAcuteQuotedString()}.{this.Name.AsAcuteQuotedString()}";
         }
 
+        internal static string GetMySqlColNameFormatted(string colName)
+        {
+            string colNameFormatted;
+            Match match = Regex.Match(colName, patternObjectWithoutSchema);
+            if (match.Success)
+            {
+                colNameFormatted = match.Groups["object"].Value.AsDoubleAcuteQuotedReplaceString();
+            }
+            else
+            {
+                // just keep the previous name, if not formatted correctly
+                colNameFormatted = colName;
+            }
+
+            return colNameFormatted;
+        }
+
         /// <summary>
         /// Get the schema and object name from the SchemaObjectName.
         /// </summary>
@@ -72,12 +95,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         {
             // followed the reference to validate identifier
             private const string urlIdentifier = "https://dev.mysql.com/doc/refman/8.0/en/identifiers.html";
-
-            // regex expression to match following example expressions
-            // 1) `mys`adgasg`chema`.`mytable` 2) `myschema`.mytable 3) myschema.`mytable` 4) myschema.mytable
-            // 5) `mytable` 6) mytable
-            private const string patternSchemaAndObject = @"(`(?<schema>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<schema>[\w$\u0080-\uFFFF]+))\.(`(?<object>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<object>[\w$\u0080-\uFFFF]+))";
-            private const string patternObjectWithoutSchema = @"`(?<object>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<object>^(?!')[\w$]+(?!')$)";
 
             public string schemaName;
             public string objectName;
@@ -87,8 +104,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 Match match = Regex.Match(objectFullName, patternSchemaAndObject);
                 if (match.Success)
                 {
-                    this.schemaName = match.Groups["schema"].Value;
-                    this.objectName = match.Groups["object"].Value;
+                    this.schemaName = match.Groups["schema"].Value.AsDoubleAcuteQuotedReplaceString();
+                    this.objectName = match.Groups["object"].Value.AsDoubleAcuteQuotedReplaceString();
                 }
                 else
                 {
@@ -96,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     if (match.Success)
                     {
                         this.schemaName = SCHEMA_NAME_FUNCTION;
-                        this.objectName = match.Groups["object"].Value;
+                        this.objectName = match.Groups["object"].Value.AsDoubleAcuteQuotedReplaceString();
                     }
                     else
                     {
