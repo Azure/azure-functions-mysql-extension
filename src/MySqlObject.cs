@@ -49,7 +49,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         // regex expression to match following example expressions
         // 1) `mys`adgasg`chema`.`mytable` 2) `myschema`.mytable 3) myschema.`mytable` 4) myschema.mytable
         // 5) `mytable` 6) mytable
-        private const string patternSchemaAndObject = @"(`(?<schema>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<schema>(?!`)[\w$\u0080-\uFFFF]+(?<!`)$))\.(`(?<object>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<object>(?!`)[\w$\u0080-\uFFFF]+(?<!`)$))";
+        private const string patternSchemaAndObject = @"(`(?<schema>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<schema>^(?!`)[\w$\u0080-\uFFFF]+(?<!`)$))\.(`(?<object>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<object>^(?!`)[\w$\u0080-\uFFFF]+(?<!`)$))";
         private const string patternObjectWithoutSchema = @"`(?<object>[\u0001-\u007F\u0080-\uFFFF]+)`|(?<object>(?!`)[\w$\u0080-\uFFFF]+(?<!`)$)";
 
         /// <summary>
