@@ -28,7 +28,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
         public const string LeasesTableNameFormat = SchemaName + ".`Leases_{0}`"; // function-id could have hypen(-) in name, which needs to be quoted in acute quote(`)
         public const string UserDefinedLeasesTableNameFormat = SchemaName + ".{0}";
-        public const string LeasesTableChangeVersionColumnName = "_az_func_ChangeVersion";
+        public const string LeasesTableSyncCompletedTime = "_az_func_SyncCompletedTime";
         public const string LeasesTableAttemptCountColumnName = "_az_func_AttemptCount";
         public const string LeasesTableLeaseExpirationTimeColumnName = "_az_func_LeaseExpirationTime";
 

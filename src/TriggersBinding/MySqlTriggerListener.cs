@@ -354,6 +354,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         {primaryKeysWithTypes},
                         {LeasesTableAttemptCountColumnName} int NOT NULL,
                         {LeasesTableLeaseExpirationTimeColumnName} datetime,
+                        {LeasesTableSyncCompletedTime} datetime,
                         PRIMARY KEY ({primaryKeys})
                     );
             ";
