@@ -202,14 +202,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             }
                             if (this._state == State.ProcessingChanges)
                             {
-                                bool isProcessChangesFailed = await this.ProcessTableChangesAsync(token);
-
-                                // If process changes is not failed, then
-                                if (isProcessChangesFailed == false)
-                                {
-                                    // update global state table polling time
-                                    await this.UpdateGlobalStateTablePollingTime(connection, token);
-                                }
+                                await this.ProcessTableChangesAsync(token);
                             }
                             if (this._state == State.Cleanup)
                             {
@@ -340,66 +333,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
         }
 
-        /// <summary>
-        /// Update LastPollingTime of GlobalStateTable for the requested table
-        /// </summary>
-        private async Task UpdateGlobalStateTablePollingTime(MySqlConnection connection, CancellationToken token)
+        private async Task ProcessTableChangesAsync(CancellationToken token)
         {
-            try
-            {
-                using (MySqlTransaction transaction = connection.BeginTransaction())
-                {
-                    try
-                    {
-                        var rows = new List<IReadOnlyDictionary<string, object>>();
-
-                        // update last polled time in 'globalstate' table.
-                        using (MySqlCommand updateLastPolledTimeCommand = this.BuildUpdateGlobalStateTableLastPollingTime(connection, transaction))
-                        {
-                            var commandSw = Stopwatch.StartNew();
-                            int rowsAffected = await updateLastPolledTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
-                            if (rowsAffected > 0)
-                            {
-                                // Only send an event if we actually updated rows to reduce the overall number of events we send
-                                this._logger.LogDebug($"Updated global state table");
-                            }
-                        }
-
-                        transaction.Commit();
-                    }
-                    catch (Exception)
-                    {
-                        try
-                        {
-                            transaction.Rollback();
-                        }
-                        catch (Exception ex)
-                        {
-                            this._logger.LogError($"Failed to rollback transaction due to exception: {ex.GetType()}. Exception message: {ex.Message}");
-                        }
-                        throw;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                // If there's an exception in any part of the process, we want to clear all of our data in memory and
-                // retry checking for changes again.
-                this._rowsToProcess = new List<IReadOnlyDictionary<string, object>>();
-                this._logger.LogError($"Failed to check for changes in the specified table due to exception: {e.GetType()}. Exception message: {e.Message}");
-
-                if (connection.IsBrokenOrClosed())      // TODO: e.IsFatalMySqlException() || - check mysql corresponding
-                {
-                    // If we get a fatal MySQL Client exception or the connection is broken let it bubble up so we can try to re-establish the connection
-                    throw;
-                }
-            }
-        }
-
-        private async Task<bool> ProcessTableChangesAsync(CancellationToken token)
-        {
-            bool isProcessChangesFailed = false;
-
             if (this._rowsToProcess.Count > 0)
             {
                 IReadOnlyList<MySqlChange<T>> changes = null;
@@ -440,9 +375,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     else
                     {
                         this._logger.LogError($"Exception encountered while executing the Function Trigger. Exception: {result.Exception}");
-
-                        // set processchanges failed, to avoid update of lastpolledtime in Global State Table
-                        isProcessChangesFailed = true;
                     }
                     this._state = State.Cleanup;
                 }
@@ -453,7 +385,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 // any we still ensure everything is reset to a clean state
                 await this.ClearRowsAsync(token);
             }
-            return isProcessChangesFailed;
         }
 
         /// <summary>
@@ -605,6 +536,26 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <summary>
+        /// Computes the Last updated polled time
+        /// </summary>
+        private string RecomputeLastPolledTime()
+        {
+            string maxTimeStamp = "";
+
+            foreach (IReadOnlyDictionary<string, object> row in this._rowsToRelease)
+            {
+                string strTimeStamp = row[UpdateAtColumnName].ToString();
+
+                if (string.Compare(strTimeStamp, maxTimeStamp, StringComparison.Ordinal) > 0)
+                {
+                    maxTimeStamp = strTimeStamp;
+                }
+            }
+
+            return maxTimeStamp;
+        }
+
+        /// <summary>
         /// Releases the leases held on "_rowsToRelease" and updates the state tables with the latest sync version we've processed up to.
         /// </summary>
         /// <returns></returns>
@@ -612,6 +563,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         {
             if (this._rowsToRelease.Count > 0)
             {
+                string newLastPolledTime = this.RecomputeLastPolledTime();
                 bool retrySucceeded = false;
 
                 for (int retryCount = 1; retryCount <= MaxRetryReleaseLeases && !retrySucceeded; retryCount++)
@@ -627,6 +579,18 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                                 this._logger.LogDebug($"Releasing lease ...");
                                 int rowsUpdated = await releaseLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
                                 long releaseLeasesDurationMs = commandSw.ElapsedMilliseconds;
+                            }
+
+                            // update last polled time in 'globalstate' table.
+                            using (MySqlCommand updateLastPolledTimeCommand = this.BuildUpdateGlobalStateTableLastPollingTime(connection, transaction, newLastPolledTime))
+                            {
+                                var commandSw = Stopwatch.StartNew();
+                                int rowsAffected = await updateLastPolledTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
+                                if (rowsAffected > 0)
+                                {
+                                    // Only send an event if we actually updated rows to reduce the overall number of events we send
+                                    this._logger.LogDebug($"Updated global state table");
+                                }
                             }
 
                             transaction.Commit();
@@ -708,8 +672,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             string selectList = string.Join(", ", this._userTableColumns.Select(col => $"u.{col.AsAcuteQuotedString()}"));
             string leasesTableJoinCondition = string.Join(" AND ", this._primaryKeyColumns.Select(col => $"u.{col.name.AsAcuteQuotedString()} = l.{col.name.AsAcuteQuotedString()}"));
 
+            string primaryKeysAsc = string.Join("ASC , ", this._primaryKeyColumnNames);
+
             string getChangesQuery = $@"
                         SELECT {selectList}, 
+                        DATE_FORMAT(u.{UpdateAtColumnName}, '%Y-%m-%d %H:%i:%s') AS {UpdateAtColumnName},
                         l.{LeasesTableAttemptCountColumnName},
                         l.{LeasesTableLeaseExpirationTimeColumnName}
                         FROM {this._userTable.AcuteQuotedFullName} AS u
@@ -728,7 +695,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                                 OR 
                                 (l.{LeasesTableAttemptCountColumnName} < {MaxChangeProcessAttemptCount})
                             )
-                        ORDER BY u.{UpdateAtColumnName} ASC
+                            AND
+                            (   (l.{LeasesTableSyncCompletedTime} IS NULL)
+                                OR 
+                                (l.{LeasesTableSyncCompletedTime} < {UpdateAtColumnName})
+                            )
+                        ORDER BY u.{UpdateAtColumnName} ASC, {primaryKeysAsc}
                         LIMIT {this._maxBatchSize};
                         ";
 
@@ -740,11 +712,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         /// <param name="connection">The connection to add to the returned MySqlCommand</param>
         /// <param name="transaction">The transaction to add to the returned MySqlCommand</param>
+        /// <param name="newLastPolledTime">The last polled time to be updated</param>
         /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
-        private MySqlCommand BuildUpdateGlobalStateTableLastPollingTime(MySqlConnection connection, MySqlTransaction transaction)
+        private MySqlCommand BuildUpdateGlobalStateTableLastPollingTime(MySqlConnection connection, MySqlTransaction transaction, string newLastPolledTime)
         {
             string getChangesQuery = $@"UPDATE {GlobalStateTableName}
-                        SET {GlobalStateTableLastPolledTimeColumnName} = {GlobalStateTableStartPollingTimeColumnName}
+                        SET {GlobalStateTableLastPolledTimeColumnName} = TIMESTAMP('{newLastPolledTime}')
                         where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId};";
 
             return new MySqlCommand(getChangesQuery, connection, transaction);
@@ -830,7 +803,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             string releaseLeasesQuery = $@"UPDATE {this._leasesTableName}
                                         SET
                                             {LeasesTableAttemptCountColumnName} = 0,
-                                            {LeasesTableLeaseExpirationTimeColumnName} = NULL
+                                            {LeasesTableLeaseExpirationTimeColumnName} = NULL,
+                                            {LeasesTableSyncCompletedTime} = {MYSQL_FUNC_CURRENTTIME}
                                         WHERE
                                             {combinedMatchConditions}
                                         ;";
