@@ -11,7 +11,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     /// </summary>
     internal class MySqlObject
     {
-        private static readonly string SCHEMA_NAME_FUNCTION = "SCHEMA()";
+        internal static readonly string SCHEMA_NAME_FUNCTION = "SCHEMA()";
 
         /// <summary>
         /// The name of the object

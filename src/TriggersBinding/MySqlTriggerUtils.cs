@@ -4,6 +4,9 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -15,49 +18,44 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     internal static class MySqlTriggerUtils
     {
         /// <summary>
-        /// Returns the object ID of the user table.
-        /// </summary>
+        /// Returns the encrypted Table ID (using schema and table name) of the user table.
         /// <param name="connection">MySQL connection used to connect to user database</param>
         /// <param name="userTable">MySqlObject user table</param>
         /// <param name="logger">Facilitates logging of messages</param>
         /// <param name="cancellationToken">Cancellation token to pass to the command</param>
         /// <exception cref="InvalidOperationException">Thrown in case of error when querying the object ID for the user table</exception>
-        internal static async Task<ulong> GetUserTableIdAsync(MySqlConnection connection, MySqlObject userTable, ILogger logger, CancellationToken cancellationToken)
+        /// </summary>
+        internal static async Task<string> GetUserTableIdAsync(MySqlConnection connection, MySqlObject userTable, ILogger logger, CancellationToken cancellationToken)
         {
-            string getObjectIdQuery = string.Empty;
-            string getDbVersion = $"SELECT VERSION()";
-            using (var getDbVersionCmd = new MySqlCommand(getDbVersion, connection))
-            using (MySqlDataReader reader = getDbVersionCmd.ExecuteReaderWithLogging(logger))
+            string dbName = userTable.Schema;
+
+            // when schem name is same as schema function
+            if (dbName.Equals(MySqlObject.SCHEMA_NAME_FUNCTION, StringComparison.Ordinal))
             {
-                if (!await reader.ReadAsync(cancellationToken))
+                var getDbCommand = new MySqlCommand($"SELECT {MySqlObject.SCHEMA_NAME_FUNCTION}", connection);
+
+                using (MySqlDataReader reader = getDbCommand.ExecuteReaderWithLogging(logger))
                 {
-                    throw new InvalidOperationException($"Received empty response when querying for the database version");
+                    if (!await reader.ReadAsync(cancellationToken))
+                    {
+                        throw new InvalidOperationException($"Received empty response when querying for the database version");
+                    }
+                    object objDbName = reader.GetValue(0);
+                    if (objDbName is DBNull)
+                    {
+                        throw new InvalidOperationException($"Could not find database.");
+                    }
+
+                    dbName = (string)objDbName;
                 }
-
-                object dbVersion = reader.GetValue(0);
-
-                if (dbVersion is DBNull)
-                {
-                    throw new InvalidOperationException($"Could not find database.");
-                }
-                logger.LogDebug($"Database version: {dbVersion}");
-
-                getObjectIdQuery = dbVersion.ToString().StartsWith("5.7", StringComparison.InvariantCulture)
-                    ? $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_sys_tables where NAME = CONCAT({userTable.SingleQuotedSchema}, '/', {userTable.SingleQuotedName})"
-                    : $"SELECT TABLE_ID FROM INFORMATION_SCHEMA.innodb_tables where NAME = CONCAT({userTable.SingleQuotedSchema}, '/', {userTable.SingleQuotedName})";
             }
 
-
-            using (var getObjectIdCommand = new MySqlCommand(getObjectIdQuery, connection))
-            using (MySqlDataReader reader = getObjectIdCommand.ExecuteReaderWithLogging(logger))
+            using (var sha256 = SHA256.Create())
             {
-                if (!await reader.ReadAsync(cancellationToken) || reader.GetValue(0) is DBNull)
-                {
-                    throw new InvalidOperationException($"Could not find the specified table in the database.");
-                }
+                byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(dbName + userTable.Name));
+                string tableId = new Guid(hash.Take(16).ToArray()).ToString("N");
 
-                object userTableId = reader.GetValue(0);
-                return (ulong)userTableId;
+                return tableId;
             }
         }
 
@@ -104,7 +102,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="userDefinedLeasesTableName">Leases table name defined by the user</param>
         /// <param name="userTableId">MySQL object ID of the user table</param>
         /// <param name="userFunctionId">Unique identifier for the user function</param>
-        internal static string GetBracketedLeasesTableName(string userDefinedLeasesTableName, string userFunctionId, ulong userTableId)
+        internal static string GetBracketedLeasesTableName(string userDefinedLeasesTableName, string userFunctionId, string userTableId)
         {
             return string.IsNullOrEmpty(userDefinedLeasesTableName) ? string.Format(CultureInfo.InvariantCulture, LeasesTableNameFormat, $"{userFunctionId}_{userTableId}") :
                 string.Format(CultureInfo.InvariantCulture, UserDefinedLeasesTableNameFormat, $"{userDefinedLeasesTableName}");

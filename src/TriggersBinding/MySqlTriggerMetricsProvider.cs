@@ -53,7 +53,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     await connection.OpenAsync();
 
-                    ulong userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
+                    string userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
                     IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, this._userTable.FullName, this._logger, CancellationToken.None);
 
                     // Use a transaction to automatically release the app lock when we're done executing the query
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             return unprocessedChangeCount;
         }
-        private MySqlCommand BuildGetUnprocessedChangesCommand(MySqlConnection connection, MySqlTransaction transaction, IReadOnlyList<(string name, string type)> primaryKeyColumns, ulong userTableId)
+        private MySqlCommand BuildGetUnprocessedChangesCommand(MySqlConnection connection, MySqlTransaction transaction, IReadOnlyList<(string name, string type)> primaryKeyColumns, string userTableId)
         {
             string leasesTableJoinCondition = string.Join(" AND ", primaryKeyColumns.Select(col => $"u.{col.name.AsAcuteQuotedString()} = l.{col.name.AsAcuteQuotedString()}"));
             string leasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
@@ -104,7 +104,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         FROM {this._userTable.AcuteQuotedFullName} AS u
                         LEFT JOIN {leasesTableName} AS l ON {leasesTableJoinCondition}
                         WHERE 
-                            ({UpdateAtColumnName} >= (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {userTableId}))
+                            ({UpdateAtColumnName} >= (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = '{userTableId}'))
                             AND
                             (   (l.{LeasesTableLeaseExpirationTimeColumnName} IS NULL) 
                                 OR
