@@ -52,7 +52,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             using (var sha256 = SHA256.Create())
             {
-                byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(dbName + userTable.Name));
+                byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(dbName.AsAcuteQuotedString() + "." + userTable.AcuteQuotedName));
                 string tableId = new Guid(hash.Take(16).ToArray()).ToString("N");
 
                 return tableId;
