@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         #endregion Constants
 
         private readonly string _connectionString;
-        private readonly ulong _userTableId;
+        private readonly string _userTableId;
         private readonly MySqlObject _userTable;
         private readonly string _userFunctionId;
         private readonly string _leasesTableName;
@@ -97,7 +97,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="configuration">Provides configuration values</param>
         public MySqlTableChangeMonitor(
             string connectionString,
-            ulong userTableId,
+            string userTableId,
             MySqlObject userTable,
             string userFunctionId,
             string leasesTableName,
@@ -656,7 +656,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             string selectCurrentTimeQuery = $@"UPDATE {GlobalStateTableName}
                                             SET {GlobalStateTableStartPollingTimeColumnName} = {MYSQL_FUNC_CURRENTTIME}
                                             WHERE {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' 
-                                            AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId};";
+                                            AND {GlobalStateTableUserTableIDColumnName} = '{this._userTableId}';";
 
             return new MySqlCommand(selectCurrentTimeQuery, connection, transaction);
         }
@@ -682,9 +682,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         FROM {this._userTable.AcuteQuotedFullName} AS u
                         LEFT JOIN {this._leasesTableName} AS l ON {leasesTableJoinCondition}
                         WHERE 
-                            ({UpdateAtColumnName} >= (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId}))
+                            ({UpdateAtColumnName} >= (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = '{this._userTableId}'))
                             AND
-                            ({UpdateAtColumnName} < (select {GlobalStateTableStartPollingTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId}))
+                            ({UpdateAtColumnName} < (select {GlobalStateTableStartPollingTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = '{this._userTableId}'))
                             AND
                             (   (l.{LeasesTableLeaseExpirationTimeColumnName} IS NULL) 
                                 OR
@@ -718,7 +718,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         {
             string getChangesQuery = $@"UPDATE {GlobalStateTableName}
                         SET {GlobalStateTableLastPolledTimeColumnName} = TIMESTAMP('{newLastPolledTime}')
-                        where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = {this._userTableId};";
+                        where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = '{this._userTableId}';";
 
             return new MySqlCommand(getChangesQuery, connection, transaction);
         }

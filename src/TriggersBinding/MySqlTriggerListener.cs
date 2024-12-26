@@ -42,7 +42,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
         private int _listenerState = ListenerNotStarted;
         private string _bracketedLeasesTableName;
-        private ulong _userTableId;
+        private string _userTableId;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MySqlTriggerListener{T}"/> class.
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     this._userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
                     await VerifyTableForTriggerSupported(connection, this._userTable.FullName, this._logger, cancellationToken);
 
-                    IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, this._userTable.FullName, this._logger, cancellationToken);
+                    IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, this._userTable.AcuteQuotedFullName, this._logger, cancellationToken);
                     IReadOnlyList<string> userTableColumns = this.GetUserTableColumns(connection, this._userTable, cancellationToken);
 
                     this._bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, this._userTableId);
@@ -286,7 +286,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             string createGlobalStateTableQuery = $@"
                     CREATE TABLE IF NOT EXISTS {GlobalStateTableName} (
                         {GlobalStateTableUserFunctionIDColumnName} char(16) NOT NULL,
-                        {GlobalStateTableUserTableIDColumnName} int NOT NULL,
+                        {GlobalStateTableUserTableIDColumnName} char(64) NOT NULL,
+                        {GlobalStateTableUserSchemaName} char(64) NOT NULL,
+                        {GlobalStateTableUserTableName} char(64) NOT NULL,
                         {GlobalStateTableLastPolledTimeColumnName} Datetime NOT NULL DEFAULT {MYSQL_FUNC_CURRENTTIME},
                         {GlobalStateTableStartPollingTimeColumnName} Datetime NOT NULL DEFAULT {MYSQL_FUNC_CURRENTTIME},
                         PRIMARY KEY ({GlobalStateTableUserFunctionIDColumnName}, {GlobalStateTableUserTableIDColumnName})
@@ -317,10 +319,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <param name="userTableId">The ID of the table being watched</param>
         /// <param name="cancellationToken">Cancellation token to pass to the command</param>
         /// <returns>The time taken in ms to execute the command</returns>
-        private async Task<long> InsertGlobalStateTableRowAsync(MySqlConnection connection, MySqlTransaction transaction, ulong userTableId, CancellationToken cancellationToken)
+        private async Task<long> InsertGlobalStateTableRowAsync(MySqlConnection connection, MySqlTransaction transaction, string userTableId, CancellationToken cancellationToken)
         {
-
-            string insertRowGlobalStateTableQuery = $"INSERT IGNORE INTO {GlobalStateTableName} ({GlobalStateTableUserFunctionIDColumnName}, {GlobalStateTableUserTableIDColumnName}) VALUES ('{this._userFunctionId}', {userTableId});";
+            string insertRowGlobalStateTableQuery = $"INSERT IGNORE INTO {GlobalStateTableName} ({GlobalStateTableUserFunctionIDColumnName}, {GlobalStateTableUserTableIDColumnName}, {GlobalStateTableUserSchemaName}, {GlobalStateTableUserTableName})" +
+                $" VALUES ('{this._userFunctionId}', '{userTableId}', {this._userTable.SingleQuotedSchema}, {this._userTable.SingleQuotedName});";
 
             using (var insertRowGlobalStateTableCommand = new MySqlCommand(insertRowGlobalStateTableQuery, connection, transaction))
             {

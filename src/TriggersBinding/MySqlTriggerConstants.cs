@@ -17,6 +17,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         public const string GlobalStateTableName = SchemaName + "." + GlobalState;
         public const string GlobalStateTableUserFunctionIDColumnName = "UserFunctionID";
         public const string GlobalStateTableUserTableIDColumnName = "UserTableID";
+        public const string GlobalStateTableUserSchemaName = "UserSchemaName";
+        public const string GlobalStateTableUserTableName = "UserTableName";
         public const string GlobalStateTableLastPolledTimeColumnName = "LastPolledTime";
         public const string GlobalStateTableStartPollingTimeColumnName = "StartPollingTime";
 
