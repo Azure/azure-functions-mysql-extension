@@ -7,6 +7,8 @@ using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading;
+using Azure.Core;
+using Azure.Identity;
 using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -50,6 +52,26 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 throw new ArgumentException(connectionString == null ? $"ConnectionStringSetting '{connectionStringSetting}' is missing in your function app settings, please add the setting with a valid MySQL connection string." :
                 $"ConnectionStringSetting '{connectionStringSetting}' is empty in your function app settings, please update the setting with a valid MySQL connection string.");
             }
+            var smi = new DefaultAzureCredential();
+
+            /*var objDefaultAzureCredentialOptions = new DefaultAzureCredentialOptions
+            {
+                ExcludeEnvironmentCredential = false,
+                ExcludeManagedIdentityCredential = true,
+                ExcludeSharedTokenCacheCredential = true,
+                ExcludeVisualStudioCredential = false,
+                ExcludeVisualStudioCodeCredential = false,
+                ExcludeAzureCliCredential = true,
+                ExcludeInteractiveBrowserCredential = true
+            };
+            var smi = new DefaultAzureCredential(objDefaultAzureCredentialOptions);*/
+
+            //string MySqlAccessToken = smi.GetToken("https://ossrdbms-aad.database.windows.net").Token.ToString().Trim();
+            var tokenRequestContext = new TokenRequestContext(new string[] { "https://ossrdbms-aad.database.windows.net" });
+            string MySqlAccessToken = smi.GetToken(tokenRequestContext).Token.ToString().Trim();
+
+            connectionString += $";Password='{MySqlAccessToken}'";
+
             return connectionString;
         }
 
