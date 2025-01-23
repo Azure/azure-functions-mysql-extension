@@ -38,7 +38,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 {
                     if (!await reader.ReadAsync(cancellationToken))
                     {
-                        throw new InvalidOperationException($"Received empty response when querying for the database version");
+                        throw new InvalidOperationException($"Received empty response when querying for the database name");
                     }
                     object objDbName = reader.GetValue(0);
                     if (objDbName is DBNull)

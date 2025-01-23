@@ -74,9 +74,17 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <exception cref="InvalidOperationException">Throw if an error occurs while checking the column_name 'UpdateAtColumnName' in table does not existed</exception>
         public static async Task VerifyTableForTriggerSupported(MySqlConnection connection, string tableName, ILogger logger, CancellationToken cancellationToken)
         {
+            string verifyTableExistQuery = $"SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{tableName}'";
+            using (var verifyTableExistCommand = new MySqlCommand(verifyTableExistQuery, connection))
+            using (MySqlDataReader reader = verifyTableExistCommand.ExecuteReaderWithLogging(logger))
+            {
+                if (!await reader.ReadAsync(cancellationToken))
+                {
+                    throw new InvalidOperationException($"Could not find the specified table in the database.");
+                }
+            }
 
             string verifyTableSupportedQuery = $"SELECT * FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{tableName}' AND COLUMN_NAME = '{UpdateAtColumnName}'";
-
             using (var verifyTableSupportedCommand = new MySqlCommand(verifyTableSupportedQuery, connection))
             using (MySqlDataReader reader = verifyTableSupportedCommand.ExecuteReaderWithLogging(logger))
             {

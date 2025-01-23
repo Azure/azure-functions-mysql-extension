@@ -41,8 +41,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private readonly ITargetScaler _targetScaler;
 
         private int _listenerState = ListenerNotStarted;
-        private string _bracketedLeasesTableName;
-        private string _userTableId;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MySqlTriggerListener{T}"/> class.
@@ -108,13 +106,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     await connection.OpenAsyncWithMySqlErrorHandling(cancellationToken);
 
                     // get table id If exists in database
-                    this._userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
+                    string userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
                     await VerifyTableForTriggerSupported(connection, this._userTable.FullName, this._logger, cancellationToken);
 
                     IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, this._userTable.AcuteQuotedFullName, this._logger, cancellationToken);
                     IReadOnlyList<string> userTableColumns = this.GetUserTableColumns(connection, this._userTable, cancellationToken);
 
-                    this._bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, this._userTableId);
+                    string bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
 
                     long createdSchemaDurationMs = 0L, createGlobalStateTableDurationMs = 0L, insertGlobalStateTableRowDurationMs = 0L, createLeasesTableDurationMs = 0L;
 
@@ -122,18 +120,18 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     {
                         createdSchemaDurationMs = await this.CreateSchemaAsync(connection, transaction, cancellationToken);
                         createGlobalStateTableDurationMs = await this.CreateGlobalStateTableAsync(connection, transaction, cancellationToken);
-                        insertGlobalStateTableRowDurationMs = await this.InsertGlobalStateTableRowAsync(connection, transaction, this._userTableId, cancellationToken);
-                        createLeasesTableDurationMs = await this.CreateLeasesTableAsync(connection, transaction, this._bracketedLeasesTableName, primaryKeyColumns, cancellationToken);
+                        insertGlobalStateTableRowDurationMs = await this.InsertGlobalStateTableRowAsync(connection, transaction, userTableId, cancellationToken);
+                        createLeasesTableDurationMs = await this.CreateLeasesTableAsync(connection, transaction, bracketedLeasesTableName, primaryKeyColumns, cancellationToken);
 
                         transaction.Commit();
                     }
 
                     this._changeMonitor = new MySqlTableChangeMonitor<T>(
                         this._connectionString,
-                        this._userTableId,
+                        userTableId,
                         this._userTable,
                         this._userFunctionId,
-                        this._bracketedLeasesTableName,
+                        bracketedLeasesTableName,
                         primaryKeyColumns,
                         userTableColumns,
                         this._executor,
@@ -142,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         this._configuration);
 
                     this._listenerState = ListenerStarted;
-                    this._logger.LogDebug($"Started MySQL trigger listener for the specified table, function ID: {this._userFunctionId}");
+                    this._logger.LogDebug($"Started MySQL trigger listener for the specified table: '{this._userTable.FullName}', table ID: {userTableId}, function ID: {this._userFunctionId}, leases table: {bracketedLeasesTableName}");
 
                     this._logger.LogInformation($"CreatedSchemaDurationMs {createdSchemaDurationMs}. CreateGlobalStateTableDurationMs: {createGlobalStateTableDurationMs}. " +
                         $"InsertGlobalStateTableRowDurationMs: {insertGlobalStateTableRowDurationMs}");
@@ -290,7 +288,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         {GlobalStateTableUserSchemaName} char(64) NOT NULL,
                         {GlobalStateTableUserTableName} char(64) NOT NULL,
                         {GlobalStateTableLastPolledTimeColumnName} Datetime NOT NULL DEFAULT {MYSQL_FUNC_CURRENTTIME},
-                        {GlobalStateTableStartPollingTimeColumnName} Datetime NOT NULL DEFAULT {MYSQL_FUNC_CURRENTTIME},
                         PRIMARY KEY ({GlobalStateTableUserFunctionIDColumnName}, {GlobalStateTableUserTableIDColumnName})
                     );
             ";

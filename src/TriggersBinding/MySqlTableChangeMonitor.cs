@@ -22,8 +22,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     internal class MySqlTableChangeMonitor<T> : IDisposable
     {
         #region Constants
-        /// The intialize attempt count from
-        private const int InitialValueAttemptCount = 1;
         /// <remarks>
         /// Leases are held for approximately (LeaseRenewalIntervalInSeconds * MaxLeaseRenewalCount) seconds. It is
         /// required to have at least one of (LeaseIntervalInSeconds / LeaseRenewalIntervalInSeconds) attempts to
@@ -248,20 +246,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             try
             {
                 var transactionSw = Stopwatch.StartNew();
-                long setStartPollingTimeDurationMs = 0L, getChangesDurationMs = 0L, acquireLeasesDurationMs = 0L;
+                long getChangesDurationMs = 0L, acquireLeasesDurationMs = 0L;
 
                 using (MySqlTransaction transaction = connection.BeginTransaction())
                 {
                     try
                     {
-                        // Get the current timestamp from server to avoid confliction
-                        using (MySqlCommand updateStartPollingTimeCommand = this.BuildUpdateGlobalTableStartPollingTime(connection, transaction))
-                        {
-                            var commandSw = Stopwatch.StartNew();
-                            await updateStartPollingTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
-                            setStartPollingTimeDurationMs = commandSw.ElapsedMilliseconds;
-                        }
-
                         var rows = new List<IReadOnlyDictionary<string, object>>();
                         // query for new changes.
                         using (MySqlCommand getChangesCommand = this.BuildGetChangesCommand(connection, transaction))
@@ -565,6 +555,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 string newLastPolledTime = this.RecomputeLastPolledTime();
                 bool retrySucceeded = false;
+                long unprocessedChangesCount = 0;
 
                 for (int retryCount = 1; retryCount <= MaxRetryReleaseLeases && !retrySucceeded; retryCount++)
                 {
@@ -582,14 +573,23 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             }
 
                             // update last polled time in 'globalstate' table.
-                            using (MySqlCommand updateLastPolledTimeCommand = this.BuildUpdateGlobalStateTableLastPollingTime(connection, transaction, newLastPolledTime))
+                            using (MySqlCommand countUnprocessedChangesCommand = this.BuildCountUnprocessedChanges(connection, transaction, newLastPolledTime))
                             {
                                 var commandSw = Stopwatch.StartNew();
-                                int rowsAffected = await updateLastPolledTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
-                                if (rowsAffected > 0)
+                                unprocessedChangesCount = (long)await countUnprocessedChangesCommand.ExecuteScalarAsyncWithLogging(this._logger, token);
+                            }
+
+                            if (unprocessedChangesCount == 0)
+                            {
+                                using (MySqlCommand updateLastPollingTimeCommand = this.BuildUpdateGlobalStateTableLastPollingTime(connection, transaction, newLastPolledTime))
                                 {
-                                    // Only send an event if we actually updated rows to reduce the overall number of events we send
-                                    this._logger.LogDebug($"Updated global state table");
+                                    int rowsUpdated = await updateLastPollingTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
+                                    this._logger.LogDebug($"Updated Last Polled Time is " + newLastPolledTime);
+                                }
+
+                                using (MySqlCommand deleteProcessedChangesCommand = this.BuildDeleteProcessedChangesInLeaseTable(connection, transaction))
+                                {
+                                    int rowsUpdated = await deleteProcessedChangesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
                                 }
                             }
 
@@ -646,22 +646,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <summary>
-        /// Builds the command to update start polling time in global state table
-        /// </summary>
-        /// <param name="connection">The connection to add to the returned MySqlCommand</param>
-        /// <param name="transaction">The transaction to add to the returned MySqlCommand</param>
-        /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
-        private MySqlCommand BuildUpdateGlobalTableStartPollingTime(MySqlConnection connection, MySqlTransaction transaction)
-        {
-            string selectCurrentTimeQuery = $@"UPDATE {GlobalStateTableName}
-                                            SET {GlobalStateTableStartPollingTimeColumnName} = {MYSQL_FUNC_CURRENTTIME}
-                                            WHERE {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' 
-                                            AND {GlobalStateTableUserTableIDColumnName} = '{this._userTableId}';";
-
-            return new MySqlCommand(selectCurrentTimeQuery, connection, transaction);
-        }
-
-        /// <summary>
         /// Builds the query to check for changes on the user's table (<see cref="RunChangeConsumptionLoopAsync()"/>).
         /// </summary>
         /// <param name="connection">The connection to add to the returned MySqlCommand</param>
@@ -682,9 +666,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         FROM {this._userTable.AcuteQuotedFullName} AS u
                         LEFT JOIN {this._leasesTableName} AS l ON {leasesTableJoinCondition}
                         WHERE 
-                            ({UpdateAtColumnName} >= (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = '{this._userTableId}'))
-                            AND
-                            ({UpdateAtColumnName} < (select {GlobalStateTableStartPollingTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = '{this._userTableId}'))
+                            ({UpdateAtColumnName} > (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = '{this._userTableId}'))
                             AND
                             (   (l.{LeasesTableLeaseExpirationTimeColumnName} IS NULL) 
                                 OR
@@ -703,22 +685,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         ORDER BY u.{UpdateAtColumnName} ASC, {primaryKeysAsc}
                         LIMIT {this._maxBatchSize};
                         ";
-
-            return new MySqlCommand(getChangesQuery, connection, transaction);
-        }
-
-        /// <summary>
-        /// Builds the query to check for changes on the user's table (<see cref="RunChangeConsumptionLoopAsync()"/>).
-        /// </summary>
-        /// <param name="connection">The connection to add to the returned MySqlCommand</param>
-        /// <param name="transaction">The transaction to add to the returned MySqlCommand</param>
-        /// <param name="newLastPolledTime">The last polled time to be updated</param>
-        /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
-        private MySqlCommand BuildUpdateGlobalStateTableLastPollingTime(MySqlConnection connection, MySqlTransaction transaction, string newLastPolledTime)
-        {
-            string getChangesQuery = $@"UPDATE {GlobalStateTableName}
-                        SET {GlobalStateTableLastPolledTimeColumnName} = TIMESTAMP('{newLastPolledTime}')
-                        where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = '{this._userTableId}';";
 
             return new MySqlCommand(getChangesQuery, connection, transaction);
         }
@@ -811,6 +777,70 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             var releaseLeasesCommand = new MySqlCommand(releaseLeasesQuery, connection, transaction);
             return releaseLeasesCommand;
+        }
+
+        /// <summary>
+        /// Builds the query to get count of unprocessed changes in user's table (<see cref="RunChangeConsumptionLoopAsync()"/>).
+        /// </summary>
+        /// <param name="connection">The connection to add to the returned MySqlCommand</param>
+        /// <param name="transaction">The transaction to add to the returned MySqlCommand</param>
+        /// <param name="newLastPolledTime">The last polled time to be updated</param>
+        /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
+        private MySqlCommand BuildCountUnprocessedChanges(MySqlConnection connection, MySqlTransaction transaction, string newLastPolledTime)
+        {
+            string leasesTableJoinCondition = string.Join(" AND ", this._primaryKeyColumns.Select(col => $"u.{col.name.AsAcuteQuotedString()} = l.{col.name.AsAcuteQuotedString()}"));
+
+            string countUnprocessedQuery = $@"
+                        SELECT COUNT(*) 
+                        FROM {this._userTable.AcuteQuotedFullName} AS u
+                        LEFT JOIN {this._leasesTableName} AS l ON {leasesTableJoinCondition}
+                        WHERE 
+                            ({UpdateAtColumnName} <= TIMESTAMP('{newLastPolledTime}'))
+                            AND
+                            (   (l.{LeasesTableSyncCompletedTime} IS NULL)
+                                OR 
+                                (l.{LeasesTableSyncCompletedTime} < {UpdateAtColumnName})
+                            )
+                            AND
+                            (   (l.{LeasesTableAttemptCountColumnName} IS NULL)
+                                OR
+                                (l.{LeasesTableAttemptCountColumnName} between {InitialValueAttemptCount} and {MaxChangeProcessAttemptCount})
+                            )
+                            ;
+                        ";
+
+            return new MySqlCommand(countUnprocessedQuery, connection, transaction);
+        }
+
+        /// <summary>
+        /// Builds the query to update LastPolledTime in globalstate table (<see cref="RunChangeConsumptionLoopAsync()"/>).
+        /// </summary>
+        /// <param name="connection">The connection to add to the returned MySqlCommand</param>
+        /// <param name="transaction">The transaction to add to the returned MySqlCommand</param>
+        /// <param name="newLastPolledTime">The last polled time to be updated</param>
+        /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
+        private MySqlCommand BuildUpdateGlobalStateTableLastPollingTime(MySqlConnection connection, MySqlTransaction transaction, string newLastPolledTime)
+        {
+            string updateLastPollingTimeQuery = $@"UPDATE {GlobalStateTableName}
+                        SET {GlobalStateTableLastPolledTimeColumnName} = TIMESTAMP('{newLastPolledTime}')
+                        where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = '{this._userTableId}';";
+
+            return new MySqlCommand(updateLastPollingTimeQuery, connection, transaction);
+        }
+
+        /// <summary>
+        /// 
+        /// Builds the query to delete rows from lease table which processed completed (<see cref="RunChangeConsumptionLoopAsync()"/>).
+        /// </summary>
+        /// <param name="connection">The connection to add to the returned MySqlCommand</param>
+        /// <param name="transaction">The transaction to add to the returned MySqlCommand</param>
+        /// <returns>The MySqlCommand populated with the query and appropriate parameters</returns>
+        private MySqlCommand BuildDeleteProcessedChangesInLeaseTable(MySqlConnection connection, MySqlTransaction transaction)
+        {
+            string deleteProcessedChangesQuery = $@"DELETE FROM {this._leasesTableName} 
+                        where ({LeasesTableSyncCompletedTime} IS NOT NULL);";
+
+            return new MySqlCommand(deleteProcessedChangesQuery, connection, transaction);
         }
 
         private enum State
