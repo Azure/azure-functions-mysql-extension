@@ -140,7 +140,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         this._configuration);
 
                     this._listenerState = ListenerStarted;
-                    this._logger.LogDebug($"Started MySQL trigger listener for the specified table: '{this._userTable.FullName}', table ID: {userTableId}, function ID: {this._userFunctionId}, leases table: {bracketedLeasesTableName}");
+                    this._logger.LogDebug($"Started MySQL trigger listener for the table ID: {userTableId} and function ID: {this._userFunctionId}");
 
                     this._logger.LogInformation($"CreatedSchemaDurationMs {createdSchemaDurationMs}. CreateGlobalStateTableDurationMs: {createGlobalStateTableDurationMs}. " +
                         $"InsertGlobalStateTableRowDurationMs: {insertGlobalStateTableRowDurationMs}");
