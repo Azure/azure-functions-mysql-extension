@@ -285,8 +285,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     CREATE TABLE IF NOT EXISTS {GlobalStateTableName} (
                         {GlobalStateTableUserFunctionIDColumnName} char(16) NOT NULL,
                         {GlobalStateTableUserTableIDColumnName} char(64) NOT NULL,
-                        {GlobalStateTableUserSchemaName} char(64) NOT NULL,
-                        {GlobalStateTableUserTableName} char(64) NOT NULL,
                         {GlobalStateTableLastPolledTimeColumnName} Datetime NOT NULL DEFAULT {MYSQL_FUNC_CURRENTTIME},
                         PRIMARY KEY ({GlobalStateTableUserFunctionIDColumnName}, {GlobalStateTableUserTableIDColumnName})
                     );
@@ -318,8 +316,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The time taken in ms to execute the command</returns>
         private async Task<long> InsertGlobalStateTableRowAsync(MySqlConnection connection, MySqlTransaction transaction, string userTableId, CancellationToken cancellationToken)
         {
-            string insertRowGlobalStateTableQuery = $"INSERT IGNORE INTO {GlobalStateTableName} ({GlobalStateTableUserFunctionIDColumnName}, {GlobalStateTableUserTableIDColumnName}, {GlobalStateTableUserSchemaName}, {GlobalStateTableUserTableName})" +
-                $" VALUES ('{this._userFunctionId}', '{userTableId}', {this._userTable.SingleQuotedSchema}, {this._userTable.SingleQuotedName});";
+            string insertRowGlobalStateTableQuery = $"INSERT IGNORE INTO {GlobalStateTableName} ({GlobalStateTableUserFunctionIDColumnName}, {GlobalStateTableUserTableIDColumnName})" +
+                $" VALUES ('{this._userFunctionId}', '{userTableId}');";
 
             using (var insertRowGlobalStateTableCommand = new MySqlCommand(insertRowGlobalStateTableQuery, connection, transaction))
             {
