@@ -65,7 +65,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                             {
                                 var commandSw = Stopwatch.StartNew();
                                 unprocessedChangeCount = (long)await getUnprocessedChangesCommand.ExecuteScalarAsyncWithLogging(this._logger, CancellationToken.None, true);
-                                // getUnprocessedChangesDurationMs = commandSw.ElapsedMilliseconds;
+                                this._logger.LogDebug($"The unprocessed changes count is {unprocessedChangeCount}");
                             }
 
                             transaction.Commit();

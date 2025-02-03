@@ -572,11 +572,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                                 long releaseLeasesDurationMs = commandSw.ElapsedMilliseconds;
                             }
 
-                            // update last polled time in 'globalstate' table.
+                            // count unprocessed changes where update is done before 'newLastPolledTime'.
                             using (MySqlCommand countUnprocessedChangesCommand = this.BuildCountUnprocessedChanges(connection, transaction, newLastPolledTime))
                             {
                                 var commandSw = Stopwatch.StartNew();
                                 unprocessedChangesCount = (long)await countUnprocessedChangesCommand.ExecuteScalarAsyncWithLogging(this._logger, token);
+                                this._logger.LogDebug($"Unprocessed count is {unprocessedChangesCount} before {newLastPolledTime}");
                             }
 
                             if (unprocessedChangesCount == 0)
@@ -584,12 +585,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                                 using (MySqlCommand updateLastPollingTimeCommand = this.BuildUpdateGlobalStateTableLastPollingTime(connection, transaction, newLastPolledTime))
                                 {
                                     int rowsUpdated = await updateLastPollingTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
-                                    this._logger.LogDebug($"Updated Last Polled Time is " + newLastPolledTime);
+                                    this._logger.LogDebug($"Updated {GlobalStateTableLastPolledTimeColumnName} to " + newLastPolledTime);
                                 }
 
                                 using (MySqlCommand deleteProcessedChangesCommand = this.BuildDeleteProcessedChangesInLeaseTable(connection, transaction))
                                 {
                                     int rowsUpdated = await deleteProcessedChangesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
+                                    this._logger.LogDebug($"Total {rowsUpdated} rows cleaned from the Lease Table");
                                 }
                             }
 
@@ -795,6 +797,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         FROM {this._userTable.AcuteQuotedFullName} AS u
                         LEFT JOIN {this._leasesTableName} AS l ON {leasesTableJoinCondition}
                         WHERE 
+                            ({UpdateAtColumnName} > (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = '{this._userTableId}'))
+                            AND
                             ({UpdateAtColumnName} <= TIMESTAMP('{newLastPolledTime}'))
                             AND
                             (   (l.{LeasesTableSyncCompletedTime} IS NULL)
@@ -838,7 +842,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private MySqlCommand BuildDeleteProcessedChangesInLeaseTable(MySqlConnection connection, MySqlTransaction transaction)
         {
             string deleteProcessedChangesQuery = $@"DELETE FROM {this._leasesTableName} 
-                        where ({LeasesTableSyncCompletedTime} IS NOT NULL);";
+                        where   ({LeasesTableLeaseExpirationTimeColumnName} IS NULL 
+                                 OR
+                                 ({LeasesTableAttemptCountColumnName} = 5 AND {LeasesTableLeaseExpirationTimeColumnName} < {MYSQL_FUNC_CURRENTTIME})
+                                );";
 
             return new MySqlCommand(deleteProcessedChangesQuery, connection, transaction);
         }
