@@ -104,16 +104,21 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         FROM {this._userTable.AcuteQuotedFullName} AS u
                         LEFT JOIN {leasesTableName} AS l ON {leasesTableJoinCondition}
                         WHERE 
-                            ({UpdateAtColumnName} >= (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = '{userTableId}'))
-                            AND
+                            ({UpdateAtColumnName} > (select {GlobalStateTableLastPolledTimeColumnName} from {GlobalStateTableName} where {GlobalStateTableUserFunctionIDColumnName} = '{this._userFunctionId}' AND {GlobalStateTableUserTableIDColumnName} = '{userTableId}'))
+                            AND 
                             (   (l.{LeasesTableLeaseExpirationTimeColumnName} IS NULL) 
                                 OR
                                 (l.{LeasesTableLeaseExpirationTimeColumnName} < {MYSQL_FUNC_CURRENTTIME})
                             )
                             AND
-                            (   (l.{LeasesTableAttemptCountColumnName} IS NULL)
+                            (   (l.{LeasesTableSyncCompletedTime} IS NULL)
                                 OR 
-                                (l.{LeasesTableAttemptCountColumnName} < {MaxChangeProcessAttemptCount})
+                                (l.{LeasesTableSyncCompletedTime} < {UpdateAtColumnName})
+                            )
+                            AND
+                            (   (l.{LeasesTableAttemptCountColumnName} IS NULL)
+                                OR
+                                (l.{LeasesTableAttemptCountColumnName} between {InitialValueAttemptCount} and {MaxChangeProcessAttemptCount})
                             )
                         ;";
 

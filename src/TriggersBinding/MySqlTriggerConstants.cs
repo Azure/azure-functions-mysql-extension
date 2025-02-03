@@ -17,10 +17,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         public const string GlobalStateTableName = SchemaName + "." + GlobalState;
         public const string GlobalStateTableUserFunctionIDColumnName = "UserFunctionID";
         public const string GlobalStateTableUserTableIDColumnName = "UserTableID";
-        public const string GlobalStateTableUserSchemaName = "UserSchemaName";
-        public const string GlobalStateTableUserTableName = "UserTableName";
         public const string GlobalStateTableLastPolledTimeColumnName = "LastPolledTime";
-        public const string GlobalStateTableStartPollingTimeColumnName = "StartPollingTime";
 
         public const string SysChangeVersionColumnName = "SYS_CHANGE_VERSION";
         public const string ConfigKey_MySqlTrigger_BatchSize = "MySql_Trigger_BatchSize";
@@ -38,6 +35,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// The maximum number of times that we'll attempt to renew a lease be
         /// </summary>
         public const int MaxChangeProcessAttemptCount = 5;
+        /// The intialize attempt count from
+        public const int InitialValueAttemptCount = 1;
 
         /// <summary>
         /// The column names that are used in internal state tables and so can't exist in the target table
