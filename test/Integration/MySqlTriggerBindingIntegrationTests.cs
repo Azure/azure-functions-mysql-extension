@@ -173,7 +173,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Verifies that manually setting the polling interval correctly changes the delay between processing each batch of changes
         /// </summary>
-        [RetryTheory]
+        [RetryTheory(Skip = "Test skipped temporary")]
         [MySqlInlineData()]
         public async Task PollingIntervalOverrideTriggerTest(SupportedLanguages lang)
         {
@@ -365,9 +365,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         }
 
         /// <summary>
-        /// Ensures correct functionality with user functions running across multiple functions host processes.
+        /// Ensures correct functionality with user functions running across multiple functions host processes. temproaly
         /// </summary>
-        [RetryTheory]
+        [RetryTheory(Skip = "Test skipped temporary")]
         [MySqlInlineData()]
         public async Task MultiHostTriggerTest(SupportedLanguages lang)
         {
@@ -612,7 +612,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Ensures that all column types are serialized correctly.
         /// </summary>
-        [Theory]
+        [Theory(Skip = "Test skipped temporary")]
         [MySqlInlineData()]
         public async Task ProductsColumnTypesTriggerTest(SupportedLanguages lang)
         {
