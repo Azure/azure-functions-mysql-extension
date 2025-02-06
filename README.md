@@ -1,33 +1,94 @@
-# Project
+# Azure Database for MySQL bindings for Azure Functions
 
-> This repo has been populated by an initial template to help get you started. Please
-> make sure to update the content to build a great experience for community-building.
+## Table of Contents
 
-As the maintainer of this project, please make a few updates:
+- [Azure Database for MySQL bindings for Azure Functions](#azure-database-for-mysql-bindings-for-azure-functions)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Supported MySQL Server Versions](#supported-mysql-server-versions)
+  - [Known/By Design Issues](#knownby-design-issues)
+    - [Output Bindings](#output-bindings)
+    - [Trigger Bindings](#trigger-bindings)
+  - [Telemetry](#telemetry)
+  - [Troubleshooting](#troubleshooting)
+  - [Privacy Statement](#privacy-statement)
+  - [Trademarks](#trademarks)
 
-- Improving this README.MD file to provide a great experience
-- Updating SUPPORT.MD with content about this project's support experience
-- Understanding the security reporting process in SECURITY.MD
-- Remove this section from the README
+## Introduction
 
-## Contributing
+This repository contains the Azure Databse for MySQL bindings for Azure Functions extension code as well as a quick start tutorial and samples illustrating how to use the binding in different ways. The types of bindings supported are:
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
+- **Input Binding**: takes a SQL query or stored procedure to run and returns the output to the function.
+- **Output Binding**: takes a list of rows and upserts them into the user table (i.e. If a row doesn't already exist, it is added. If it does, it is updated).
+- **Trigger Binding**: monitors the user table for changes (i.e., row inserts, updates) and invokes the function with updated rows.
 
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
+For a more detailed overview of the different types of bindings see the [Bindings Overview](https://github.com/Azure/azure-functions-mysql-extension/blob/main/docs/BindingsOverview.md).
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+For further details on setup, usage and samples of the bindings see the language-specific guides below:
+
+- [.NET (C# in-process)](https://github.com/Azure/azure-functions-mysql-extension/blob/main/docs/SetupGuide_Dotnet.md)
+- [.NET (C# out-of-proc)](https://github.com/Azure/azure-functions-mysql-extension/blob/main/docs/SetupGuide_DotnetOutOfProc.md)
+- [Java](https://github.com/Azure/azure-functions-mysql-extension/blob/main/docs/SetupGuide_Java.md)
+- [Javascript](https://github.com/Azure/azure-functions-mysql-extension/blob/main/docs/SetupGuide_Javascript.md)
+- [PowerShell](https://github.com/Azure/azure-functions-mysql-extension/blob/main/docs/SetupGuide_PowerShell.md)
+- [Python](https://github.com/Azure/azure-functions-mysql-extension/blob/main/docs/SetupGuide_Python.md)
+
+Further information on the Azure SQL binding for Azure Functions is also available in the [docs](https://aka.ms/sqlbindings).
+
+## Supported MySQL Server Versions
+
+This extension uses the [OPENJSON](https://learn.microsoft.com/sql/t-sql/functions/openjson-transact-sql) statement which requires a database compatibility level of 130 or higher (2016 or higher). To view or change the compatibility level of your database, see [this documentation article](https://learn.microsoft.com/sql/relational-databases/databases/view-or-change-the-compatibility-level-of-a-database) for more information.
+
+Databases on SQL Server, Azure SQL Database, or Azure SQL Managed Instance which meet the compatibility level requirement above are supported.
+
+## Known/By Design Issues
+
+Below is a list of common issues that users may run into when using the SQL Bindings extension.
+
+> **Note:** While we are actively working on resolving the known issues, some may not be supported at this time. We appreciate your patience as we work to improve the Azure Functions SQL Extension.
+
+- **By Design:** The table used by a SQL binding or SQL trigger cannot contain two columns that only differ by casing (Ex. 'Name' and 'name').
+- **By Design:** Non-CSharp functions using SQL bindings against tables with columns of data types `BINARY` or `VARBINARY` need to map those columns to a string type. Input bindings will return the binary value as a base64 encoded string. Output bindings require the value upserted to binary columns to be a base64 encoded string.
+- **Planned for Future Support:** SQL bindings against tables with columns of data types `GEOMETRY` and `GEOGRAPHY` are not supported. Issue is tracked [here](https://github.com/Azure/azure-functions-sql-extension/issues/654).
+- Issues resulting from upstream dependencies can be found [here](https://github.com/Azure/azure-functions-sql-extension/issues?q=is%3Aopen+is%3Aissue+label%3Aupstream).
+
+### Output Bindings
+
+- **By Design:** Output bindings against tables with columns of data types `NTEXT`, `TEXT`, or `IMAGE` are not supported and data upserts will fail. These types [will be removed](https://docs.microsoft.com/sql/t-sql/data-types/ntext-text-and-image-transact-sql) in a future version of SQL Server and are not compatible with the `OPENJSON` function used by this Azure Functions binding.
+- **By Design:** .NET In-Proc output bindings against tables with columns of data types `DATE`, `DATETIME`, `DATETIME2`, `DATETIMEOFFSET`, or `SMALLDATETIME` will convert values for those columns to ISO8061 format ("yyyy'-'MM'-'dd'T'HH':'mm':'ss'.'fffZ") before upsertion. This does not happen for functions written in C# out-of-proc or other languages.
+- **By Design:** Output bindings execution order is not deterministic ([azure-webjobs-sdk#1025](https://github.com/Azure/azure-webjobs-sdk/issues/1025)) and so the order that data is upserted is not guaranteed. This can be problematic if, for example, you upsert rows to two separate tables with one having a foreign key reference to another. The upsert will fail if the dependent table does its upsert first.
+
+    Some options for working around this :
+  - Have multiple functions, with dependent functions being triggered by the initial functions (through a trigger binding or other such method)
+  - Use [dynamic (imperative)](https://learn.microsoft.com/azure/azure-functions/functions-bindings-expressions-patterns#binding-at-runtime) bindings (.NET only)
+  - Use [IAsyncCollector](https://learn.microsoft.com/azure/azure-functions/functions-dotnet-class-library?tabs=v2%2Ccmd#writing-multiple-output-values) and call `FlushAsync` in the order desired (.NET only)
+- **By Design:** Output bindings require that their payloads contain ALL columns defined in every execution, even optional ones. See [BindingsOverview.md#output-binding-columns](https://github.com/Azure/azure-functions-sql-extension/blob/main/docs/BindingsOverview.md#output-binding-columns) for more details
+- **Planned for Future Support:** For PowerShell Functions that use hashtables must use the `[ordered]@` for the request query or request body assertion in order to upsert the data to the SQL table properly. An example can be found [here](https://github.com/Azure/azure-functions-sql-extension/blob/main/samples/samples-powershell/AddProductsWithIdentityColumnArray/run.ps1).
+- **Planned for Future Support:** Java, PowerShell, and Python Functions using Output bindings cannot pass in null or empty values via the query string.
+  - Java: Issue is tracked [here](https://github.com/Azure/azure-functions-java-worker/issues/683).
+  - PowerShell: The workaround is to use the `$TriggerMetadata[$keyName]` to retrieve the query property - an example can be found [here](https://github.com/Azure/azure-functions-sql-extension/blob/main/samples/samples-powershell/AddProductParams/run.ps1). Issue is tracked [here](https://github.com/Azure/azure-functions-powershell-worker/issues/895).
+  - Python: The workaround is to use `parse_qs` - an example can be found [here](https://github.com/Azure/azure-functions-sql-extension/blob/main/samples/samples-python/AddProductParams/__init__.py). Issue is tracked [here](https://github.com/Azure/azure-functions-python-worker/issues/894).
+
+### Trigger Bindings
+
+- **By Design:** Trigger bindings will exhibit undefined behavior if the SQL table schema gets modified while the user application is running, for example, if a column is added, renamed or deleted or if the primary key is modified or deleted. In such cases, restarting the application should help resolve any errors.
+
+## Telemetry
+
+This extension collects usage data in order to help us improve your experience. The data is anonymous and doesn't include any personal information. You can opt-out of telemetry by setting the `AZUREFUNCTIONS_SQLBINDINGS_TELEMETRY_OPTOUT` environment variable or the `AzureFunctionsSqlBindingsTelemetryOptOut` app setting (in your `*.settings.json` file) to '1', 'true' or 'yes';
+
+## Troubleshooting
+
+For troubleshooting SQL Client issues, You can enable verbose logging by setting the `AzureFunctions_SqlBindings_VerboseLogging` app setting (in your `*.settings.json` file) to '1', 'true' or 'yes';
+
+### Logs
+
+Logs for function apps deployed in Azure can be viewed in the function's Monitor tab. If logs are not showing in the Monitor tab, they can also be found in the function app's [Log Stream](https://learn.microsoft.com/azure/azure-functions/streaming-logs?tabs=azure-portal) or in [Application Insights](https://learn.microsoft.com/azure/azure-functions/analyze-telemetry-data#view-telemetry-in-application-insights). More information on logging can be found [here](https://learn.microsoft.com/azure/azure-functions/functions-monitoring).
+
+## Privacy Statement
+
+To learn more about our Privacy Statement visit [this link](https://go.microsoft.com/fwlink/?LinkID=824704).
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
-[Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
-Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
-Any use of third-party trademarks or logos are subject to those third-party's policies.
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft trademarks or logos is subject to and must follow [Microsoft’s Trademark & Brand Guidelines](https://www.microsoft.com/legal/intellectualproperty/trademarks/usage/general). Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship. Any use of third-party trademarks or logos are subject to those third-party’s policies.
