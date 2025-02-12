@@ -654,7 +654,7 @@
       },
       "System.Text.Json": {
         "type": "CentralTransitive",
-        "requested": "[8.0.5, )",
+        "requested": "[8.0.4, )",
         "resolved": "4.7.2",
         "contentHash": "TcMd95wcrubm9nHvJEQs70rC0H/8omiSGGpU4FQ/ZA1URIqD4pjmFJh2Mfv1yH1eHgJDWTi2hMDXwTET+zOOyg=="
       }
