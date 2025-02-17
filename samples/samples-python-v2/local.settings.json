@@ -1,0 +1,11 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsFeatureFlags": "EnableWorkerIndexing",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "MySqlConnectionString": "Server='testserver-v5-centralus.mysql.database.azure.com';UserID = 'cloudsa';Password='Yukon900';Database='mydb';",
+    "WEBSITE_SITE_NAME": "SamplesPython",
+    "PYTHON_ISOLATE_WORKER_DEPENDENCIES" : 1
+  }
+}
