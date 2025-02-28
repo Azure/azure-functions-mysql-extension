@@ -27,7 +27,7 @@ def getproducts(req: func.HttpRequest, product: func.MySqlRowList) -> func.HttpR
 @app.route(route="addproduct")
 @app.generic_output_binding(arg_name="product",
                            type="mysql",
-                           commandText= "Products",
+                           command_text= "Products",
                            command_type="Text",
                            connection_string_setting="MySqlConnectionString")
  
