@@ -35,7 +35,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <exception cref = "ArgumentNullException" >
         /// Thrown if either parameter is null
         /// </exception>
+#pragma warning disable IDE0290 // Use primary constructor
         public MySqlExtensionConfigProvider(IConfiguration configuration, ILoggerFactory loggerFactory, MySqlTriggerBindingProvider triggerProvider)
+#pragma warning restore IDE0290 // Use primary constructor
         {
             this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             this._loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
@@ -51,10 +53,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </exception>
         public void Initialize(ExtensionConfigContext context)
         {
-            if (context == null)
-            {
-                throw new ArgumentNullException(nameof(context));
-            }
+            ArgumentNullException.ThrowIfNull(context);
             ILogger logger = this._loggerFactory.CreateLogger(LogCategories.Bindings);
             // Only enable MySQL Client logging when VerboseLogging is set in the config to avoid extra overhead when the
             // detailed logging it provides isn't needed
@@ -74,7 +73,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             context.AddBindingRule<MySqlTriggerAttribute>().BindToTrigger(this._triggerProvider);
         }
 
+#pragma warning disable IDE0300 // Simplify collection initialization
         private static readonly Assembly[] _dependentAssemblies = {
+#pragma warning restore IDE0300 // Simplify collection initialization
             typeof(MySqlConnection).Assembly,
             typeof(JsonConvert).Assembly // Newtonsoft.Json
         };

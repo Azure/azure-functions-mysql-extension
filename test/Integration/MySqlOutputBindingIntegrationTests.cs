@@ -16,13 +16,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 {
     [Collection(IntegrationTestsCollection.Name)]
     [LogTestName]
-    public class MySqlOutputBindingIntegrationTests : IntegrationTestBase
+    public class MySqlOutputBindingIntegrationTests(ITestOutputHelper output) : IntegrationTestBase(output)
     {
-
-        public MySqlOutputBindingIntegrationTests(ITestOutputHelper output) : base(output)
-        {
-        }
-
         [Theory]
         [MySqlInlineData(1, "Test", 5)]
         [MySqlInlineData(0, "", 0)]
@@ -74,8 +69,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             this.ExecuteNonQuery("INSERT INTO Products (ProductId, Name, Cost) VALUES (2, 'test', 100)");
             this.ExecuteNonQuery("INSERT INTO Products (ProductId, Name, Cost) VALUES (3, 'test', 100)");
 
-            Product[] prods = new[]
-            {
+            Product[] prods =
+            [
                 new Product()
                 {
                     ProductId = 1,
@@ -88,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                     Name = "Glasses",
                     Cost = 12
                 }
-            };
+            ];
 
             await this.SendOutputPostRequest("addproducts-array", Utils.JsonSerializeObject(prods), TestUtils.GetPort(lang));
 

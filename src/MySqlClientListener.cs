@@ -20,7 +20,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         ///  Initializes a new instance of the <see cref="MySqlClientListener"/> class.
         /// </summary>
         /// <param name="logger"></param>
+#pragma warning disable IDE0290 // Use primary constructor
         public MySqlClientListener(ILogger logger)
+#pragma warning restore IDE0290 // Use primary constructor
         {
             this._logger = logger;
         }

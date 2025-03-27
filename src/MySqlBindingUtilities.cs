@@ -40,10 +40,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 throw new ArgumentException("Must specify ConnectionStringSetting, which should refer to the name of an app setting that " +
                     "contains a MySQL connection string");
             }
-            if (configuration == null)
-            {
-                throw new ArgumentNullException(nameof(configuration));
-            }
+            ArgumentNullException.ThrowIfNull(configuration);
             string connectionString = configuration.GetConnectionStringOrSetting(connectionStringSetting);
             if (string.IsNullOrEmpty(connectionString))
             {
@@ -55,10 +52,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
         public static string GetWebSiteName(IConfiguration configuration)
         {
-            if (configuration == null)
-            {
-                throw new ArgumentNullException(nameof(configuration));
-            }
+            ArgumentNullException.ThrowIfNull(configuration);
             string websitename = configuration.GetConnectionStringOrSetting(MySqlBindingConstants.WEBSITENAME);
             // We require a WEBSITE_SITE_NAME for avoiding duplicates if users use the same function name accross apps.
             if (string.IsNullOrEmpty(websitename))
@@ -111,10 +105,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </exception>
         public static void ParseParameters(string parameters, MySqlCommand command)
         {
-            if (command == null)
-            {
-                throw new ArgumentNullException(nameof(command));
-            }
+            ArgumentNullException.ThrowIfNull(command);
 
             // If parameters is null, user did not specify any parameters in their function so nothing to parse
             if (!string.IsNullOrEmpty(parameters))
@@ -122,7 +113,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 // Because we remove empty entries, we will ignore any commas that appear at the beginning/end of the parameter list,
                 // as well as extra commas that appear between parameter pairs.
                 // I.e., ",,@param1=param1,,@param2=param2,,," will be parsed just like "@param1=param1,@param2=param2" is.
-                string[] paramPairs = parameters.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                string[] paramPairs = parameters.Split([','], StringSplitOptions.RemoveEmptyEntries);
 
                 foreach (string pair in paramPairs)
                 {
@@ -190,7 +181,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>The built dictionary</returns>
         public static IReadOnlyDictionary<string, object> BuildDictionaryFromMySqlRow(MySqlDataReader reader)
         {
-            return Enumerable.Range(0, reader.FieldCount).ToDictionary(reader.GetName, i => reader.GetValue(i));
+            return Enumerable.Range(0, reader.FieldCount).ToDictionary(reader.GetName, reader.GetValue);
         }
 
         /// <summary>
@@ -284,8 +275,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         {
             // See https://learn.microsoft.com/sql/relational-databases/errors-events/mssqlserver-1205-database-engine-error
             // Transaction (Process ID %d) was deadlocked on %.*ls resources with another process and has been chosen as the deadlock victim. Rerun the transaction.
-            return (e as MySqlException)?.Number == 1205
-                || (e.InnerException as MySqlException)?.Number == 1205;
+            return e is MySqlException { Number: 1205 }
+                || e.InnerException is MySqlException { Number: 1205 };
         }
 
         /// <summary>
@@ -295,7 +286,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns>True if the connection is broken or closed, false otherwise</returns>
         internal static bool IsBrokenOrClosed(this MySqlConnection conn)
         {
-            return conn.State == ConnectionState.Broken || conn.State == ConnectionState.Closed;
+            return conn.State is ConnectionState.Broken or ConnectionState.Closed;
         }
 
         /// <summary>

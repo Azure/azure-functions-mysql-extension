@@ -12,26 +12,18 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     /// <summary>
     /// Provider for value that will be passed as argument to the triggered function.
     /// </summary>
-    internal class MySqlTriggerValueProvider : IValueProvider
+    /// <remarks>
+    /// Initializes a new instance of the <see cref="MySqlTriggerValueProvider"/> class.
+    /// </remarks>
+    /// <param name="parameterType">Type of the trigger parameter</param>
+    /// <param name="value">Value of the trigger parameter</param>
+    /// <param name="tableName">Name of the user table</param>
+    internal class MySqlTriggerValueProvider(Type parameterType, object value, string tableName) : IValueProvider
     {
-        private readonly object _value;
-        private readonly string _tableName;
-        private readonly Type _parameterType;
-        private readonly bool _isString;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MySqlTriggerValueProvider"/> class.
-        /// </summary>
-        /// <param name="parameterType">Type of the trigger parameter</param>
-        /// <param name="value">Value of the trigger parameter</param>
-        /// <param name="tableName">Name of the user table</param>
-        public MySqlTriggerValueProvider(Type parameterType, object value, string tableName)
-        {
-            this._parameterType = parameterType;
-            this._value = value;
-            this._tableName = tableName;
-            this._isString = parameterType == typeof(string);
-        }
+        private readonly object _value = value;
+        private readonly string _tableName = tableName;
+        private readonly Type _parameterType = parameterType;
+        private readonly bool _isString = parameterType == typeof(string);
 
         /// <summary>
         /// Gets the trigger argument value.

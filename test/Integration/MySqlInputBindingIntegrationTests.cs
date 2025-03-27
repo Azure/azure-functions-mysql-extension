@@ -13,13 +13,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 {
     [Collection(IntegrationTestsCollection.Name)]
     [LogTestName]
-    public class MySqlInputBindingIntegrationTests : IntegrationTestBase
+    public class MySqlInputBindingIntegrationTests(ITestOutputHelper output) : IntegrationTestBase(output)
     {
-
-        public MySqlInputBindingIntegrationTests(ITestOutputHelper output) : base(output)
-        {
-        }
-
         [Theory]
         [MySqlInlineData(0, 100)]
         [MySqlInlineData(1, -500)]

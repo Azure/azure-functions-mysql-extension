@@ -203,15 +203,15 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
             ScaleStatusContext context;
             ScaleStatus scaleStatus;
 
-            context = GetScaleStatusContext(new int[] { 0, 0, 0, 0, 10 * maxChangesPerWorker }, 10);
+            context = GetScaleStatusContext([0, 0, 0, 0, 10 * maxChangesPerWorker], 10);
             scaleStatus = monitor.GetScaleStatus(context);
             Assert.Equal(ScaleVote.None, scaleStatus.Vote);
 
-            context = GetScaleStatusContext(new int[] { 0, 0, 0, 0, (10 * maxChangesPerWorker) + 1 }, 10);
+            context = GetScaleStatusContext([0, 0, 0, 0, (10 * maxChangesPerWorker) + 1], 10);
             scaleStatus = monitor.GetScaleStatus(context);
             Assert.Equal(ScaleVote.ScaleOut, scaleStatus.Vote);
 
-            context = GetScaleStatusContext(new int[] { (9 * maxChangesPerWorker) + 4, (9 * maxChangesPerWorker) + 3, (9 * maxChangesPerWorker) + 2, (9 * maxChangesPerWorker) + 1, 9 * maxChangesPerWorker }, 10);
+            context = GetScaleStatusContext([(9 * maxChangesPerWorker) + 4, (9 * maxChangesPerWorker) + 3, (9 * maxChangesPerWorker) + 2, (9 * maxChangesPerWorker) + 1, 9 * maxChangesPerWorker], 10);
             scaleStatus = monitor.GetScaleStatus(context);
             Assert.Equal(ScaleVote.ScaleIn, scaleStatus.Vote);
         }

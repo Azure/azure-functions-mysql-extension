@@ -24,8 +24,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.OutputBindin
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")]
             HttpRequestData req)
         {
-            ProductWithoutId[] products = new[]
-            {
+            ProductWithoutId[] products =
+            [
                 new ProductWithoutId
                 {
                     Name = "Cup",
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.OutputBindin
                     Name = "Glasses",
                     Cost = 12
                 }
-            };
+            ];
             return products;
         }
     }

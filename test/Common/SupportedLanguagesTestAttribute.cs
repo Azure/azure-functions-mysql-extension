@@ -15,7 +15,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
     /// </summary>
     public class MySqlInlineDataAttribute : DataAttribute
     {
-        private readonly List<object[]> testData = new();
+        private readonly List<object[]> testData = [];
 
         /// <summary>
         /// Adds a language parameter to the test data which will contain the language
@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
             // [a, b, c] -> [[a, b, c, SupportedLang1], [a, b,  c, SupportedLang2], ..]
             string languages = Environment.GetEnvironmentVariable("LANGUAGES_TO_TEST");
             SupportedLanguages[] supportedLanguages = languages == null ? (SupportedLanguages[])Enum.GetValues(typeof(SupportedLanguages))
-                : languages.Split(',').Select(l => (SupportedLanguages)Enum.Parse(typeof(SupportedLanguages), l)).ToArray();
+                : [.. languages.Split(',').Select(l => (SupportedLanguages)Enum.Parse(typeof(SupportedLanguages), l))];
             foreach (SupportedLanguages lang in supportedLanguages)
             {
                 var listOfValues = new List<object>();
@@ -38,14 +38,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
                     listOfValues.Add(val);
                 }
                 listOfValues.Add(lang);
-                this.testData.Add(listOfValues.ToArray());
+                this.testData.Add([.. listOfValues]);
             }
         }
 
         /// <inheritDoc />
         public override IEnumerable<object[]> GetData(MethodInfo testMethod)
         {
-            if (testMethod == null) { throw new ArgumentNullException(nameof(testMethod)); }
+            ArgumentNullException.ThrowIfNull(testMethod);
             if (this.testData.Count == 0)
             {
                 throw new Exception("Collection was empty" + Environment.NewLine +
@@ -67,7 +67,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
     [AttributeUsage(AttributeTargets.Method)]
     public class UnsupportedLanguagesAttribute : Attribute
     {
-        public List<SupportedLanguages> UnsuppportedLanguages { get; set; } = new List<SupportedLanguages>();
+        public List<SupportedLanguages> UnsuppportedLanguages { get; set; } = [];
         /// <summary>
         /// Load only supported languages excluding the ones from the provided parameters.
         /// </summary>

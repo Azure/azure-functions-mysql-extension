@@ -11,7 +11,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         private readonly IConfiguration _configuration;
         private readonly ILogger _logger;
 
+#pragma warning disable IDE0290 // Use primary constructor
         public MySqlAsyncCollectorBuilder(IConfiguration configuration, ILogger logger)
+#pragma warning restore IDE0290 // Use primary constructor
         {
             this._configuration = configuration;
             this._logger = logger;

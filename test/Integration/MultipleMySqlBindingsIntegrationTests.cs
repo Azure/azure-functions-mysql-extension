@@ -11,12 +11,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 {
     [Collection(IntegrationTestsCollection.Name)]
     [LogTestName]
-    public class MultipleMySqlBindingsIntegrationTests : IntegrationTestBase
+    public class MultipleMySqlBindingsIntegrationTests(ITestOutputHelper output) : IntegrationTestBase(output)
     {
-
-        public MultipleMySqlBindingsIntegrationTests(ITestOutputHelper output) : base(output)
-        {
-        }
 
         /// <summary>
         /// Tests a function with both an input and output binding.

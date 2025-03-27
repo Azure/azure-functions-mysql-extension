@@ -280,7 +280,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
             // MySql data's columns are named differently than the POCO's fields
             json = /*lang=json,strict*/ "[{ \"ID\":1,\"Product Name\":\"Broom\",\"Price\":32.5,\"Timessstamp\":\"2019-11-22T06:32:15\"}]";
             converter.Setup(_ => _.BuildItemFromAttributeAsync(arg)).ReturnsAsync(json);
-            list = new List<TestData>();
+            list = [];
             data = new TestData
             {
                 ID = 1,
@@ -294,7 +294,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
             // Confirm that the JSON fields are case-insensitive (technically malformed string, but still works)
             json = /*lang=json,strict*/ "[{ \"id\":1,\"nAme\":\"Broom\",\"coSt\":32.5,\"TimEStamp\":\"2019-11-22T06:32:15\"}]";
             converter.Setup(_ => _.BuildItemFromAttributeAsync(arg)).ReturnsAsync(json);
-            list = new List<TestData>();
+            list = [];
             data = new TestData
             {
                 ID = 1,

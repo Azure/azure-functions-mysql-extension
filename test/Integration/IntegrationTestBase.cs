@@ -29,7 +29,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Host processes for Azure Function CLI.
         /// </summary>
-        protected List<Process> FunctionHostList { get; } = new List<Process>();
+        protected List<Process> FunctionHostList { get; } = [];
 
         /// <summary>
         /// Connection to the database for the current test.
@@ -149,7 +149,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 {
                     taskCompletionSource.SetResult(true);
                 }
-            };
+            }
+            ;
             functionHost.OutputDataReceived += SignalStartupHandler;
             functionHost.OutputDataReceived += customOutputHandler;
 

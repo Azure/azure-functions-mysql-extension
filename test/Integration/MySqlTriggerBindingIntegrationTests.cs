@@ -29,11 +29,8 @@ using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 {
     [Collection(IntegrationTestsCollection.Name)]
-    public class MySqlTriggerBindingIntegrationTests : MySqlTriggerBindingIntegrationTestBase
+    public class MySqlTriggerBindingIntegrationTests(ITestOutputHelper output = null) : MySqlTriggerBindingIntegrationTestBase(output)
     {
-        public MySqlTriggerBindingIntegrationTests(ITestOutputHelper output = null) : base(output)
-        {
-        }
 
         /// <summary>
         /// Ensures that the user function gets invoked for each of the insert, update and delete operation.
@@ -648,7 +645,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                     Assert.Equal(expectedResponse, product); // The product has the expected values
                     taskCompletion.SetResult(true);
                 }
-            };
+            }
+            ;
 
             // Set up listener for the changes coming in
             foreach (Process functionHost in this.FunctionHostList)

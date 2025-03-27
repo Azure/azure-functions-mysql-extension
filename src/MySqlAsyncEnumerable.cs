@@ -57,7 +57,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             /// <exception cref="ArgumentNullException">
             /// Thrown if either connection or attribute is null
             /// </exception>
+#pragma warning disable IDE0290 // Use primary constructor
             public MySqlAsyncEnumerator(MySqlConnection connection, MySqlAttribute attribute)
+#pragma warning restore IDE0290 // Use primary constructor
             {
                 this._connection = connection ?? throw new ArgumentNullException(nameof(connection));
                 this._attribute = attribute ?? throw new ArgumentNullException(nameof(attribute));

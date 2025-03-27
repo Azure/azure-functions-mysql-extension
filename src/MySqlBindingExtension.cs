@@ -12,10 +12,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     {
         public static IWebJobsBuilder AddMySql(this IWebJobsBuilder builder, Action<MySqlOptions> configureMySqlOptions = null)
         {
-            if (builder == null)
-            {
-                throw new ArgumentNullException(nameof(builder));
-            }
+            ArgumentNullException.ThrowIfNull(builder);
 
             builder.Services.TryAddSingleton<MySqlTriggerBindingProvider>();
 
@@ -23,9 +20,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             if (configureMySqlOptions != null)
             {
-#pragma warning disable IDE0001 // Cannot simplify the name here, supressing the warning.
-                builder.Services.Configure<MySqlOptions>(configureMySqlOptions);
-#pragma warning restore IDE0001
+                builder.Services.Configure(configureMySqlOptions);
             }
 
             return builder;
@@ -36,12 +31,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             var scalerProvider = new Lazy<MySqlScalerProvider>(() => new MySqlScalerProvider(serviceProvider, triggerMetadata));
             builder.Services.AddSingleton((Func<IServiceProvider, IScaleMonitorProvider>)delegate (IServiceProvider resolvedServiceProvider)
             {
-                serviceProvider = serviceProvider ?? resolvedServiceProvider;
+                serviceProvider ??= resolvedServiceProvider;
                 return scalerProvider.Value;
             });
             builder.Services.AddSingleton((Func<IServiceProvider, ITargetScalerProvider>)delegate (IServiceProvider resolvedServiceProvider)
             {
-                serviceProvider = serviceProvider ?? resolvedServiceProvider;
+                serviceProvider ??= resolvedServiceProvider;
                 return scalerProvider.Value;
             });
             return builder;

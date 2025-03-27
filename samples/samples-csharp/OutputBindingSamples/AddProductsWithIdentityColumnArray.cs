@@ -24,8 +24,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.OutputBindingSamples
             HttpRequest req,
             [MySql("ProductsWithIdentity", "MySqlConnectionString")] out ProductWithoutId[] products)
         {
-            products = new[]
-            {
+            products =
+            [
                 new ProductWithoutId
                 {
                     Name = "Cup",
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.OutputBindingSamples
                     Name = "Glasses",
                     Cost = 12
                 }
-            };
+            ];
             return new CreatedResult($"/api/addproductswithidentitycolumnarray", products);
         }
     }

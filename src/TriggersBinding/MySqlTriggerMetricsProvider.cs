@@ -18,22 +18,14 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     /// <summary>
     /// Provider class for unprocessed changes metrics for MySQL trigger scaling.
     /// </summary>
-    internal class MySqlTriggerMetricsProvider
+    internal class MySqlTriggerMetricsProvider(string connectionString, ILogger logger, MySqlObject userTable, string userFunctionId, string userDefinedLeasesTableName)
     {
-        private readonly string _connectionString;
-        private readonly ILogger _logger;
-        private readonly MySqlObject _userTable;
-        private readonly string _userFunctionId;
-        private readonly string _userDefinedLeasesTableName;
+        private readonly string _connectionString = !string.IsNullOrEmpty(connectionString) ? connectionString : throw new ArgumentNullException(nameof(connectionString));
+        private readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        private readonly MySqlObject _userTable = userTable ?? throw new ArgumentNullException(nameof(userTable));
+        private readonly string _userFunctionId = !string.IsNullOrEmpty(userFunctionId) ? userFunctionId : throw new ArgumentNullException(nameof(userFunctionId));
+        private readonly string _userDefinedLeasesTableName = userDefinedLeasesTableName;
 
-        public MySqlTriggerMetricsProvider(string connectionString, ILogger logger, MySqlObject userTable, string userFunctionId, string userDefinedLeasesTableName)
-        {
-            this._connectionString = !string.IsNullOrEmpty(connectionString) ? connectionString : throw new ArgumentNullException(nameof(connectionString));
-            this._logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            this._userTable = userTable ?? throw new ArgumentNullException(nameof(userTable));
-            this._userFunctionId = !string.IsNullOrEmpty(userFunctionId) ? userFunctionId : throw new ArgumentNullException(nameof(userFunctionId));
-            this._userDefinedLeasesTableName = userDefinedLeasesTableName;
-        }
         public async Task<MySqlTriggerMetrics> GetMetricsAsync()
         {
             return new MySqlTriggerMetrics
@@ -49,40 +41,36 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             try
             {
-                using (var connection = new MySqlConnection(this._connectionString))
+                using var connection = new MySqlConnection(this._connectionString);
+                await connection.OpenAsync();
+
+                string userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
+                IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, this._userTable.FullName, this._logger, CancellationToken.None);
+
+                // Use a transaction to automatically release the app lock when we're done executing the query
+                using MySqlTransaction transaction = connection.BeginTransaction(IsolationLevel.RepeatableRead);
+                try
                 {
-                    await connection.OpenAsync();
-
-                    string userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
-                    IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, this._userTable.FullName, this._logger, CancellationToken.None);
-
-                    // Use a transaction to automatically release the app lock when we're done executing the query
-                    using (MySqlTransaction transaction = connection.BeginTransaction(IsolationLevel.RepeatableRead))
+                    using (MySqlCommand getUnprocessedChangesCommand = this.BuildGetUnprocessedChangesCommand(connection, transaction, primaryKeyColumns, userTableId))
                     {
-                        try
-                        {
-                            using (MySqlCommand getUnprocessedChangesCommand = this.BuildGetUnprocessedChangesCommand(connection, transaction, primaryKeyColumns, userTableId))
-                            {
-                                var commandSw = Stopwatch.StartNew();
-                                unprocessedChangeCount = (long)await getUnprocessedChangesCommand.ExecuteScalarAsyncWithLogging(this._logger, CancellationToken.None, true);
-                                this._logger.LogDebug($"The unprocessed changes count is {unprocessedChangeCount}");
-                            }
-
-                            transaction.Commit();
-                        }
-                        catch (Exception)
-                        {
-                            try
-                            {
-                                transaction.Rollback();
-                            }
-                            catch (Exception ex2)
-                            {
-                                this._logger.LogError($"GetUnprocessedChangeCount : Failed to rollback transaction due to exception: {ex2.GetType()}. Exception message: {ex2.Message}");
-                            }
-                            throw;
-                        }
+                        var commandSw = Stopwatch.StartNew();
+                        unprocessedChangeCount = (long)await getUnprocessedChangesCommand.ExecuteScalarAsyncWithLogging(this._logger, CancellationToken.None, true);
+                        this._logger.LogDebug($"The unprocessed changes count is {unprocessedChangeCount}");
                     }
+
+                    transaction.Commit();
+                }
+                catch (Exception)
+                {
+                    try
+                    {
+                        transaction.Rollback();
+                    }
+                    catch (Exception ex2)
+                    {
+                        this._logger.LogError($"GetUnprocessedChangeCount : Failed to rollback transaction due to exception: {ex2.GetType()}. Exception message: {ex2.Message}");
+                    }
+                    throw;
                 }
             }
             catch (Exception ex)

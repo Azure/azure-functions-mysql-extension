@@ -101,7 +101,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             }
 
             // Consider only the most recent batch of samples in the rest of the method.
-            metrics = metrics.TakeLast(minSamplesForScaling).ToArray();
+            metrics = [.. metrics.TakeLast(minSamplesForScaling)];
 
             string counts = string.Join(", ", metrics.Select(metric => metric.UnprocessedChangeCount));
 
@@ -126,9 +126,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             if (isIncreasing)
             {
                 // Scale out only if the expected count of unprocessed changes would exceed the combined limit after 30 seconds.
-                DateTime referenceTime = metrics[metrics.Length - 1].Timestamp - TimeSpan.FromSeconds(30);
+                DateTime referenceTime = metrics[^1].Timestamp - TimeSpan.FromSeconds(30);
                 MySqlTriggerMetrics referenceMetric = metrics.First(metric => metric.Timestamp > referenceTime);
-                long expectedUnprocessedChangeCount = (2 * metrics[metrics.Length - 1].UnprocessedChangeCount) - referenceMetric.UnprocessedChangeCount;
+                long expectedUnprocessedChangeCount = (2 * metrics[^1].UnprocessedChangeCount) - referenceMetric.UnprocessedChangeCount;
 
                 if (expectedUnprocessedChangeCount > workerCount * this._maxChangesPerWorker)
                 {

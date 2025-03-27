@@ -6,14 +6,9 @@ using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
 {
-    public class FakeTypeLocator : ITypeLocator
+    public class FakeTypeLocator(params Type[] types) : ITypeLocator
     {
-        private readonly Type[] _types;
-
-        public FakeTypeLocator(params Type[] types)
-        {
-            this._types = types;
-        }
+        private readonly Type[] _types = types;
 
         public IReadOnlyList<Type> GetTypes()
         {

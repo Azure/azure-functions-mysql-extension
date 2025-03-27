@@ -57,25 +57,25 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// </summary>
         private readonly int _pollingIntervalInMs;
 
-        private readonly CancellationTokenSource _cancellationTokenSourceCheckForChanges = new CancellationTokenSource();
-        private readonly CancellationTokenSource _cancellationTokenSourceRenewLeases = new CancellationTokenSource();
-        private readonly CancellationTokenSource _cancellationTokenSourceExecutor = new CancellationTokenSource();
+        private readonly CancellationTokenSource _cancellationTokenSourceCheckForChanges = new();
+        private readonly CancellationTokenSource _cancellationTokenSourceRenewLeases = new();
+        private readonly CancellationTokenSource _cancellationTokenSourceExecutor = new();
 
         // The semaphore gets used by lease-renewal loop to ensure that '_state' stays set to 'ProcessingChanges' while
         // the leases are being renewed. The change-consumption loop requires to wait for the semaphore before modifying
         // the value of '_state' back to 'CheckingForChanges'. Since the field '_rows' is only updated if the value of
         // '_state' is set to 'CheckingForChanges', this guarantees that '_rows' will stay same while it is being
         // iterated over inside the lease-renewal loop.
-        private readonly SemaphoreSlim _rowsLock = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _rowsLock = new(1, 1);
 
         /// <summary>
         /// Rows that are currently being processed
         /// </summary>
-        private IReadOnlyList<IReadOnlyDictionary<string, object>> _rowsToProcess = new List<IReadOnlyDictionary<string, object>>();
+        private IReadOnlyList<IReadOnlyDictionary<string, object>> _rowsToProcess = [];
         /// <summary>
         /// Rows that have been processed and now need to have their leases released
         /// </summary>
-        private IReadOnlyList<IReadOnlyDictionary<string, object>> _rowsToRelease = new List<IReadOnlyDictionary<string, object>>();
+        private IReadOnlyList<IReadOnlyDictionary<string, object>> _rowsToRelease = [];
         private int _leaseRenewalCount = 0;
         private State _state = State.CheckingForChanges;
 
@@ -169,53 +169,51 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 CancellationToken token = this._cancellationTokenSourceCheckForChanges.Token;
 
-                using (var connection = new MySqlConnection(this._connectionString))
+                using var connection = new MySqlConnection(this._connectionString);
+                await connection.OpenAsync(token);
+
+                bool forceReconnect = false;
+                // Check for cancellation request only after a cycle of checking and processing of changes completes.
+                while (!token.IsCancellationRequested)
                 {
-                    await connection.OpenAsync(token);
-
-                    bool forceReconnect = false;
-                    // Check for cancellation request only after a cycle of checking and processing of changes completes.
-                    while (!token.IsCancellationRequested)
+                    bool isConnected = await connection.TryEnsureConnected(forceReconnect, this._logger, "ChangeConsumptionConnection", token);
+                    if (!isConnected)
                     {
-                        bool isConnected = await connection.TryEnsureConnected(forceReconnect, this._logger, "ChangeConsumptionConnection", token);
-                        if (!isConnected)
-                        {
-                            // If we couldn't reconnect then wait our delay and try again
-                            await Task.Delay(TimeSpan.FromMilliseconds(this._pollingIntervalInMs), token);
-                            continue;
-                        }
-                        else
-                        {
-                            forceReconnect = false;
-                        }
-
-                        try
-                        {
-                            // Process states sequentially since we normally expect the state to transition at the end
-                            // of each previous state - but if an unexpected error occurs we'll skip the rest and then
-                            // retry that state after the delay
-                            if (this._state == State.CheckingForChanges)
-                            {
-                                await this.GetTableChangesAsync(connection, token);
-                            }
-                            if (this._state == State.ProcessingChanges)
-                            {
-                                await this.ProcessTableChangesAsync(token);
-                            }
-                            if (this._state == State.Cleanup)
-                            {
-                                await this.ReleaseLeasesAsync(connection, token);
-                            }
-                        }
-                        catch (Exception e) when (connection.IsBrokenOrClosed())        // TODO: e.IsFatalMySqlException() || - check mysql corresponding 
-                        {
-                            // Retry connection if there was a fatal MySQL exception or something else caused the connection to be closed
-                            // since that indicates some other issue occurred (such as dropped network) and may be able to be recovered
-                            this._logger.LogError($"Fatal MySQL Client exception processing changes. Will attempt to reestablish connection in {this._pollingIntervalInMs}ms. Exception = {e.Message}");
-                            forceReconnect = true;
-                        }
+                        // If we couldn't reconnect then wait our delay and try again
                         await Task.Delay(TimeSpan.FromMilliseconds(this._pollingIntervalInMs), token);
+                        continue;
                     }
+                    else
+                    {
+                        forceReconnect = false;
+                    }
+
+                    try
+                    {
+                        // Process states sequentially since we normally expect the state to transition at the end
+                        // of each previous state - but if an unexpected error occurs we'll skip the rest and then
+                        // retry that state after the delay
+                        if (this._state == State.CheckingForChanges)
+                        {
+                            await this.GetTableChangesAsync(connection, token);
+                        }
+                        if (this._state == State.ProcessingChanges)
+                        {
+                            await this.ProcessTableChangesAsync(token);
+                        }
+                        if (this._state == State.Cleanup)
+                        {
+                            await this.ReleaseLeasesAsync(connection, token);
+                        }
+                    }
+                    catch (Exception e) when (connection.IsBrokenOrClosed())        // TODO: e.IsFatalMySqlException() || - check mysql corresponding 
+                    {
+                        // Retry connection if there was a fatal MySQL exception or something else caused the connection to be closed
+                        // since that indicates some other issue occurred (such as dropped network) and may be able to be recovered
+                        this._logger.LogError($"Fatal MySQL Client exception processing changes. Will attempt to reestablish connection in {this._pollingIntervalInMs}ms. Exception = {e.Message}");
+                        forceReconnect = true;
+                    }
+                    await Task.Delay(TimeSpan.FromMilliseconds(this._pollingIntervalInMs), token);
                 }
             }
             catch (Exception e)
@@ -248,62 +246,58 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 var transactionSw = Stopwatch.StartNew();
                 long getChangesDurationMs = 0L, acquireLeasesDurationMs = 0L;
 
-                using (MySqlTransaction transaction = connection.BeginTransaction())
+                using MySqlTransaction transaction = connection.BeginTransaction();
+                try
+                {
+                    var rows = new List<IReadOnlyDictionary<string, object>>();
+                    // query for new changes.
+                    using (MySqlCommand getChangesCommand = this.BuildGetChangesCommand(connection, transaction))
+                    {
+                        var commandSw = Stopwatch.StartNew();
+                        this._logger.LogInformation($"Looking for latest changes on the configured table");
+
+                        using (MySqlDataReader reader = getChangesCommand.ExecuteReaderWithLogging(this._logger))
+                        {
+                            while (reader.Read())
+                            {
+                                token.ThrowIfCancellationRequested();
+                                rows.Add(MySqlBindingUtilities.BuildDictionaryFromMySqlRow(reader));
+                            }
+                        }
+                        getChangesDurationMs = commandSw.ElapsedMilliseconds;
+                    }
+
+                    // If changes were found
+                    if (rows.Count > 0)
+                    {
+                        this._logger.LogInformation($"The total no of rows found to process is {rows.Count}");
+
+                        using MySqlCommand acquireLeasesCommand = this.BuildAcquireLeasesCommand(connection, transaction, rows);
+                        var commandSw = Stopwatch.StartNew();
+                        this._logger.LogDebug($"Acquiring lease ...");
+                        await acquireLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
+                        acquireLeasesDurationMs = commandSw.ElapsedMilliseconds;
+                    }
+
+                    transaction.Commit();
+
+                    // Set the rows for processing, now since the leases are acquired.
+                    await this._rowsLock.WaitAsync(token);
+                    this._rowsToProcess = rows;
+                    this._state = State.ProcessingChanges;
+                    this._rowsLock.Release();
+                }
+                catch (Exception)
                 {
                     try
                     {
-                        var rows = new List<IReadOnlyDictionary<string, object>>();
-                        // query for new changes.
-                        using (MySqlCommand getChangesCommand = this.BuildGetChangesCommand(connection, transaction))
-                        {
-                            var commandSw = Stopwatch.StartNew();
-                            this._logger.LogInformation($"Looking for latest changes on the configured table");
-
-                            using (MySqlDataReader reader = getChangesCommand.ExecuteReaderWithLogging(this._logger))
-                            {
-                                while (reader.Read())
-                                {
-                                    token.ThrowIfCancellationRequested();
-                                    rows.Add(MySqlBindingUtilities.BuildDictionaryFromMySqlRow(reader));
-                                }
-                            }
-                            getChangesDurationMs = commandSw.ElapsedMilliseconds;
-                        }
-
-                        // If changes were found
-                        if (rows.Count > 0)
-                        {
-                            this._logger.LogInformation($"The total no of rows found to process is {rows.Count}");
-
-                            using (MySqlCommand acquireLeasesCommand = this.BuildAcquireLeasesCommand(connection, transaction, rows))
-                            {
-                                var commandSw = Stopwatch.StartNew();
-                                this._logger.LogDebug($"Acquiring lease ...");
-                                await acquireLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
-                                acquireLeasesDurationMs = commandSw.ElapsedMilliseconds;
-                            }
-                        }
-
-                        transaction.Commit();
-
-                        // Set the rows for processing, now since the leases are acquired.
-                        await this._rowsLock.WaitAsync(token);
-                        this._rowsToProcess = rows;
-                        this._state = State.ProcessingChanges;
-                        this._rowsLock.Release();
+                        transaction.Rollback();
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
-                        try
-                        {
-                            transaction.Rollback();
-                        }
-                        catch (Exception ex)
-                        {
-                            this._logger.LogError($"Failed to rollback transaction due to exception: {ex.GetType()}. Exception message: {ex.Message}");
-                        }
-                        throw;
+                        this._logger.LogError($"Failed to rollback transaction due to exception: {ex.GetType()}. Exception message: {ex.Message}");
                     }
+                    throw;
                 }
             }
             catch (Exception e)
@@ -311,7 +305,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 // If there's an exception in any part of the process, we want to clear all of our data in memory and
                 // retry checking for changes again.
                 await this._rowsLock.WaitAsync(token);
-                this._rowsToProcess = new List<IReadOnlyDictionary<string, object>>();
+                this._rowsToProcess = [];
                 this._rowsLock.Release();
 
                 this._logger.LogError($"Failed to check for changes in the specified table due to exception: {e.GetType()}. Exception message: {e.Message}");
@@ -359,7 +353,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                         this._logger.LogInformation("Function Trigger executed successfully.");
                         await this._rowsLock.WaitAsync(token);
                         this._rowsToRelease = this._rowsToProcess;
-                        this._rowsToProcess = new List<IReadOnlyDictionary<string, object>>();
+                        this._rowsToProcess = [];
                         this._rowsLock.Release();
                     }
                     else
@@ -389,37 +383,35 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 CancellationToken token = this._cancellationTokenSourceRenewLeases.Token;
 
-                using (var connection = new MySqlConnection(this._connectionString))
+                using var connection = new MySqlConnection(this._connectionString);
+                await connection.OpenAsync(token);
+
+                bool forceReconnect = false;
+                while (!token.IsCancellationRequested)
                 {
-                    await connection.OpenAsync(token);
-
-                    bool forceReconnect = false;
-                    while (!token.IsCancellationRequested)
+                    bool isConnected = await connection.TryEnsureConnected(forceReconnect, this._logger, "LeaseRenewalLoopConnection", token);
+                    if (!isConnected)
                     {
-                        bool isConnected = await connection.TryEnsureConnected(forceReconnect, this._logger, "LeaseRenewalLoopConnection", token);
-                        if (!isConnected)
-                        {
-                            // If we couldn't reconnect then wait our delay and try again
-                            await Task.Delay(TimeSpan.FromSeconds(LeaseRenewalIntervalInSeconds), token);
-                            continue;
-                        }
-                        else
-                        {
-                            forceReconnect = false;
-                        }
-                        try
-                        {
-                            await this.RenewLeasesAsync(connection, token);
-                        }
-                        catch (Exception e) when (e.IsDeadlockException() || /*e.IsFatalSqlException() || */connection.IsBrokenOrClosed())
-                        {
-                            // Retry connection if there was a fatal MySQL exception or something else caused the connection to be closed
-                            // since that indicates some other issue occurred (such as dropped network) and may be able to be recovered
-                            forceReconnect = true;
-                        }
-
+                        // If we couldn't reconnect then wait our delay and try again
                         await Task.Delay(TimeSpan.FromSeconds(LeaseRenewalIntervalInSeconds), token);
+                        continue;
                     }
+                    else
+                    {
+                        forceReconnect = false;
+                    }
+                    try
+                    {
+                        await this.RenewLeasesAsync(connection, token);
+                    }
+                    catch (Exception e) when (e.IsDeadlockException() || /*e.IsFatalSqlException() || */connection.IsBrokenOrClosed())
+                    {
+                        // Retry connection if there was a fatal MySQL exception or something else caused the connection to be closed
+                        // since that indicates some other issue occurred (such as dropped network) and may be able to be recovered
+                        forceReconnect = true;
+                    }
+
+                    await Task.Delay(TimeSpan.FromSeconds(LeaseRenewalIntervalInSeconds), token);
                 }
             }
             catch (Exception e)
@@ -444,62 +436,58 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             if (this._state == State.ProcessingChanges && this._rowsToProcess.Count > 0)
             {
                 // Use a transaction to automatically release the app lock when we're done executing the query
-                using (MySqlTransaction transaction = connection.BeginTransaction())
+                using MySqlTransaction transaction = connection.BeginTransaction();
+                try
                 {
+                    using MySqlCommand renewLeasesCommand = this.BuildRenewLeasesCommand(connection, transaction);
+                    var stopwatch = Stopwatch.StartNew();
+                    this._logger.LogDebug($"Renewing lease ...");
+                    int rowsAffected = await renewLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
+                    long durationMs = stopwatch.ElapsedMilliseconds;
+
+                    if (rowsAffected > 0)
+                    {
+                        // Only send an event if we actually updated rows to reduce the overall number of events we send
+                        this._logger.LogInformation($"Updated the Leases table");
+                    }
+                    transaction.Commit();
+                    this._logger.LogDebug($"The lease expiration time renewed by {LeaseRenewalIntervalInSeconds} seconds, for the rows(under process) in the lease table");
+                }
+                catch (Exception e)
+                {
+                    // This catch block is necessary so that the finally block is executed even in the case of an exception
+                    // (see https://docs.microsoft.com/dotnet/csharp/language-reference/keywords/try-finally, third
+                    // paragraph). If we fail to renew the leases, multiple workers could be processing the same change
+                    // data, but we have functionality in place to deal with this (see design doc).
+                    this._logger.LogError($"Failed to renew leases due to exception: {e.GetType()}. Exception message: {e.Message}");
+
                     try
                     {
-                        using (MySqlCommand renewLeasesCommand = this.BuildRenewLeasesCommand(connection, transaction))
-                        {
-                            var stopwatch = Stopwatch.StartNew();
-                            this._logger.LogDebug($"Renewing lease ...");
-                            int rowsAffected = await renewLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
-                            long durationMs = stopwatch.ElapsedMilliseconds;
-
-                            if (rowsAffected > 0)
-                            {
-                                // Only send an event if we actually updated rows to reduce the overall number of events we send
-                                this._logger.LogInformation($"Updated the Leases table");
-                            }
-                            transaction.Commit();
-                            this._logger.LogDebug($"The lease expiration time renewed by {LeaseRenewalIntervalInSeconds} seconds, for the rows(under process) in the lease table");
-                        }
+                        transaction.Rollback();
                     }
-                    catch (Exception e)
+                    catch (Exception e2)
                     {
-                        // This catch block is necessary so that the finally block is executed even in the case of an exception
-                        // (see https://docs.microsoft.com/dotnet/csharp/language-reference/keywords/try-finally, third
-                        // paragraph). If we fail to renew the leases, multiple workers could be processing the same change
-                        // data, but we have functionality in place to deal with this (see design doc).
-                        this._logger.LogError($"Failed to renew leases due to exception: {e.GetType()}. Exception message: {e.Message}");
-
-                        try
-                        {
-                            transaction.Rollback();
-                        }
-                        catch (Exception e2)
-                        {
-                            this._logger.LogError($"RenewLeases - Failed to rollback transaction due to exception: {e2.GetType()}. Exception message: {e2.Message}");
-                        }
+                        this._logger.LogError($"RenewLeases - Failed to rollback transaction due to exception: {e2.GetType()}. Exception message: {e2.Message}");
                     }
-                    finally
+                }
+                finally
+                {
+                    // Do we want to update this count even in the case of a failure to renew the leases? Probably,
+                    // because the count is simply meant to indicate how much time the other thread has spent processing
+                    // changes essentially.
+                    this._leaseRenewalCount += 1;
+
+                    // If this thread has been cancelled, then the _cancellationTokenSourceExecutor could have already
+                    // been disposed so shouldn't cancel it.
+                    if (this._leaseRenewalCount == MaxLeaseRenewalCount && !token.IsCancellationRequested)
                     {
-                        // Do we want to update this count even in the case of a failure to renew the leases? Probably,
-                        // because the count is simply meant to indicate how much time the other thread has spent processing
-                        // changes essentially.
-                        this._leaseRenewalCount += 1;
+                        this._logger.LogWarning("Call to execute the function (TryExecuteAsync) seems to be stuck, so it is being cancelled");
 
-                        // If this thread has been cancelled, then the _cancellationTokenSourceExecutor could have already
-                        // been disposed so shouldn't cancel it.
-                        if (this._leaseRenewalCount == MaxLeaseRenewalCount && !token.IsCancellationRequested)
-                        {
-                            this._logger.LogWarning("Call to execute the function (TryExecuteAsync) seems to be stuck, so it is being cancelled");
-
-                            // If we keep renewing the leases, the thread responsible for processing the changes is stuck.
-                            // If it's stuck, it has to be stuck in the function execution call (I think), so we should
-                            // cancel the call.
-                            this._cancellationTokenSourceExecutor.Cancel();
-                            //this._cancellationTokenSourceExecutor = new CancellationTokenSource();
-                        }
+                        // If we keep renewing the leases, the thread responsible for processing the changes is stuck.
+                        // If it's stuck, it has to be stuck in the function execution call (I think), so we should
+                        // cancel the call.
+                        this._cancellationTokenSourceExecutor.Cancel();
+                        //this._cancellationTokenSourceExecutor = new CancellationTokenSource();
                     }
                 }
             }
@@ -521,7 +509,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 this._logger.LogDebug($"Clearing internal state for {this._rowsToProcess.Count} rows");
             }
-            this._rowsToProcess = new List<IReadOnlyDictionary<string, object>>();
+            this._rowsToProcess = [];
             this._rowsLock.Release();
         }
 
@@ -559,66 +547,64 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
                 for (int retryCount = 1; retryCount <= MaxRetryReleaseLeases && !retrySucceeded; retryCount++)
                 {
-                    using (MySqlTransaction transaction = connection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead))
+                    using MySqlTransaction transaction = connection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead);
+                    try
                     {
+                        // Release the leases held on "_rowsToRelease".
+                        using (MySqlCommand releaseLeasesCommand = this.BuildReleaseLeasesCommand(connection, transaction))
+                        {
+                            var commandSw = Stopwatch.StartNew();
+                            this._logger.LogDebug($"Releasing lease ...");
+                            int rowsUpdated = await releaseLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
+                            long releaseLeasesDurationMs = commandSw.ElapsedMilliseconds;
+                        }
+
+                        // count unprocessed changes where update is done before 'newLastPolledTime'.
+                        using (MySqlCommand countUnprocessedChangesCommand = this.BuildCountUnprocessedChanges(connection, transaction, newLastPolledTime))
+                        {
+                            var commandSw = Stopwatch.StartNew();
+                            unprocessedChangesCount = (long)await countUnprocessedChangesCommand.ExecuteScalarAsyncWithLogging(this._logger, token);
+                            this._logger.LogDebug($"Unprocessed count is {unprocessedChangesCount} before {newLastPolledTime}");
+                        }
+
+                        if (unprocessedChangesCount == 0)
+                        {
+                            using (MySqlCommand updateLastPollingTimeCommand = this.BuildUpdateGlobalStateTableLastPollingTime(connection, transaction, newLastPolledTime))
+                            {
+                                int rowsUpdated = await updateLastPollingTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
+                                this._logger.LogDebug($"Updated {GlobalStateTableLastPolledTimeColumnName} to " + newLastPolledTime);
+                            }
+
+                            using (MySqlCommand deleteProcessedChangesCommand = this.BuildDeleteProcessedChangesInLeaseTable(connection, transaction))
+                            {
+                                int rowsUpdated = await deleteProcessedChangesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
+                                this._logger.LogDebug($"Total {rowsUpdated} rows cleaned from the Lease Table");
+                            }
+                        }
+
+                        transaction.Commit();
+
+                        retrySucceeded = true;
+                        this._rowsToRelease = [];
+                    }
+                    catch (Exception ex)
+                    {
+                        if (retryCount < MaxRetryReleaseLeases)
+                        {
+                            this._logger.LogError($"Failed to execute MySQL commands to release leases in attempt: {retryCount} for the specified table due to exception: {ex.GetType()}. Exception message: {ex.Message}");
+                        }
+                        else
+                        {
+                            this._logger.LogError($"Failed to release leases for the specified table after {MaxRetryReleaseLeases} attempts due to exception: {ex.GetType()}. Exception message: {ex.Message}");
+                        }
+
                         try
                         {
-                            // Release the leases held on "_rowsToRelease".
-                            using (MySqlCommand releaseLeasesCommand = this.BuildReleaseLeasesCommand(connection, transaction))
-                            {
-                                var commandSw = Stopwatch.StartNew();
-                                this._logger.LogDebug($"Releasing lease ...");
-                                int rowsUpdated = await releaseLeasesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
-                                long releaseLeasesDurationMs = commandSw.ElapsedMilliseconds;
-                            }
-
-                            // count unprocessed changes where update is done before 'newLastPolledTime'.
-                            using (MySqlCommand countUnprocessedChangesCommand = this.BuildCountUnprocessedChanges(connection, transaction, newLastPolledTime))
-                            {
-                                var commandSw = Stopwatch.StartNew();
-                                unprocessedChangesCount = (long)await countUnprocessedChangesCommand.ExecuteScalarAsyncWithLogging(this._logger, token);
-                                this._logger.LogDebug($"Unprocessed count is {unprocessedChangesCount} before {newLastPolledTime}");
-                            }
-
-                            if (unprocessedChangesCount == 0)
-                            {
-                                using (MySqlCommand updateLastPollingTimeCommand = this.BuildUpdateGlobalStateTableLastPollingTime(connection, transaction, newLastPolledTime))
-                                {
-                                    int rowsUpdated = await updateLastPollingTimeCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
-                                    this._logger.LogDebug($"Updated {GlobalStateTableLastPolledTimeColumnName} to " + newLastPolledTime);
-                                }
-
-                                using (MySqlCommand deleteProcessedChangesCommand = this.BuildDeleteProcessedChangesInLeaseTable(connection, transaction))
-                                {
-                                    int rowsUpdated = await deleteProcessedChangesCommand.ExecuteNonQueryAsyncWithLogging(this._logger, token);
-                                    this._logger.LogDebug($"Total {rowsUpdated} rows cleaned from the Lease Table");
-                                }
-                            }
-
-                            transaction.Commit();
-
-                            retrySucceeded = true;
-                            this._rowsToRelease = new List<IReadOnlyDictionary<string, object>>();
+                            transaction.Rollback();
                         }
-                        catch (Exception ex)
+                        catch (Exception ex2)
                         {
-                            if (retryCount < MaxRetryReleaseLeases)
-                            {
-                                this._logger.LogError($"Failed to execute MySQL commands to release leases in attempt: {retryCount} for the specified table due to exception: {ex.GetType()}. Exception message: {ex.Message}");
-                            }
-                            else
-                            {
-                                this._logger.LogError($"Failed to release leases for the specified table after {MaxRetryReleaseLeases} attempts due to exception: {ex.GetType()}. Exception message: {ex.Message}");
-                            }
-
-                            try
-                            {
-                                transaction.Rollback();
-                            }
-                            catch (Exception ex2)
-                            {
-                                this._logger.LogError($"Failed to rollback transaction due to exception: {ex2.GetType()}. Exception message: {ex2.Message}");
-                            }
+                            this._logger.LogError($"Failed to rollback transaction due to exception: {ex2.GetType()}. Exception message: {ex2.Message}");
                         }
                     }
                 }

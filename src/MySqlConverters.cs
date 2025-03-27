@@ -17,21 +17,16 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {
     internal class MySqlConverters
     {
-        internal class MySqlConverter : IConverter<MySqlAttribute, MySqlCommand>
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MySqlConverter"/> class.
+        /// </summary>
+        /// <param name="configuration"></param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if the configuration is null
+        /// </exception>
+        internal class MySqlConverter(IConfiguration configuration) : IConverter<MySqlAttribute, MySqlCommand>
         {
-            private readonly IConfiguration _configuration;
-
-            /// <summary>
-            /// Initializes a new instance of the <see cref="MySqlConverter"/> class.
-            /// </summary>
-            /// <param name="configuration"></param>
-            /// <exception cref="ArgumentNullException">
-            /// Thrown if the configuration is null
-            /// </exception>
-            public MySqlConverter(IConfiguration configuration)
-            {
-                this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            }
+            private readonly IConfiguration _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
             /// <summary>
             /// Creates a MySqlCommand containing a MySQL connection and the MySQL query and parameters specified in attribute.
@@ -57,26 +52,20 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         }
 
         /// <typeparam name="T">A user-defined POCO that represents a row of the user's table</typeparam>
-        internal class MySqlGenericsConverter<T> : IAsyncConverter<MySqlAttribute, IEnumerable<T>>, IConverter<MySqlAttribute, IAsyncEnumerable<T>>,
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MySqlGenericsConverter{T}"/> class.
+        /// </summary>
+        /// <param name="configuration"></param>
+        /// <param name="logger">ILogger used to log information and warnings</param>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if the configuration is null
+        /// </exception>
+        internal class MySqlGenericsConverter<T>(IConfiguration configuration, ILogger logger) : IAsyncConverter<MySqlAttribute, IEnumerable<T>>, IConverter<MySqlAttribute, IAsyncEnumerable<T>>,
             IAsyncConverter<MySqlAttribute, string>, IAsyncConverter<MySqlAttribute, JArray>
         {
-            private readonly ILogger logger;
+            private readonly ILogger logger = logger;
 
-            private readonly IConfiguration _configuration;
-
-            /// <summary>
-            /// Initializes a new instance of the <see cref="MySqlGenericsConverter{T}"/> class.
-            /// </summary>
-            /// <param name="configuration"></param>
-            /// <param name="logger">ILogger used to log information and warnings</param>
-            /// <exception cref="ArgumentNullException">
-            /// Thrown if the configuration is null
-            /// </exception>
-            public MySqlGenericsConverter(IConfiguration configuration, ILogger logger)
-            {
-                this.logger = logger;
-                this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            }
+            private readonly IConfiguration _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
             /// <summary>
             /// Opens a MySqlConnection, reads in the data from the user's database, and returns it as a list of POCOs.
@@ -135,23 +124,21 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             /// <returns></returns>
             public virtual async Task<string> BuildItemFromAttributeAsync(MySqlAttribute attribute)
             {
-                using (MySqlConnection connection = MySqlBindingUtilities.BuildConnection(attribute.ConnectionStringSetting, this._configuration))
-                using (var adapter = new MySqlDataAdapter())
-                using (MySqlCommand command = MySqlBindingUtilities.BuildCommand(attribute, connection))
+                using MySqlConnection connection = MySqlBindingUtilities.BuildConnection(attribute.ConnectionStringSetting, this._configuration);
+                using var adapter = new MySqlDataAdapter();
+                using MySqlCommand command = MySqlBindingUtilities.BuildCommand(attribute, connection);
+                AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(this.HandleException);
+                adapter.SelectCommand = command;
+                await connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None);
+                var dataTable = new DataTable();
+                adapter.Fill(dataTable);
+                this.logger.LogInformation($"{dataTable.Rows.Count} row(s) queried from the query");
+                // Serialize any DateTime objects in UTC format
+                var jsonSerializerSettings = new JsonSerializerSettings()
                 {
-                    AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(this.HandleException);
-                    adapter.SelectCommand = command;
-                    await connection.OpenAsyncWithMySqlErrorHandling(CancellationToken.None);
-                    var dataTable = new DataTable();
-                    adapter.Fill(dataTable);
-                    this.logger.LogInformation($"{dataTable.Rows.Count} row(s) queried from the query");
-                    // Serialize any DateTime objects in UTC format
-                    var jsonSerializerSettings = new JsonSerializerSettings()
-                    {
-                        DateFormatString = ISO_8061_DATETIME_FORMAT
-                    };
-                    return Utils.JsonSerializeObject(dataTable, jsonSerializerSettings);
-                }
+                    DateFormatString = ISO_8061_DATETIME_FORMAT
+                };
+                return Utils.JsonSerializeObject(dataTable, jsonSerializerSettings);
 
             }
 

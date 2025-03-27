@@ -10,19 +10,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     /// <summary>
     /// Represents the target based scaler returning a target worker count.
     /// </summary>
-    internal sealed class MySqlTriggerTargetScaler : ITargetScaler
+    internal sealed class MySqlTriggerTargetScaler(string userFunctionId, MySqlObject userTable, string userDefinedLeasesTableName, string connectionString, int maxChangesPerWorker, ILogger logger) : ITargetScaler
     {
-        private readonly MySqlTriggerMetricsProvider _metricsProvider;
-        private readonly int _maxChangesPerWorker;
+        private readonly MySqlTriggerMetricsProvider _metricsProvider = new(connectionString, logger, userTable, userFunctionId, userDefinedLeasesTableName);
+        private readonly int _maxChangesPerWorker = maxChangesPerWorker;
 
-        public MySqlTriggerTargetScaler(string userFunctionId, MySqlObject userTable, string userDefinedLeasesTableName, string connectionString, int maxChangesPerWorker, ILogger logger)
-        {
-            this._metricsProvider = new MySqlTriggerMetricsProvider(connectionString, logger, userTable, userFunctionId, userDefinedLeasesTableName);
-            this.TargetScalerDescriptor = new TargetScalerDescriptor(userFunctionId);
-            this._maxChangesPerWorker = maxChangesPerWorker;
-        }
-
-        public TargetScalerDescriptor TargetScalerDescriptor { get; }
+        public TargetScalerDescriptor TargetScalerDescriptor { get; } = new TargetScalerDescriptor(userFunctionId);
 
         public async Task<TargetScalerResult> GetScaleResultAsync(TargetScalerContext context)
         {

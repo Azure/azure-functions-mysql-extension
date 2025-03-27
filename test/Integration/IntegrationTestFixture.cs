@@ -39,18 +39,18 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// (1) they may interfere with other tests (ex. TimerTriggerProducts) or
         /// (2) they don't apply to all languages (ex. AddProductsCollector)
         /// </summary>
-        private readonly List<string> SampleFunctions = new() { "GetProducts", "GetProductsStoredProcedure", "GetProductsNameEmpty", "GetProductsStoredProcedureFromAppSetting", "GetProductNamesView", "AddProduct", "AddProductParams", "AddProductsArray", "AddProductWithMultiplePrimaryColumnsAndIdentity", "GetAndAddProducts", "AddProductWithDefaultPK" };
+        private readonly List<string> SampleFunctions = ["GetProducts", "GetProductsStoredProcedure", "GetProductsNameEmpty", "GetProductsStoredProcedureFromAppSetting", "GetProductNamesView", "AddProduct", "AddProductParams", "AddProductsArray", "AddProductWithMultiplePrimaryColumnsAndIdentity", "GetAndAddProducts", "AddProductWithDefaultPK"];
 
         /// <summary>
         /// List of all functions in the test folder that will be started before the
         /// input and output binding tests are run.
         /// </summary>
-        private readonly List<string> TestFunctions = new() { "GetProductsColumnTypesSerialization", "AddProductColumnTypes", "AddProductExtraColumns", "AddProductMissingColumns", "AddProductMissingColumnsExceptionFunction", "AddProductsNoPartialUpsert", "AddProductIncorrectCasing", "AddProductDefaultPKAndDifferentColumnOrder" };
+        private readonly List<string> TestFunctions = ["GetProductsColumnTypesSerialization", "AddProductColumnTypes", "AddProductExtraColumns", "AddProductMissingColumns", "AddProductMissingColumnsExceptionFunction", "AddProductsNoPartialUpsert", "AddProductIncorrectCasing", "AddProductDefaultPKAndDifferentColumnOrder"];
 
         /// <summary>
         /// Host processes for Azure Function CLI.
         /// </summary>
-        public List<Process> FunctionHostList { get; } = new List<Process>();
+        public List<Process> FunctionHostList { get; } = [];
 
         public IntegrationTestFixture()
         {
@@ -68,7 +68,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // Only start CSharp host for CSharp only tests task to ensure code coverage shows in pipeline.
             string languages = Environment.GetEnvironmentVariable("LANGUAGES_TO_TEST");
             SupportedLanguages[] supportedLanguages = languages == null ? (SupportedLanguages[])Enum.GetValues(typeof(SupportedLanguages))
-                : languages.Split(',').Select(l => (SupportedLanguages)Enum.Parse(typeof(SupportedLanguages), l)).ToArray();
+                : [.. languages.Split(',').Select(l => (SupportedLanguages)Enum.Parse(typeof(SupportedLanguages), l))];
             foreach (SupportedLanguages lang in supportedLanguages)
             {
                 if (lang == SupportedLanguages.CSharp)
@@ -130,7 +130,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 {
                     taskCompletionSource.SetResult(true);
                 }
-            };
+            }
+            ;
             functionHost.OutputDataReceived += SignalStartupHandler;
 
             functionHost.Start();

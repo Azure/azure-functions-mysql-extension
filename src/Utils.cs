@@ -63,19 +63,12 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <returns></returns>
         private static bool AsBool(this string str, bool defaultValue = false)
         {
-            switch (str.ToLowerInvariant())
+            return str.ToLowerInvariant() switch
             {
-                case "true":
-                case "1":
-                case "yes":
-                    return true;
-                case "false":
-                case "0":
-                case "no":
-                    return false;
-                default:
-                    return defaultValue;
-            }
+                "true" or "1" or "yes" => true,
+                "false" or "0" or "no" => false,
+                _ => defaultValue,
+            };
         }
 
         /// <summary>
@@ -87,7 +80,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <remarks>This will NOT use any global settings to avoid picking up changes that may have been made by other code running in the host (such as user functions)</remarks>
         public static string JsonSerializeObject(object obj, JsonSerializerSettings settings = null)
         {
-            settings = settings ?? _defaultJsonSerializationSettings;
+            settings ??= _defaultJsonSerializationSettings;
             // Following the Newtonsoft implementation in JsonConvert of creating a new JsonSerializer each time.
             // https://github.com/JamesNK/Newtonsoft.Json/blob/57025815e564d36821acf778e2c00d02225aab35/Src/Newtonsoft.Json/JsonConvert.cs#L612
             // If performance ends up being an issue could look into creating a single instance of the serializer for each setting.
@@ -96,11 +89,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             // https://github.com/JamesNK/Newtonsoft.Json/blob/57025815e564d36821acf778e2c00d02225aab35/Src/Newtonsoft.Json/JsonConvert.cs#L659
             var sb = new StringBuilder(256);
             var sw = new StringWriter(sb);
-            using (JsonWriter writer = new JsonTextWriter(sw))
-            {
-                serializer.Serialize(writer, obj);
-                return sb.ToString();
-            }
+            using JsonWriter writer = new JsonTextWriter(sw);
+            serializer.Serialize(writer, obj);
+            return sb.ToString();
         }
 
         /// <summary>
@@ -113,15 +104,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// <remarks>This will NOT use any global settings to avoid picking up changes that may have been made by other code running in the host (such as user functions)</remarks>
         public static T JsonDeserializeObject<T>(string json, JsonSerializerSettings settings = null)
         {
-            settings = settings ?? _defaultJsonSerializationSettings;
+            settings ??= _defaultJsonSerializationSettings;
             // Following the Newtonsoft implementation in JsonConvert of creating a new JsonSerializer each time.
             // https://github.com/JamesNK/Newtonsoft.Json/blob/57025815e564d36821acf778e2c00d02225aab35/Src/Newtonsoft.Json/JsonConvert.cs#L821
             // If performance ends up being an issue could look into creating a single instance of the serializer for each setting.
             var serializer = JsonSerializer.Create(settings);
-            using (JsonReader reader = new JsonTextReader(new StringReader(json)))
-            {
-                return serializer.Deserialize<T>(reader);
-            }
+            using JsonReader reader = new JsonTextReader(new StringReader(json));
+            return serializer.Deserialize<T>(reader);
         }
     }
 }

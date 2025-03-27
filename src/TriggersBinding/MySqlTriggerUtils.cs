@@ -34,29 +34,25 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             {
                 var getDbCommand = new MySqlCommand($"SELECT {MySqlObject.SCHEMA_NAME_FUNCTION}", connection);
 
-                using (MySqlDataReader reader = getDbCommand.ExecuteReaderWithLogging(logger))
+                using MySqlDataReader reader = getDbCommand.ExecuteReaderWithLogging(logger);
+                if (!await reader.ReadAsync(cancellationToken))
                 {
-                    if (!await reader.ReadAsync(cancellationToken))
-                    {
-                        throw new InvalidOperationException($"Received empty response when querying for the database name");
-                    }
-                    object objDbName = reader.GetValue(0);
-                    if (objDbName is DBNull)
-                    {
-                        throw new InvalidOperationException($"Could not find database.");
-                    }
-
-                    dbName = (string)objDbName;
+                    throw new InvalidOperationException($"Received empty response when querying for the database name");
                 }
+                object objDbName = reader.GetValue(0);
+                if (objDbName is DBNull)
+                {
+                    throw new InvalidOperationException($"Could not find database.");
+                }
+
+                dbName = (string)objDbName;
             }
 
-            using (var sha256 = SHA256.Create())
-            {
-                byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(dbName.AsAcuteQuotedString() + "." + userTable.AcuteQuotedName));
-                string tableId = new Guid(hash.Take(16).ToArray()).ToString("N");
+            using var sha256 = SHA256.Create();
+            byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(dbName.AsAcuteQuotedString() + "." + userTable.AcuteQuotedName));
+            string tableId = new Guid([.. hash.Take(16)]).ToString("N");
 
-                return tableId;
-            }
+            return tableId;
         }
 
         /// <summary>
@@ -74,26 +70,24 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             const int NameIndex = 0, TypeIndex = 1;
             string getPrimaryKeyColumnsQuery = $"SHOW COLUMNS FROM " + userTableName + " WHERE `Key` = 'PRI'";
 
-            using (var getPrimaryKeyColumnsCommand = new MySqlCommand(getPrimaryKeyColumnsQuery, connection))
-            using (MySqlDataReader reader = getPrimaryKeyColumnsCommand.ExecuteReaderWithLogging(logger))
+            using var getPrimaryKeyColumnsCommand = new MySqlCommand(getPrimaryKeyColumnsQuery, connection);
+            using MySqlDataReader reader = getPrimaryKeyColumnsCommand.ExecuteReaderWithLogging(logger);
+            var primaryKeyColumns = new List<(string name, string type)>();
+
+            while (reader.Read())
             {
-                var primaryKeyColumns = new List<(string name, string type)>();
+                cancellationToken.ThrowIfCancellationRequested();
+                string name = reader.GetString(NameIndex);
+                string type = reader.GetString(TypeIndex);
 
-                while (reader.Read())
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    string name = reader.GetString(NameIndex);
-                    string type = reader.GetString(TypeIndex);
-
-                    primaryKeyColumns.Add((name, type));
-                }
-
-                if (primaryKeyColumns.Count == 0)
-                {
-                    throw new InvalidOperationException($"Could not find primary key(s) for the given table.");
-                }
-                return primaryKeyColumns;
+                primaryKeyColumns.Add((name, type));
             }
+
+            if (primaryKeyColumns.Count == 0)
+            {
+                throw new InvalidOperationException($"Could not find primary key(s) for the given table.");
+            }
+            return primaryKeyColumns;
         }
 
         /// <summary>

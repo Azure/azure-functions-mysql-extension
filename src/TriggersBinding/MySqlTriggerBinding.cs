@@ -22,40 +22,29 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     /// Represents the MySQL trigger parameter binding.
     /// </summary>
     /// <typeparam name="T">POCO class representing the row in the user table</typeparam>
+    /// <remarks>
+    /// Initializes a new instance of the <see cref="MySqlTriggerBinding{T}"/> class.
+    /// </remarks>
+    /// <param name="connectionString">MySQL connection string used to connect to user database</param>
+    /// <param name="tableName">Name of the user table</param>
+    /// <param name="leasesTableName">Optional - Name of the leases table</param>
+    /// <param name="parameter">Trigger binding parameter information</param>
+    /// <param name="mysqlOptions"></param>
+    /// <param name="logger">Facilitates logging of messages</param>
+    /// <param name="configuration">Provides configuration values</param>
 
-    internal sealed class MySqlTriggerBinding<T> : ITriggerBinding
+    internal sealed class MySqlTriggerBinding<T>(string connectionString, string tableName, string leasesTableName, ParameterInfo parameter, IOptions<MySqlOptions> mysqlOptions, ILogger logger, IConfiguration configuration) : ITriggerBinding
     {
-        private readonly string _connectionString;
-        private readonly string _tableName;
-        private readonly string _leasesTableName;
-        private readonly ParameterInfo _parameter;
-        private readonly MySqlOptions _mysqlOptions;
-        private readonly ILogger _logger;
-        private readonly IConfiguration _configuration;
+        private readonly string _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+        private readonly string _tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
+        private readonly string _leasesTableName = leasesTableName;
+        private readonly ParameterInfo _parameter = parameter ?? throw new ArgumentNullException(nameof(parameter));
+        private readonly MySqlOptions _mysqlOptions = (mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions))).Value;
+        private readonly ILogger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        private readonly IConfiguration _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
         private static readonly IReadOnlyDictionary<string, Type> _emptyBindingContract = new Dictionary<string, Type>();
         private static readonly IReadOnlyDictionary<string, object> _emptyBindingData = new Dictionary<string, object>();
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MySqlTriggerBinding{T}"/> class.
-        /// </summary>
-        /// <param name="connectionString">MySQL connection string used to connect to user database</param>
-        /// <param name="tableName">Name of the user table</param>
-        /// <param name="leasesTableName">Optional - Name of the leases table</param>
-        /// <param name="parameter">Trigger binding parameter information</param>
-        /// <param name="mysqlOptions"></param>
-        /// <param name="logger">Facilitates logging of messages</param>
-        /// <param name="configuration">Provides configuration values</param>
-        public MySqlTriggerBinding(string connectionString, string tableName, string leasesTableName, ParameterInfo parameter, IOptions<MySqlOptions> mysqlOptions, ILogger logger, IConfiguration configuration)
-        {
-            this._connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
-            this._tableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
-            this._leasesTableName = leasesTableName;
-            this._parameter = parameter ?? throw new ArgumentNullException(nameof(parameter));
-            this._mysqlOptions = (mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions))).Value;
-            this._logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        }
 
         /// <summary>
         /// Returns the type of trigger value that <see cref="MySqlTriggerBinding{T}" /> binds to.
@@ -106,11 +95,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             // Get the function name from FunctionName attribute for .NET functions and methodInfo.Name for non .Net
             string functionName = ((FunctionNameAttribute)methodInfo.GetCustomAttribute(typeof(FunctionNameAttribute)))?.Name ?? $"{methodInfo.Name}";
 
-            using (var sha256 = SHA256.Create())
-            {
-                byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(websiteName + functionName));
-                return new Guid(hash.Take(16).ToArray()).ToString("N").Substring(0, 16);
-            }
+            using var sha256 = SHA256.Create();
+            byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(websiteName + functionName));
+            return new Guid([.. hash.Take(16)]).ToString("N")[..16];
         }
     }
 }

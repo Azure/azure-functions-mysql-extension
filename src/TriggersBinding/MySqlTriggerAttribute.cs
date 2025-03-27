@@ -9,23 +9,17 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     /// <summary>
     /// Attribute used to bind a parameter to MySQL trigger message.
     /// </summary>
+    /// <remarks>
+    /// Initializes a new instance of the <see cref="MySqlTriggerAttribute"/> class, which triggers the function when any changes on the specified table are detected.
+    /// </remarks>
+    /// <param name="tableName">Name of the table to watch for changes.</param>
+    /// <param name="connectionStringSetting">The name of the app setting where the MySQL connection string is stored</param>
+    /// <param name="leasesTableName">Optional - The name of the table used to store leases. If not specified, the leases table name will be Leases_{FunctionId}_{TableId}</param>
     [Binding]
     [AttributeUsage(AttributeTargets.Parameter)]
     // The class to define MySql Trigger Attributes
-    public sealed class MySqlTriggerAttribute : Attribute
+    public sealed class MySqlTriggerAttribute(string tableName, string connectionStringSetting, string leasesTableName = null) : Attribute
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MySqlTriggerAttribute"/> class, which triggers the function when any changes on the specified table are detected.
-        /// </summary>
-        /// <param name="tableName">Name of the table to watch for changes.</param>
-        /// <param name="connectionStringSetting">The name of the app setting where the MySQL connection string is stored</param>
-        /// <param name="leasesTableName">Optional - The name of the table used to store leases. If not specified, the leases table name will be Leases_{FunctionId}_{TableId}</param>
-        public MySqlTriggerAttribute(string tableName, string connectionStringSetting, string leasesTableName = null)
-        {
-            this.TableName = tableName ?? throw new ArgumentNullException(nameof(tableName));
-            this.ConnectionStringSetting = connectionStringSetting ?? throw new ArgumentNullException(nameof(connectionStringSetting));
-            this.LeasesTableName = leasesTableName;
-        }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MySqlTriggerAttribute"/> class, which triggers the function when any changes on the specified table are detected.
@@ -38,17 +32,17 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// Name of the app setting containing the MySQL connection string.
         /// </summary>
         [ConnectionString]
-        public string ConnectionStringSetting { get; }
+        public string ConnectionStringSetting { get; } = connectionStringSetting ?? throw new ArgumentNullException(nameof(connectionStringSetting));
 
         /// <summary>
         /// Name of the table to watch for changes.
         /// </summary>
-        public string TableName { get; }
+        public string TableName { get; } = tableName ?? throw new ArgumentNullException(nameof(tableName));
 
         /// <summary>
         /// Name of the table used to store leases.
         /// If not specified, the leases table name will be Leases_{FunctionId}_{TableId}
         /// </summary>
-        public string LeasesTableName { get; }
+        public string LeasesTableName { get; } = leasesTableName;
     }
 }

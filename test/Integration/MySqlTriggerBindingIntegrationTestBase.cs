@@ -16,12 +16,8 @@ using Xunit.Abstractions;
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 {
     [LogTestName]
-    public class MySqlTriggerBindingIntegrationTestBase : IntegrationTestBase
+    public class MySqlTriggerBindingIntegrationTestBase(ITestOutputHelper output = null) : IntegrationTestBase(output)
     {
-        public MySqlTriggerBindingIntegrationTestBase(ITestOutputHelper output = null) : base(output)
-        {
-        }
-
         public void SetChangeTrackingForTable(string tableName, bool enable = true)
         {
             if (enable)
@@ -120,7 +116,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                         taskCompletion.SetResult(true);
                     }
                 }
-            };
+            }
+            ;
             // Set up listener for the changes coming in
             foreach (Process functionHost in this.FunctionHostList)
             {
@@ -166,7 +163,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                     errorMessage = e.Data[(index + exceptionPrefix.Length)..];
                     tcs.SetResult(true);
                 }
-            };
+            }
+            ;
 
             // All trigger integration tests are only using C# functions for testing at the moment.
             this.StartFunctionHost(functionName, lang, useTestFolder, OutputHandler);

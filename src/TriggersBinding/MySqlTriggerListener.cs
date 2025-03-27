@@ -100,51 +100,49 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             try
             {
-                using (var connection = new MySqlConnection(this._connectionString))
+                using var connection = new MySqlConnection(this._connectionString);
+                AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(this.HandleException);
+                await connection.OpenAsyncWithMySqlErrorHandling(cancellationToken);
+
+                // get table id If exists in database
+                string userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
+                await VerifyTableForTriggerSupported(connection, this._userTable.FullName, this._logger, cancellationToken);
+
+                IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, this._userTable.AcuteQuotedFullName, this._logger, cancellationToken);
+                IReadOnlyList<string> userTableColumns = this.GetUserTableColumns(connection, this._userTable, cancellationToken);
+
+                string bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
+
+                long createdSchemaDurationMs = 0L, createGlobalStateTableDurationMs = 0L, insertGlobalStateTableRowDurationMs = 0L, createLeasesTableDurationMs = 0L;
+
+                using (MySqlTransaction transaction = connection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead))
                 {
-                    AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(this.HandleException);
-                    await connection.OpenAsyncWithMySqlErrorHandling(cancellationToken);
+                    createdSchemaDurationMs = await this.CreateSchemaAsync(connection, transaction, cancellationToken);
+                    createGlobalStateTableDurationMs = await this.CreateGlobalStateTableAsync(connection, transaction, cancellationToken);
+                    insertGlobalStateTableRowDurationMs = await this.InsertGlobalStateTableRowAsync(connection, transaction, userTableId, cancellationToken);
+                    createLeasesTableDurationMs = await this.CreateLeasesTableAsync(connection, transaction, bracketedLeasesTableName, primaryKeyColumns, cancellationToken);
 
-                    // get table id If exists in database
-                    string userTableId = await GetUserTableIdAsync(connection, this._userTable, this._logger, CancellationToken.None);
-                    await VerifyTableForTriggerSupported(connection, this._userTable.FullName, this._logger, cancellationToken);
-
-                    IReadOnlyList<(string name, string type)> primaryKeyColumns = GetPrimaryKeyColumnsAsync(connection, this._userTable.AcuteQuotedFullName, this._logger, cancellationToken);
-                    IReadOnlyList<string> userTableColumns = this.GetUserTableColumns(connection, this._userTable, cancellationToken);
-
-                    string bracketedLeasesTableName = GetBracketedLeasesTableName(this._userDefinedLeasesTableName, this._userFunctionId, userTableId);
-
-                    long createdSchemaDurationMs = 0L, createGlobalStateTableDurationMs = 0L, insertGlobalStateTableRowDurationMs = 0L, createLeasesTableDurationMs = 0L;
-
-                    using (MySqlTransaction transaction = connection.BeginTransaction(System.Data.IsolationLevel.RepeatableRead))
-                    {
-                        createdSchemaDurationMs = await this.CreateSchemaAsync(connection, transaction, cancellationToken);
-                        createGlobalStateTableDurationMs = await this.CreateGlobalStateTableAsync(connection, transaction, cancellationToken);
-                        insertGlobalStateTableRowDurationMs = await this.InsertGlobalStateTableRowAsync(connection, transaction, userTableId, cancellationToken);
-                        createLeasesTableDurationMs = await this.CreateLeasesTableAsync(connection, transaction, bracketedLeasesTableName, primaryKeyColumns, cancellationToken);
-
-                        transaction.Commit();
-                    }
-
-                    this._changeMonitor = new MySqlTableChangeMonitor<T>(
-                        this._connectionString,
-                        userTableId,
-                        this._userTable,
-                        this._userFunctionId,
-                        bracketedLeasesTableName,
-                        primaryKeyColumns,
-                        userTableColumns,
-                        this._executor,
-                        this._mysqlOptions,
-                        this._logger,
-                        this._configuration);
-
-                    this._listenerState = ListenerStarted;
-                    this._logger.LogDebug($"Started MySQL trigger listener for the table ID: {userTableId} and function ID: {this._userFunctionId}");
-
-                    this._logger.LogInformation($"CreatedSchemaDurationMs {createdSchemaDurationMs}. CreateGlobalStateTableDurationMs: {createGlobalStateTableDurationMs}. " +
-                        $"InsertGlobalStateTableRowDurationMs: {insertGlobalStateTableRowDurationMs}");
+                    transaction.Commit();
                 }
+
+                this._changeMonitor = new MySqlTableChangeMonitor<T>(
+                    this._connectionString,
+                    userTableId,
+                    this._userTable,
+                    this._userFunctionId,
+                    bracketedLeasesTableName,
+                    primaryKeyColumns,
+                    userTableColumns,
+                    this._executor,
+                    this._mysqlOptions,
+                    this._logger,
+                    this._configuration);
+
+                this._listenerState = ListenerStarted;
+                this._logger.LogDebug($"Started MySQL trigger listener for the table ID: {userTableId} and function ID: {this._userFunctionId}");
+
+                this._logger.LogInformation($"CreatedSchemaDurationMs {createdSchemaDurationMs}. CreateGlobalStateTableDurationMs: {createGlobalStateTableDurationMs}. " +
+                    $"InsertGlobalStateTableRowDurationMs: {insertGlobalStateTableRowDurationMs}");
             }
             catch (Exception ex)
             {
@@ -190,45 +188,43 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     AND column_name <> {UpdateAtColumnName.AsSingleQuotedString()};
             ";
 
-            using (var getUserTableColumnsCommand = new MySqlCommand(getUserTableColumnsQuery, connection))
-            using (MySqlDataReader reader = getUserTableColumnsCommand.ExecuteReaderWithLogging(this._logger))
+            using var getUserTableColumnsCommand = new MySqlCommand(getUserTableColumnsQuery, connection);
+            using MySqlDataReader reader = getUserTableColumnsCommand.ExecuteReaderWithLogging(this._logger);
+            var userTableColumns = new List<string>();
+            var userDefinedTypeColumns = new List<(string name, string type)>();
+
+            while (reader.Read())
             {
-                var userTableColumns = new List<string>();
-                var userDefinedTypeColumns = new List<(string name, string type)>();
+                cancellationToken.ThrowIfCancellationRequested();
+                string columnName = reader.GetString(NameIndex);
+                string columnType = reader.GetString(TypeIndex);
 
-                while (reader.Read())
+                userTableColumns.Add(columnName);
+
+                // if column data type in a list of unsupported data types then 
+                if (UnsupportedColumnDataTypes.Contains(columnType))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    string columnName = reader.GetString(NameIndex);
-                    string columnType = reader.GetString(TypeIndex);
-
-                    userTableColumns.Add(columnName);
-
-                    // if column data type in a list of unsupported data types then 
-                    if (UnsupportedColumnDataTypes.Contains(columnType))
-                    {
-                        userDefinedTypeColumns.Add((columnName, columnType));
-                    }
+                    userDefinedTypeColumns.Add((columnName, columnType));
                 }
-
-                if (userDefinedTypeColumns.Count > 0)
-                {
-                    string columnNamesAndTypes = string.Join(", ", userDefinedTypeColumns.Select(col => $"'{col.name}' (type: {col.type})"));
-                    throw new InvalidOperationException($"Found column(s) with unsupported type(s): {columnNamesAndTypes} in table: '{this._userTable.FullName}'.");
-                }
-
-                var conflictingColumnNames = userTableColumns.Intersect(ReservedColumnNames).ToList();
-
-                if (conflictingColumnNames.Count > 0)
-                {
-                    string columnNames = string.Join(", ", conflictingColumnNames.Select(col => $"'{col}'"));
-                    throw new InvalidOperationException($"Found reserved column name(s): {columnNames} in table: '{this._userTable.FullName}'." +
-                        " Please rename them to be able to use trigger binding.");
-                }
-
-                this._logger.LogDebug($"Fetching Table Columns");
-                return userTableColumns;
             }
+
+            if (userDefinedTypeColumns.Count > 0)
+            {
+                string columnNamesAndTypes = string.Join(", ", userDefinedTypeColumns.Select(col => $"'{col.name}' (type: {col.type})"));
+                throw new InvalidOperationException($"Found column(s) with unsupported type(s): {columnNamesAndTypes} in table: '{this._userTable.FullName}'.");
+            }
+
+            var conflictingColumnNames = userTableColumns.Intersect(ReservedColumnNames).ToList();
+
+            if (conflictingColumnNames.Count > 0)
+            {
+                string columnNames = string.Join(", ", conflictingColumnNames.Select(col => $"'{col}'"));
+                throw new InvalidOperationException($"Found reserved column name(s): {columnNames} in table: '{this._userTable.FullName}'." +
+                    " Please rename them to be able to use trigger binding.");
+            }
+
+            this._logger.LogDebug($"Fetching Table Columns");
+            return userTableColumns;
         }
 
         /// <summary>
@@ -242,34 +238,32 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         {
             string createSchemaQuery = $@"CREATE DATABASE IF NOT EXISTS {SchemaName};";
 
-            using (var createSchemaCommand = new MySqlCommand(createSchemaQuery, connection, transaction))
+            using var createSchemaCommand = new MySqlCommand(createSchemaQuery, connection, transaction);
+            var stopwatch = Stopwatch.StartNew();
+
+            try
             {
-                var stopwatch = Stopwatch.StartNew();
-
-                try
-                {
-                    await createSchemaCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    // TelemetryInstance.TrackException(TelemetryErrorName.CreateSchema, ex, this._telemetryProps);
-                    var mysqlEx = ex as MySqlException;
-                    if (mysqlEx?.Number == 1007)        // https://mysqlconnector.net/api/mysqlconnector/mysqlerrorcodetype/
-                    {
-                        // This generally shouldn't happen since we check for its existence in the statement but occasionally
-                        // a race condition can make it so that multiple instances will try and create the schema at once.
-                        // In that case we can just ignore the error since all we care about is that the schema exists at all.
-                        this._logger.LogWarning($"Failed to create schema '{SchemaName}'. Exception message: {ex.Message} This is informational only, function startup will continue as normal.");
-                    }
-                    else
-                    {
-                        this._logger.LogError($"Exception encountered while creating schema for global state table and leases tables. Message: {ex.Message}");
-                        throw;
-                    }
-                }
-
-                return stopwatch.ElapsedMilliseconds;
+                await createSchemaCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
             }
+            catch (Exception ex)
+            {
+                // TelemetryInstance.TrackException(TelemetryErrorName.CreateSchema, ex, this._telemetryProps);
+                var mysqlEx = ex as MySqlException;
+                if (mysqlEx?.Number == 1007)        // https://mysqlconnector.net/api/mysqlconnector/mysqlerrorcodetype/
+                {
+                    // This generally shouldn't happen since we check for its existence in the statement but occasionally
+                    // a race condition can make it so that multiple instances will try and create the schema at once.
+                    // In that case we can just ignore the error since all we care about is that the schema exists at all.
+                    this._logger.LogWarning($"Failed to create schema '{SchemaName}'. Exception message: {ex.Message} This is informational only, function startup will continue as normal.");
+                }
+                else
+                {
+                    this._logger.LogError($"Exception encountered while creating schema for global state table and leases tables. Message: {ex.Message}");
+                    throw;
+                }
+            }
+
+            return stopwatch.ElapsedMilliseconds;
         }
 
         /// <summary>
@@ -290,20 +284,18 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     );
             ";
 
-            using (var createGlobalStateTableCommand = new MySqlCommand(createGlobalStateTableQuery, connection, transaction))
+            using var createGlobalStateTableCommand = new MySqlCommand(createGlobalStateTableQuery, connection, transaction);
+            var stopwatch = Stopwatch.StartNew();
+            try
             {
-                var stopwatch = Stopwatch.StartNew();
-                try
-                {
-                    await createGlobalStateTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    this._logger.LogError($"Exception encountered while creating Global State table. Message: {ex.Message}");
-                    throw;
-                }
-                return stopwatch.ElapsedMilliseconds;
+                await createGlobalStateTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
             }
+            catch (Exception ex)
+            {
+                this._logger.LogError($"Exception encountered while creating Global State table. Message: {ex.Message}");
+                throw;
+            }
+            return stopwatch.ElapsedMilliseconds;
         }
 
         /// <summary>
@@ -319,12 +311,10 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             string insertRowGlobalStateTableQuery = $"INSERT IGNORE INTO {GlobalStateTableName} ({GlobalStateTableUserFunctionIDColumnName}, {GlobalStateTableUserTableIDColumnName})" +
                 $" VALUES ('{this._userFunctionId}', '{userTableId}');";
 
-            using (var insertRowGlobalStateTableCommand = new MySqlCommand(insertRowGlobalStateTableQuery, connection, transaction))
-            {
-                var stopwatch = Stopwatch.StartNew();
-                await insertRowGlobalStateTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
-                return stopwatch.ElapsedMilliseconds;
-            }
+            using var insertRowGlobalStateTableCommand = new MySqlCommand(insertRowGlobalStateTableQuery, connection, transaction);
+            var stopwatch = Stopwatch.StartNew();
+            await insertRowGlobalStateTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
+            return stopwatch.ElapsedMilliseconds;
         }
 
         /// <summary>
@@ -356,22 +346,20 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                     );
             ";
 
-            using (var createLeasesTableCommand = new MySqlCommand(createLeasesTableQuery, connection, transaction))
+            using var createLeasesTableCommand = new MySqlCommand(createLeasesTableQuery, connection, transaction);
+            var stopwatch = Stopwatch.StartNew();
+            try
             {
-                var stopwatch = Stopwatch.StartNew();
-                try
-                {
-                    await createLeasesTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    this._logger.LogWarning($"Failed to create leases table '{leasesTableName}'. Exception message: {ex.Message}");
-                    throw;
-
-                }
-                long durationMs = stopwatch.ElapsedMilliseconds;
-                return durationMs;
+                await createLeasesTableCommand.ExecuteNonQueryAsyncWithLogging(this._logger, cancellationToken);
             }
+            catch (Exception ex)
+            {
+                this._logger.LogWarning($"Failed to create leases table '{leasesTableName}'. Exception message: {ex.Message}");
+                throw;
+
+            }
+            long durationMs = stopwatch.ElapsedMilliseconds;
+            return durationMs;
         }
 
         public IScaleMonitor GetMonitor()

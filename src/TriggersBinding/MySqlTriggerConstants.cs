@@ -42,16 +42,16 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         /// The column names that are used in internal state tables and so can't exist in the target table
         /// since that shares column names with the primary keys from each user table being monitored.
         /// </summary>
-        public static readonly string[] ReservedColumnNames = new string[]
-        {
+        public static readonly string[] ReservedColumnNames =
+        [
                     LeasesTableAttemptCountColumnName,
                     LeasesTableLeaseExpirationTimeColumnName
-        };
+        ];
 
         //list unsupported data types
-        public static HashSet<string> UnsupportedColumnDataTypes = new HashSet<string>()
-        { "point", "multipoint", "linestring", "multilinestring",
+        public static HashSet<string> UnsupportedColumnDataTypes =
+        [ "point", "multipoint", "linestring", "multilinestring",
            "polygon", "multipolygon", "geometry", "geometrycollection"
-        };
+        ];
     }
 }

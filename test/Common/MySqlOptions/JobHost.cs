@@ -58,10 +58,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
         /// </summary>
         public JobHost(IOptions<JobHostOptions> options, IJobHostContextFactory jobHostContextFactory)
         {
-            if (options == null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
+            ArgumentNullException.ThrowIfNull(options);
 
             this._jobHostContextFactory = jobHostContextFactory;
             this._shutdownTokenSource = new CancellationTokenSource();
@@ -191,10 +188,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
         /// <returns>A <see cref="Task"/> that will call the job method.</returns>
         public Task CallAsync(MethodInfo method, IDictionary<string, object> arguments, CancellationToken cancellationToken = default)
         {
-            if (method == null)
-            {
-                throw new ArgumentNullException(nameof(method));
-            }
+            ArgumentNullException.ThrowIfNull(method);
 
             this.ThrowIfDisposed();
 
@@ -222,10 +216,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
         /// <returns>A <see cref="Task"/> that will call the job method.</returns>
         public Task CallAsync(string name, IDictionary<string, object> arguments = null, CancellationToken cancellationToken = default)
         {
-            if (name == null)
-            {
-                throw new ArgumentNullException(nameof(name));
-            }
+            ArgumentNullException.ThrowIfNull(name);
 
             this.ThrowIfDisposed();
 
@@ -258,10 +249,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
             IFunctionInstance instanceFactory = CreateFunctionInstance(function, arguments);
             IDelayedException exception = await this._context.Executor.TryExecuteAsync(instanceFactory, cancellationToken);
 
-            if (exception != null)
-            {
-                exception.Throw();
-            }
+            exception?.Throw();
         }
 
         /// <summary>
@@ -281,10 +269,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
 
                 this._stoppingTokenSource.Dispose();
 
-                if (this._context != null)
-                {
-                    this._context.Dispose();
-                }
+                this._context?.Dispose();
 
                 this._disposed = true;
             }
@@ -311,10 +296,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
 
         private void ThrowIfDisposed()
         {
-            if (this._disposed)
+            if (!this._disposed)
             {
-                throw new ObjectDisposedException(null);
+                return;
             }
+            throw new ObjectDisposedException(null);
         }
 
         /// <summary>
@@ -399,17 +385,13 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
             {
                 return null;
             }
-#pragma warning disable IDE0019
-            var valuesAsDictionary = values as IDictionary<string, object>;
 
-            if (valuesAsDictionary != null)
+            if (values is IDictionary<string, object> valuesAsDictionary)
             {
                 return valuesAsDictionary;
             }
 
-            var valuesAsNonGenericDictionary = values as System.Collections.IDictionary;
-
-            if (valuesAsNonGenericDictionary != null)
+            if (values is System.Collections.IDictionary)
             {
                 throw new InvalidOperationException("Argument dictionaries must implement IDictionary<string, object>.");
             }
@@ -428,7 +410,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
     }
 
     // Original code here: https://github.com/aspnet/Common/blob/dev/src/Microsoft.Extensions.PropertyHelper.Sources/PropertyHelper.cs
-    internal class PropertyHelper
+    /// <summary>
+    /// Initializes a fast <see cref="PropertyHelper"/>.
+    /// This constructor does not cache the helper. For caching, use <see cref="GetProperties(object)"/>.
+    /// </summary>
+    internal class PropertyHelper(PropertyInfo property)
     {
         private static readonly MethodInfo CallPropertyGetterOpenGenericMethod =
             typeof(PropertyHelper).GetTypeInfo().GetDeclaredMethod(nameof(CallPropertyGetter));
@@ -454,34 +440,23 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
 
         private Action<object, object> _valueSetter;
 
-        /// <summary>
-        /// Initializes a fast <see cref="PropertyHelper"/>.
-        /// This constructor does not cache the helper. For caching, use <see cref="GetProperties(object)"/>.
-        /// </summary>
-        public PropertyHelper(PropertyInfo property)
-        {
-            this.Property = property ?? throw new ArgumentNullException(nameof(property));
-            this.Name = property.Name;
-            this.ValueGetter = MakeFastPropertyGetter(property);
-        }
-
         // Delegate type for a by-ref property getter
         private delegate TValue ByRefFunc<TDeclaringType, TValue>(ref TDeclaringType arg);
 
         /// <summary>
         /// Gets the backing <see cref="PropertyInfo"/>.
         /// </summary>
-        public PropertyInfo Property { get; }
+        public PropertyInfo Property { get; } = property ?? throw new ArgumentNullException(nameof(property));
 
         /// <summary>
         /// Gets (or sets in derived types) the property name.
         /// </summary>
-        public virtual string Name { get; protected set; }
+        public virtual string Name { get; protected set; } = property.Name;
 
         /// <summary>
         /// Gets the property value getter.
         /// </summary>
-        public Func<object, object> ValueGetter { get; }
+        public Func<object, object> ValueGetter { get; } = MakeFastPropertyGetter(property);
 
         /// <summary>
         /// Gets the property value setter.
@@ -644,7 +619,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
                 }
             }
 
-            result = filteredProperties.ToArray();
+            result = [.. filteredProperties];
             visiblePropertiesCache.TryAdd(type, result);
             return result;
         }
@@ -802,8 +777,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
         /// <returns>The dictionary representation of the object.</returns>
         public static IDictionary<string, object> ObjectToDictionary(object value)
         {
-            var dictionary = value as IDictionary<string, object>;
-            if (dictionary != null)
+            if (value is IDictionary<string, object> dictionary)
             {
                 return new Dictionary<string, object>(dictionary, StringComparer.OrdinalIgnoreCase);
             }
@@ -820,7 +794,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
 
             return dictionary;
         }
-#pragma warning disable IDE0019
+
         private static PropertyHelper CreateInstance(PropertyInfo property)
         {
             return new PropertyHelper(property);
@@ -899,7 +873,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
                         interfaceType => interfaceType.GetRuntimeProperties().Where(IsInterestingProperty)));
                 }
 
-                helpers = properties.Select(p => createPropertyHelper(p)).ToArray();
+                helpers = [.. properties.Select(p => createPropertyHelper(p))];
                 cache.TryAdd(type, helpers);
             }
 

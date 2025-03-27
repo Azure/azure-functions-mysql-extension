@@ -8,17 +8,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
 {
-    public class TestLoggerProvider : ILoggerProvider
+    public class TestLoggerProvider(Action<LogMessage> logAction = null) : ILoggerProvider
     {
-        private readonly Action<LogMessage> _logAction;
-        private Dictionary<string, TestLogger> LoggerCache { get; } = new Dictionary<string, TestLogger>();
+        private readonly Action<LogMessage> _logAction = logAction;
+        private Dictionary<string, TestLogger> LoggerCache { get; } = [];
 
-        public TestLoggerProvider(Action<LogMessage> logAction = null)
-        {
-            this._logAction = logAction;
-        }
-
-        public IList<TestLogger> CreatedLoggers => this.LoggerCache.Values.ToList();
+        public IList<TestLogger> CreatedLoggers => [.. this.LoggerCache.Values];
 
         public ILogger CreateLogger(string categoryName)
         {
@@ -55,21 +50,15 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
         }
     }
 
-    public class TestLogger : ILogger
+    public class TestLogger(string category, Action<LogMessage> logAction = null) : ILogger
     {
-        private readonly Action<LogMessage> _logAction;
-        private readonly IList<LogMessage> _logMessages = new List<LogMessage>();
+        private readonly Action<LogMessage> _logAction = logAction;
+        private readonly IList<LogMessage> _logMessages = [];
 
         // protect against changes to logMessages while enumerating
         private readonly object _syncLock = new();
 
-        public TestLogger(string category, Action<LogMessage> logAction = null)
-        {
-            this.Category = category;
-            this._logAction = logAction;
-        }
-
-        public string Category { get; private set; }
+        public string Category { get; private set; } = category;
 
         public IDisposable BeginScope<TState>(TState state)
         {
@@ -85,7 +74,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
         {
             lock (this._syncLock)
             {
-                return this._logMessages.ToList();
+                return [.. this._logMessages];
             }
         }
 
@@ -111,7 +100,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
                 State = state as IEnumerable<KeyValuePair<string, object>>,
                 Exception = exception,
                 FormattedMessage = formatter(state, exception),
-                Category = Category,
+                Category = this.Category,
                 Timestamp = DateTime.UtcNow
             };
 

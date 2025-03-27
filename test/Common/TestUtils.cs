@@ -83,7 +83,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
                 }
 
                 // First connect to master to create the database
-                connectionStringBuilder = new MySqlConnectionStringBuilder();
+                connectionStringBuilder = [];
 
                 // Either use integrated auth or MySQL login depending if MYSQL_ROOT_PASSWORD is set
                 string userId = "root";
@@ -168,33 +168,25 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
             Predicate<Exception> catchException = null,
             string message = null)
         {
-            if (connection == null)
-            {
-                throw new ArgumentNullException(nameof(connection));
-            }
-            if (commandText == null)
-            {
-                throw new ArgumentNullException(nameof(commandText));
-            }
+            ArgumentNullException.ThrowIfNull(connection);
+            ArgumentNullException.ThrowIfNull(commandText);
             message ??= $"Executing non-query {commandText}";
 
-            using (IDbCommand cmd = connection.CreateCommand())
+            using IDbCommand cmd = connection.CreateCommand();
+            try
             {
-                try
-                {
 
-                    cmd.CommandText = commandText;
-                    cmd.CommandType = CommandType.Text;
-                    cmd.CommandTimeout = 60;
-                    logger.Invoke(message);
-                    return cmd.ExecuteNonQuery();
-                }
-                catch (Exception ex)
+                cmd.CommandText = commandText;
+                cmd.CommandType = CommandType.Text;
+                cmd.CommandTimeout = 60;
+                logger.Invoke(message);
+                return cmd.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                if (catchException == null || !catchException(ex))
                 {
-                    if (catchException == null || !catchException(ex))
-                    {
-                        throw;
-                    }
+                    throw;
                 }
             }
 
@@ -216,32 +208,23 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
             Action<string> logger,
             Predicate<Exception> catchException = null)
         {
-            if (connection == null)
-            {
-                throw new ArgumentNullException(nameof(connection));
-            }
-            if (commandText == null)
-            {
-                throw new ArgumentNullException(nameof(commandText));
-            }
+            ArgumentNullException.ThrowIfNull(connection);
+            ArgumentNullException.ThrowIfNull(commandText);
 
-            using (IDbCommand cmd = connection.CreateCommand())
+            using IDbCommand cmd = connection.CreateCommand();
+            try
             {
-                try
+                cmd.CommandText = commandText;
+                cmd.CommandType = CommandType.Text;
+                logger.Invoke($"Executing scalar {commandText}");
+                return cmd.ExecuteScalar();
+            }
+            catch (Exception ex)
+            {
+                if (catchException == null || !catchException(ex))
                 {
-                    cmd.CommandText = commandText;
-                    cmd.CommandType = CommandType.Text;
-                    logger.Invoke($"Executing scalar {commandText}");
-                    return cmd.ExecuteScalar();
+                    throw;
                 }
-                catch (Exception ex)
-                {
-                    if (catchException == null || !catchException(ex))
-                    {
-                        throw;
-                    }
-                }
-
             }
 
             return null;

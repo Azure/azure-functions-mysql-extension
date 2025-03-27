@@ -17,24 +17,17 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
     /// <summary>
     /// Provider class for MySQL trigger parameter binding.
     /// </summary>
-    internal sealed class MySqlTriggerBindingProvider : ITriggerBindingProvider
+    /// <remarks>
+    /// Initializes a new instance of the <see cref="MySqlTriggerBindingProvider"/> class.
+    /// </remarks>
+    /// <param name="configuration">Configuration to retrieve settings from</param>
+    /// <param name="loggerFactory">Used to create logger instance</param>
+    /// <param name="mysqlOptions"></param>
+    internal sealed class MySqlTriggerBindingProvider(IConfiguration configuration, ILoggerFactory loggerFactory, IOptions<MySqlOptions> mysqlOptions) : ITriggerBindingProvider
     {
-        private readonly IConfiguration _configuration;
-        private readonly ILogger _logger;
-        private readonly IOptions<MySqlOptions> _mysqlOptions;
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MySqlTriggerBindingProvider"/> class.
-        /// </summary>
-        /// <param name="configuration">Configuration to retrieve settings from</param>
-        /// <param name="loggerFactory">Used to create logger instance</param>
-        /// <param name="mysqlOptions"></param>
-        public MySqlTriggerBindingProvider(IConfiguration configuration, ILoggerFactory loggerFactory, IOptions<MySqlOptions> mysqlOptions)
-        {
-            this._configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            this._mysqlOptions = mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions));
-            this._logger = loggerFactory?.CreateLogger(LogCategories.CreateTriggerCategory("MySql")) ?? throw new ArgumentNullException(nameof(loggerFactory));
-        }
+        private readonly IConfiguration _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        private readonly ILogger _logger = loggerFactory?.CreateLogger(LogCategories.CreateTriggerCategory("MySql")) ?? throw new ArgumentNullException(nameof(loggerFactory));
+        private readonly IOptions<MySqlOptions> _mysqlOptions = mysqlOptions ?? throw new ArgumentNullException(nameof(mysqlOptions));
 
         /// <summary>
         /// Creates MySQL trigger parameter binding.
@@ -89,7 +82,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
             var constructorParameterTypes = new Type[] { typeof(string), typeof(string), typeof(string), typeof(ParameterInfo), typeof(IOptions<MySqlOptions>), typeof(ILogger), typeof(IConfiguration) };
             ConstructorInfo bindingConstructor = bindingType.GetConstructor(constructorParameterTypes);
 
-            object[] constructorParameterValues = new object[] { connectionString, attribute.TableName, attribute.LeasesTableName, parameter, this._mysqlOptions, this._logger, this._configuration };
+            object[] constructorParameterValues = [connectionString, attribute.TableName, attribute.LeasesTableName, parameter, this._mysqlOptions, this._logger, this._configuration];
             var triggerBinding = (ITriggerBinding)bindingConstructor.Invoke(constructorParameterValues);
 
             return Task.FromResult(triggerBinding);
