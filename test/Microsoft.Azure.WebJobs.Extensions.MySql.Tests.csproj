@@ -14,6 +14,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="System.Net.Http" />
 	  <PackageReference Include="System.Text.Json" />
+	  <FunctionsPreservedDependencies Include="System.Diagnostics.DiagnosticSource.dll" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\src\Microsoft.Azure.WebJobs.Extensions.MySql.csproj" />
@@ -37,6 +38,9 @@
     <None Update="xunit.runner.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+	<Content Include="..\src\App.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   
 
