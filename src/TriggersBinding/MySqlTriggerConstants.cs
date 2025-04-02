@@ -45,7 +45,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         public static readonly string[] ReservedColumnNames = new string[]
         {
                     LeasesTableAttemptCountColumnName,
-                    LeasesTableLeaseExpirationTimeColumnName
+                    LeasesTableLeaseExpirationTimeColumnName,
+                    LeasesTableSyncCompletedTime
         };
 
         //list unsupported data types
