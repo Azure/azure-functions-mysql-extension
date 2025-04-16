@@ -3,17 +3,17 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Reflection;
 using Microsoft.Azure.WebJobs.Description;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlConverters;
 using Microsoft.Azure.WebJobs.Host.Bindings;
 using Microsoft.Azure.WebJobs.Host.Config;
+using Microsoft.Azure.WebJobs.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.Azure.WebJobs.Logging;
 using MySql.Data.MySqlClient;
-using System.Reflection;
-using System.Diagnostics;
 using Newtonsoft.Json;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlConverters;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {

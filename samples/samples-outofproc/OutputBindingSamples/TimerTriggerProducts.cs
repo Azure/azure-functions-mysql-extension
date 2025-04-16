@@ -2,9 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.Common;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Extensions.MySql;
+using Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.Common;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.SamplesOutOfProc.OutputBindingSamples
 {

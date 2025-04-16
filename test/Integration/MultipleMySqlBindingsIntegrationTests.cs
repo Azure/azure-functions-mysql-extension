@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.Common;
+using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
 using Xunit;
 using Xunit.Abstractions;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
-using System;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 {

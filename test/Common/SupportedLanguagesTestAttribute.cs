@@ -2,9 +2,9 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 using System;
 using System.Collections.Generic;
-using Xunit.Sdk;
-using System.Reflection;
 using System.Linq;
+using System.Reflection;
+using Xunit.Sdk;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common
 {

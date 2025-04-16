@@ -6,11 +6,11 @@ using System.Collections.Generic;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
-using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using MySql.Data.MySqlClient;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Microsoft.Extensions.Logging;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingConstants;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql

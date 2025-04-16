@@ -4,13 +4,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Host.Executors;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
-using System.Linq;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql

@@ -149,7 +149,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 {
                     taskCompletionSource.SetResult(true);
                 }
-            };
+            }
+            ;
             functionHost.OutputDataReceived += SignalStartupHandler;
             functionHost.OutputDataReceived += customOutputHandler;
 
