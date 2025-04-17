@@ -2,13 +2,13 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System.Collections.Generic;
-using Microsoft.Azure.Functions.Worker.Extensions.MySql;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.Functions.Worker.Http;
-using DotnetIsolatedTests.Common;
 using System.Globalization;
 using System.Threading.Tasks;
 using System.Web;
+using DotnetIsolatedTests.Common;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Extensions.MySql;
+using Microsoft.Azure.Functions.Worker.Http;
 
 namespace DotnetIsolatedTests
 {

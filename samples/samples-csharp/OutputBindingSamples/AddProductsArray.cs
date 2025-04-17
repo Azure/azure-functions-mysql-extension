@@ -1,10 +1,10 @@
 ﻿// Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.Common;
-using System.Collections.Generic;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Samples.OutputBindingSamples
 {

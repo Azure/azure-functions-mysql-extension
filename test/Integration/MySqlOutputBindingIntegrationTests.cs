@@ -3,14 +3,14 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.OutputBindingSamples;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.Common;
+using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.OutputBindingSamples;
+using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
 using Xunit;
 using Xunit.Abstractions;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
-using System.Diagnostics;
-using System.Threading.Tasks;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 {

@@ -8,8 +8,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Logging;
+using MySql.Data.MySqlClient;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerUtils;
 

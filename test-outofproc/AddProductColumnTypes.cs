@@ -3,12 +3,12 @@
 
 using System;
 using System.Collections.Specialized;
+using System.Globalization;
 using System.Web;
 using DotnetIsolatedTests.Common;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Azure.Functions.Worker.Extensions.MySql;
-using System.Globalization;
+using Microsoft.Azure.Functions.Worker.Http;
 
 namespace DotnetIsolatedTests
 {

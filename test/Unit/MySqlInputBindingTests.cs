@@ -5,13 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlConverters;
-using MySql.Data.MySqlClient;
+using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
+using MySql.Data.MySqlClient;
 using Xunit;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlConverters;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
 {

@@ -5,10 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
 using Xunit;
-using System.Linq;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 {
@@ -130,7 +130,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 {
                     taskCompletionSource.SetResult(true);
                 }
-            };
+            }
+            ;
             functionHost.OutputDataReceived += SignalStartupHandler;
 
             functionHost.Start();

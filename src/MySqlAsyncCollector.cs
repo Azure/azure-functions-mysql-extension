@@ -2,22 +2,22 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
-using System.Globalization;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Caching;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using MySql.Data.MySqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MoreLinq;
+using MySql.Data.MySqlClient;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
-using System.Diagnostics;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingConstants;
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingUtilities;
 

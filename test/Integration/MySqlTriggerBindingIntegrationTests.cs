@@ -11,8 +11,8 @@ using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.Common;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.TriggerBindingSamples;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
-using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Azure.WebJobs.Host.Executors;
+using Microsoft.Azure.WebJobs.Host.Scale;
 using Microsoft.Extensions.Azure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,7 +23,6 @@ using Newtonsoft.Json.Linq;
 using xRetry;
 using Xunit;
 using Xunit.Abstractions;
-
 using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
@@ -648,7 +647,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                     Assert.Equal(expectedResponse, product); // The product has the expected values
                     taskCompletion.SetResult(true);
                 }
-            };
+            }
+            ;
 
             // Set up listener for the changes coming in
             foreach (Process functionHost in this.FunctionHostList)

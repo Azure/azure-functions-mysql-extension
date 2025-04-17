@@ -2,20 +2,20 @@
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingUtilities;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
-using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerUtils;
 using Microsoft.Azure.WebJobs.Host.Executors;
 using Microsoft.Azure.WebJobs.Host.Listeners;
 using Microsoft.Azure.WebJobs.Host.Scale;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using MySql.Data.MySqlClient;
-using System.Collections.Generic;
-using System.Linq;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlBindingUtilities;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerConstants;
+using static Microsoft.Azure.WebJobs.Extensions.MySql.MySqlTriggerUtils;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql
 {

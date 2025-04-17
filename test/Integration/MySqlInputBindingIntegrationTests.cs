@@ -3,11 +3,11 @@
 
 using System;
 using System.Net.Http;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.InputBindingSamples;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.Common;
+using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.InputBindingSamples;
+using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
 using Xunit;
 using Xunit.Abstractions;
-using Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Common;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
 {
