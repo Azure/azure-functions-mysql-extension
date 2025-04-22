@@ -7,7 +7,7 @@ import azure.functions as func
 
 # This function verifies that serializing an item with various data types
 # works as expected.
-def main(req: func.HttpRequest, products: func.SqlRowList) -> func.HttpResponse:
+def main(req: func.HttpRequest, products: func.MySqlRowList) -> func.HttpResponse:
     rows = list(map(lambda r: json.loads(r.to_json()), products))
 
     return func.HttpResponse(

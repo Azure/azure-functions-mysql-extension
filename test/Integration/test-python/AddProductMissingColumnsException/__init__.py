@@ -6,8 +6,8 @@ from Common.productmissingcolumns import ProductMissingColumns
 
 # This output binding should throw an error since the ProductsCostNotNull table does not
 # allow rows without a Cost value.
-def main(req: func.HttpRequest, product: func.Out[func.SqlRow]) -> func.HttpResponse:
-    productMissingColumns = func.SqlRow(ProductMissingColumns(1, "test"))
+def main(req: func.HttpRequest, product: func.Out[func.MySqlRow]) -> func.HttpResponse:
+    productMissingColumns = func.MySqlRow(ProductMissingColumns(1, "test"))
     product.set(productMissingColumns)
 
     return func.HttpResponse(

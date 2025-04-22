@@ -6,8 +6,8 @@ from Common.productextracolumns import ProductExtraColumns
 
 # This output binding should throw an Exception because the ProductExtraColumns object has
 # two properties that do not exist as columns in the MySql table (ExtraInt and ExtraString).
-def main(req: func.HttpRequest, product: func.Out[func.SqlRow]) -> func.HttpResponse:
-    productExtraColumns = func.SqlRow(ProductExtraColumns(1, "test", 100, 1, "test"))
+def main(req: func.HttpRequest, product: func.Out[func.MySqlRow]) -> func.HttpResponse:
+    productExtraColumns = func.MySqlRow(ProductExtraColumns(1, "test", 100, 1, "test"))
     product.set(productExtraColumns)
 
     return func.HttpResponse(

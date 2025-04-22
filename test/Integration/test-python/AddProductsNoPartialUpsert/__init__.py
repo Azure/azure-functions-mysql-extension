@@ -6,12 +6,12 @@ from Common.product import Product
 
 # This output binding should throw an error since the ProductsNameNotNull table does not
 # allows rows without a Name value. No rows should be upserted to the MySql table.
-def main(req: func.HttpRequest, products: func.Out[func.SqlRowList]) -> func.HttpResponse:
-    rows = func.SqlRowList()
+def main(req: func.HttpRequest, products: func.Out[func.MySqlRowList]) -> func.HttpResponse:
+    rows = func.MySqlRowList()
     for i in range(1000):
-        rows.add(func.SqlRow(Product(i, "test", 100 * i)))
+        rows.add(func.MySqlRow(Product(i, "test", 100 * i)))
 
-    invalidProduct = func.SqlRow(Product(1, None, 100))
+    invalidProduct = func.MySqlRow(Product(1, None, 100))
 
     rows.add(invalidProduct)
 
