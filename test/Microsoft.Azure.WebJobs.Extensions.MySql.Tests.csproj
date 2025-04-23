@@ -40,7 +40,11 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-  
+
+  <Target Name="ReCompileMavenProject" AfterTargets="Build">
+    <Exec Command="mvn clean package" WorkingDirectory="..\samples\samples-java" />
+    <Exec Command="mvn clean package" WorkingDirectory="Integration\test-java" />
+  </Target>
 
   <Target Name="CopySamples" AfterTargets="Build">
     <ItemGroup>
