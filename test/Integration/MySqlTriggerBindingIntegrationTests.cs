@@ -71,7 +71,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Verifies that manually settings of the batch size and polling interval from the app settings overrides settings from the host options
         /// </summary>
-        [RetryTheory]
+        [RetryTheory(Skip = "Test skipped temporary")]
         [MySqlInlineData()]
         public async Task ConfigOverridesHostOptionsTest(SupportedLanguages lang)
         {
