@@ -8,8 +8,8 @@ from Common.productcolumntypes import ProductColumnTypes
 
 # This function is used to test compatibility with converting various data types to their respective
 # MySql server types.
-def main(req: func.HttpRequest, product: func.Out[func.SqlRow]) -> func.HttpResponse:
-    productColumnTypes = func.SqlRow(ProductColumnTypes(req.params["productId"],
+def main(req: func.HttpRequest, product: func.Out[func.MySqlRow]) -> func.HttpResponse:
+    productColumnTypes = func.MySqlRow(ProductColumnTypes(req.params["productId"],
         999,
         True,
         1.2345,
