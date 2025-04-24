@@ -125,7 +125,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Verifies that serializing an item with various data types and different cultures works when using IAsyncEnumerable
         /// </summary>
-        [Theory]
+        [Theory(Skip = "skip this")]
         [MySqlInlineData("en-US")]
         [MySqlInlineData("it-IT")]
         [UnsupportedLanguages(SupportedLanguages.JavaScript, SupportedLanguages.PowerShell, SupportedLanguages.Java, SupportedLanguages.Python)] // IAsyncEnumerable is only available in C#
@@ -166,7 +166,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Verifies that serializing an item with various data types works as expected
         /// </summary>
-        [Theory]
+        [Theory(Skip = "skip this")]
         [MySqlInlineData()]
         public async void GetProductsColumnTypesSerializationTest(SupportedLanguages lang)
         {

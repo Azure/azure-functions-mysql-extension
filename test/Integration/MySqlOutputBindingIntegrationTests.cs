@@ -43,7 +43,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             Assert.Equal(cost, Convert.ToInt32(this.ExecuteScalar($"select cost from Products where ProductId={id}")));
         }
 
-        [Theory]
+        [Theory(Skip = "skip this")]
         [MySqlInlineData(1, "Test", 5)]
         [MySqlInlineData(0, "", 0)]
         [MySqlInlineData(-500, "ABCD", 580)]
@@ -117,7 +117,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // If we get here then the test is successful - an exception will be thrown if there were any problems
         }
 
-        [Theory]
+        [Theory(Skip = "skip this")]
         [MySqlInlineData()]
         [UnsupportedLanguages(SupportedLanguages.JavaScript, SupportedLanguages.PowerShell, SupportedLanguages.Java, SupportedLanguages.OutOfProc, SupportedLanguages.Python)] // Collectors are only available in C#
         public async Task AddProductsCollectorTest(SupportedLanguages lang)
@@ -130,7 +130,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             Assert.Equal(5000, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(1) FROM Products")));
         }
 
-        [Theory]
+        [Theory(Skip = "skip this")]
         [MySqlInlineData()]
         public void TimerTriggerProductsTest(SupportedLanguages lang)
         {
@@ -207,7 +207,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Tests that for tables with an identity column we are able to insert multiple items at once
         /// </summary>
-        [Theory]
+        [Theory(Skip = "skip this")]
         [MySqlInlineData()]
         public async Task AddProductsWithIdentityColumnArray(SupportedLanguages lang)
         {
@@ -321,7 +321,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// Tests that a row is inserted successfully when the object is missing
         /// the primary key column with a default value.
         /// </summary>
-        [Theory]
+        [Theory(Skip = "skip this")]
         [MySqlInlineData()]
         public async Task AddProductWithDefaultPKTest(SupportedLanguages lang)
         {

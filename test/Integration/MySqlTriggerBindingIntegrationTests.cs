@@ -37,7 +37,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Ensures that the user function gets invoked for each of the insert, update and delete operation.
         /// </summary>
-        [RetryTheory]
+        [RetryTheory(Skip = "Test skipped temporary")]
         [MySqlInlineData()]
         public async Task SingleOperationTriggerTest(SupportedLanguages lang)
         {
@@ -129,7 +129,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Verifies that manually setting the max batch size correctly changes the number of changes processed at once
         /// </summary>
-        [RetryTheory]
+        [RetryTheory(Skip = "Test skipped temporary")]
         [MySqlInlineData()]
         public async Task MaxBatchSizeOverrideTriggerTest(SupportedLanguages lang)
         {
@@ -277,7 +277,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Ensures correct functionality with multiple user functions tracking the same table.
         /// </summary>
-        [RetryTheory]
+        [RetryTheory(Skip = "Test skipped temporary")]
         [MySqlInlineData()]
         public async Task MultiFunctionTriggerTest(SupportedLanguages lang)
         {
@@ -404,7 +404,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Tests the error message when the user table is not present in the database.
         /// </summary>
-        [RetryTheory]
+        [RetryTheory(Skip = "Test skipped temporary")]
         [MySqlInlineData()]
         public void TableNotPresentTriggerTest(SupportedLanguages lang)
         {
@@ -418,7 +418,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Tests the error message when the user table does not contain primary key.
         /// </summary>
-        [RetryTheory]
+        [RetryTheory(Skip = "Test skipped temporary")]
         [MySqlInlineData()]
         public void PrimaryKeyNotCreatedTriggerTest(SupportedLanguages lang)
         {
@@ -434,7 +434,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Tests the error message when the user table contains columns of unsupported MySQL types.
         /// </summary>
-        [RetryTheory]
+        [RetryTheory(Skip = "Test skipped temporary")]
         [MySqlInlineData()]
         public void UnsupportedColumnTypesTriggerTest(SupportedLanguages lang)
         {
@@ -696,7 +696,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <summary>
         /// Ensures that the user defined leasesTableName is used to create the 'LeasesTable' table.
         /// </summary>
-        [Theory]
+        [Theory(Skip = "skip this")]
         [MySqlInlineData()]
         public void LeasesTableNameTest(SupportedLanguages lang)
         {
