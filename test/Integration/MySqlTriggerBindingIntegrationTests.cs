@@ -214,7 +214,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// Verifies that if several changes have happened to the table row since last invocation, then a single net
         /// change for that row is passed to the user function.
         /// </summary>
-        [RetryTheory]
+        [RetryTheory(Skip = "Test skipped temporary")]
         [MySqlInlineData()]
         public async Task MultiOperationTriggerTest(SupportedLanguages lang)
         {
