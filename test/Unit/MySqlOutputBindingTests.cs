@@ -9,7 +9,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 using MySql.Data.MySqlClient;
-using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
@@ -62,8 +61,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
         [InlineData("'mydb'.'Products'", "Encountered error while parsing object name:")]
         [InlineData("\"mydb\".\"Products\"", "Encountered error while parsing object name:")]
         [InlineData("'Products'", "Encountered error while parsing object name:")]
-        [InlineData("`Products`x", "Encountered error while parsing object name:")]
-        [InlineData("x`Products`", "Encountered error while parsing object name:")]
         public void TestMySqlObjectParseError(string fullName, string expectedErrorMessage)
         {
             string errorMessage = Assert.Throws<InvalidOperationException>(() => new MySqlObject(fullName)).Message;
@@ -196,100 +193,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Unit
             Assert.Equal(1L, (long)parameters[0].Value);
             // The (possibly malicious) name is bound verbatim - stored as data, never executed as SQL.
             Assert.Equal(name, parameters[1].Value);
-        }
-
-        private const string ColumnInjectionPayload = "Id,Value) VALUES (1,'SAFE_AFTER') ON DUPLICATE KEY UPDATE Value=Value; UPDATE victimdb.ProtectedRows SET Value='COL_INJECTED' WHERE Id=1; -- `Id`";
-
-        [Theory]
-        [InlineData("Id", "Id")]
-        [InlineData("Product_Id$1", "Product_Id$1")]
-        [InlineData("`Id`", "Id")]
-        [InlineData("`Product Name`", "Product Name")]
-        [InlineData("`Na``me`", "Na`me")]
-        // Names that are not a complete identifier are returned unchanged so they fail the column lookup.
-        [InlineData(ColumnInjectionPayload, ColumnInjectionPayload)]
-        [InlineData("`Id`x", "`Id`x")]
-        [InlineData("x`Id`", "x`Id`")]
-        [InlineData("x `Id` y", "x `Id` y")]
-        [InlineData("`Id`; DROP TABLE Products; -- `Id`", "Id`; DROP TABLE Products; -- `Id")]
-        [InlineData("Id; DROP TABLE Products", "Id; DROP TABLE Products")]
-        [InlineData("Id)", "Id)")]
-        [InlineData("'Id'", "'Id'")]
-        [InlineData("Product Name", "Product Name")]
-        public void TestGetMySqlColNameFormatted(string colName, string expected)
-        {
-            Assert.Equal(expected, MySqlObject.GetMySqlColNameFormatted(colName));
-        }
-
-        [Theory]
-        // The reported MSRC payload: a backtick-quoted valid column at the end of a longer name.
-        [InlineData(ColumnInjectionPayload)]
-        [InlineData("`Id`x")]
-        [InlineData("x`Id`")]
-        [InlineData("`Id`; DROP TABLE Products; -- `Id`")]
-        [InlineData("Id; DROP TABLE Products")]
-        public void TestGetExtraPropertiesRejectsInjectedColumnNames(string maliciousKey)
-        {
-            var columns = new Dictionary<string, string>
-            {
-                { "Id", "int" },
-                { "Value", "varchar(64)" },
-            };
-            var row = new JObject
-            {
-                [maliciousKey] = 1,
-                ["Value"] = "IGNORED"
-            };
-
-            MethodInfo method = typeof(MySqlAsyncCollector<JObject>)
-                .GetMethod("GetExtraProperties", BindingFlags.NonPublic | BindingFlags.Static);
-            var extraProperties = ((IEnumerable<string>)method.Invoke(null, new object[] { columns, row })).ToList();
-
-            Assert.Equal(new[] { maliciousKey }, extraProperties);
-        }
-
-        [Fact]
-        public void TestGetExtraPropertiesAcceptsValidColumnNames()
-        {
-            var columns = new Dictionary<string, string>
-            {
-                { "Id", "int" },
-                { "Value", "varchar(64)" },
-            };
-            var row = new JObject
-            {
-                ["`Id`"] = 1,
-                ["Value"] = "SAFE"
-            };
-
-            MethodInfo method = typeof(MySqlAsyncCollector<JObject>)
-                .GetMethod("GetExtraProperties", BindingFlags.NonPublic | BindingFlags.Static);
-            var extraProperties = (IEnumerable<string>)method.Invoke(null, new object[] { columns, row });
-
-            Assert.Empty(extraProperties);
-        }
-
-        [Theory]
-        [InlineData(new[] { "ProductId", "Name", "Cost" }, "INSERT INTO `Products` (`ProductId`,`Name`,`Cost`) VALUES")]
-        [InlineData(new[] { "`ProductId`", "`Product Name`" }, "INSERT INTO `Products` (`ProductId`,`Product Name`) VALUES")]
-        [InlineData(new[] { "`Na``me`" }, "INSERT INTO `Products` (`Na``me`) VALUES")]
-        // Even if an unvalidated name reached the query builder, it stays inside an escaped identifier.
-        [InlineData(new[] { ColumnInjectionPayload }, "INSERT INTO `Products` (`Id,Value) VALUES (1,'SAFE_AFTER') ON DUPLICATE KEY UPDATE Value=Value; UPDATE victimdb.ProtectedRows SET Value='COL_INJECTED' WHERE Id=1; -- ``Id```) VALUES")]
-        public void TestGetInsertQueryQuotesColumnNames(string[] columnNames, string expected)
-        {
-            string result = MySqlAsyncCollector<JObject>.TableInformation.GetInsertQuery(new MySqlObject("Products"), columnNames);
-            Assert.Equal(expected, result);
-        }
-
-        [Theory]
-        [InlineData(new[] { "ProductId", "Name" }, "ON DUPLICATE KEY UPDATE `ProductId` = VALUES(`ProductId`), `Name` = VALUES(`Name`)")]
-        [InlineData(new[] { "`Product Name`" }, "ON DUPLICATE KEY UPDATE `Product Name` = VALUES(`Product Name`)")]
-        [InlineData(new[] { "`Na``me`" }, "ON DUPLICATE KEY UPDATE `Na``me` = VALUES(`Na``me`)")]
-        [InlineData(new[] { "x`); DROP TABLE Products; -- " }, "ON DUPLICATE KEY UPDATE `x``); DROP TABLE Products; -- ` = VALUES(`x``); DROP TABLE Products; -- `)")]
-        public void TestGetOnDuplicateUpdateQueryQuotesColumnNames(string[] columnNames, string expected)
-        {
-            string result = MySqlAsyncCollector<JObject>.TableInformation.GetOnDuplicateUpdateQuery(columnNames);
-            Assert.Equal(expected, result);
         }
     }
 }

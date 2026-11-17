@@ -147,7 +147,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 // since sometimes the host can take a little while to fully start up
                 if (e.Data?.Contains(" Host initialized ") == true)
                 {
-                    taskCompletionSource.TrySetResult(true);
+                    taskCompletionSource.SetResult(true);
                 }
             }
             ;

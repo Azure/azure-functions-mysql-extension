@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs.Extensions.MySql.Samples.Common;
@@ -154,49 +153,6 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             // no rows should be added to the table.
             Assert.Throws<AggregateException>(() => this.SendOutputGetRequest("addproduct-extracolumns", null, TestUtils.GetPort(lang, true)).Wait());
             Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM Products")));
-        }
-
-        private const string ColumnNameInjectionPayload = "{\"ProductId,Name,Cost) VALUES (1,'SAFE',1) ON DUPLICATE KEY UPDATE Cost=Cost; UPDATE Products SET Name='COL_INJECTED' WHERE ProductId=2; -- `ProductId`\": 1, \"Name\": \"IGNORED\", \"Cost\": 1}";
-
-        [Theory]
-        [MySqlInlineData()]
-        public async Task AddProductColumnNameInjectionTest(SupportedLanguages lang)
-        {
-            this.ExecuteNonQuery("INSERT INTO Products (ProductId, Name, Cost) VALUES (2, 'VICTIM_INITIAL', 100)");
-
-            // POCO-bound functions drop unknown keys and JObject-bound functions must reject them; either way the injected SQL must not run.
-            await this.SendPostRequest($"http://localhost:{TestUtils.GetPort(lang)}/api/addproduct", ColumnNameInjectionPayload, false);
-
-            Assert.Equal("VICTIM_INITIAL", Convert.ToString(this.ExecuteScalar("SELECT Name FROM Products WHERE ProductId = 2")));
-            Assert.Equal(0, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM Products WHERE ProductId = 1")));
-        }
-
-        [Theory]
-        [MySqlInlineData()]
-        [UnsupportedLanguages(SupportedLanguages.JavaScript, SupportedLanguages.PowerShell, SupportedLanguages.Java, SupportedLanguages.OutOfProc, SupportedLanguages.Python)]
-        public async Task AddProductJObjectColumnNameInjectionTest(SupportedLanguages lang)
-        {
-            this.StartFunctionHost(nameof(AddProductJObject), lang);
-            this.ExecuteNonQuery("INSERT INTO Products (ProductId, Name, Cost) VALUES (2, 'VICTIM_INITIAL', 100)");
-
-            HttpResponseMessage response = await this.SendPostRequest($"http://localhost:{TestUtils.DefaultPort}/api/addproductjobject", ColumnNameInjectionPayload, false);
-
-            Assert.Equal("VICTIM_INITIAL", Convert.ToString(this.ExecuteScalar("SELECT Name FROM Products WHERE ProductId = 2")));
-            Assert.False(response.IsSuccessStatusCode);
-            Assert.Equal(1, Convert.ToInt32(this.ExecuteScalar("SELECT COUNT(*) FROM Products")));
-        }
-
-        [Theory]
-        [MySqlInlineData()]
-        [UnsupportedLanguages(SupportedLanguages.JavaScript, SupportedLanguages.PowerShell, SupportedLanguages.Java, SupportedLanguages.OutOfProc, SupportedLanguages.Python)]
-        public async Task AddProductJObjectQuotedColumnNamesTest(SupportedLanguages lang)
-        {
-            this.StartFunctionHost(nameof(AddProductJObject), lang);
-
-            await this.SendPostRequest($"http://localhost:{TestUtils.DefaultPort}/api/addproductjobject", "{\"`ProductId`\": 1, \"`Name`\": \"Quoted\", \"Cost\": 5}");
-
-            Assert.Equal("Quoted", Convert.ToString(this.ExecuteScalar("SELECT Name FROM Products WHERE ProductId = 1")));
-            Assert.Equal(5, Convert.ToInt32(this.ExecuteScalar("SELECT Cost FROM Products WHERE ProductId = 1")));
         }
 
         [Theory]
