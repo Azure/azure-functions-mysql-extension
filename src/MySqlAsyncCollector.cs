@@ -487,7 +487,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
 
             public static string GetInsertQuery(MySqlObject table, IEnumerable<string> columnNamesFromItem)
             {
-                return $"INSERT INTO {table.AcuteQuotedFullName} ({string.Join(",", columnNamesFromItem)}) VALUES";
+                return $"INSERT INTO {table.AcuteQuotedFullName} ({string.Join(",", columnNamesFromItem.Select(GetQuotedColumnName))}) VALUES";
             }
 
             public static string GetOnDuplicateUpdateQuery(IEnumerable<string> columnNamesFromItem)
@@ -496,11 +496,17 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
                 IList<string> formattedUpdateValues = new List<string>();
                 foreach (string colName in columnNamesFromItem)
                 {
-                    string tmpStr = $"{colName} = VALUES({colName})";
-                    formattedUpdateValues.Add(tmpStr);
+                    string quotedColName = GetQuotedColumnName(colName);
+                    formattedUpdateValues.Add($"{quotedColName} = VALUES({quotedColName})");
                 }
 
                 return $"ON DUPLICATE KEY UPDATE {string.Join(", ", formattedUpdateValues)}";
+            }
+
+            // Identifiers can't be parameterized, so always emit the canonical column name escaped and backtick-quoted (CWE-89).
+            private static string GetQuotedColumnName(string colName)
+            {
+                return MySqlObject.GetMySqlColNameFormatted(colName).AsAcuteQuotedString();
             }
 
 
