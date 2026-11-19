@@ -150,7 +150,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         /// <param name="lang">The language of the function being started</param>
         /// <param name="useTestFolder">Whether the functions host should be launched from test folder</param>
         /// <param name="expectedErrorMessage">Expected error message string</param>
-        protected void StartFunctionHostAndWaitForError(string functionName, SupportedLanguages lang, bool useTestFolder, string expectedErrorMessage)
+        protected string StartFunctionHostAndWaitForError(string functionName, SupportedLanguages lang, bool useTestFolder, string expectedErrorMessage)
         {
             string errorMessage = null;
             var tcs = new TaskCompletionSource<bool>();
@@ -181,7 +181,11 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             this.FunctionHost.Kill(true);
 
             Assert.True(isCompleted, "Functions host did not log failure to start MySQL trigger listener within specified time.");
-            Assert.Equal(expectedErrorMessage, errorMessage);
+            if (expectedErrorMessage != null)
+            {
+                Assert.Equal(expectedErrorMessage, errorMessage);
+            }
+            return errorMessage;
         }
 
         /// <summary>
