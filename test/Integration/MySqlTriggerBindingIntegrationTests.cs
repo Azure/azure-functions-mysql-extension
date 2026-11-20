@@ -457,7 +457,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 true,
                 null);
 
-            // Column order isn't guaranteed, and MySQL 8 reports GEOMETRYCOLLECTION as 'geomcollection', which the trigger doesn't flag yet.
+            // MySQL 5.7 reports GEOMETRYCOLLECTION as 'geometrycollection' and MySQL 8.0+ as 'geomcollection'.
             Assert.StartsWith("Found column(s) with unsupported type(s): ", errorMessage);
             Assert.EndsWith(" in table: 'ProductsWithUnsupportedColumnTypes'.", errorMessage);
             foreach (string column in new[] { "'Point' (type: point)", "'MultiPoint' (type: multipoint)", "'LineString' (type: linestring)",
@@ -465,6 +465,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
             {
                 Assert.Contains(column, errorMessage);
             }
+            Assert.True(
+                errorMessage.Contains("'GeometryCollection' (type: geomcollection)") || errorMessage.Contains("'GeometryCollection' (type: geometrycollection)"),
+                $"GeometryCollection column was not reported as unsupported: {errorMessage}");
         }
 
         /// <summary>
