@@ -451,16 +451,23 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
         {
             this.SetChangeTrackingForTable("ProductsWithUnsupportedColumnTypes");
 
-            this.StartFunctionHostAndWaitForError(
+            string errorMessage = this.StartFunctionHostAndWaitForError(
                 nameof(UnsupportedColumnTypesTrigger),
                 lang,
                 true,
-                "Found column(s) with unsupported type(s): " +
-                "'Point' (type: point), 'MultiPoint' (type: multipoint), " +
-                "'LineString' (type: linestring), 'MultiLineString' (type: multilinestring), " +
-                "'Polygon' (type: polygon), 'MultiPolygon' (type: multipolygon), " +
-                "'Geometry' (type: geometry), 'GeometryCollection' (type: geometrycollection)" +
-                " in table: 'ProductsWithUnsupportedColumnTypes'.");
+                null);
+
+            // Column order isn't guaranteed. MySQL 5.7 reports GEOMETRYCOLLECTION as 'geometrycollection' and MySQL 8.0+ as 'geomcollection'.
+            Assert.StartsWith("Found column(s) with unsupported type(s): ", errorMessage);
+            Assert.EndsWith(" in table: 'ProductsWithUnsupportedColumnTypes'.", errorMessage);
+            foreach (string column in new[] { "'Point' (type: point)", "'MultiPoint' (type: multipoint)", "'LineString' (type: linestring)",
+                "'MultiLineString' (type: multilinestring)", "'Polygon' (type: polygon)", "'MultiPolygon' (type: multipolygon)", "'Geometry' (type: geometry)" })
+            {
+                Assert.Contains(column, errorMessage);
+            }
+            Assert.True(
+                errorMessage.Contains("'GeometryCollection' (type: geomcollection)") || errorMessage.Contains("'GeometryCollection' (type: geometrycollection)"),
+                $"GeometryCollection column was not reported as unsupported: {errorMessage}");
         }
 
         /// <summary>

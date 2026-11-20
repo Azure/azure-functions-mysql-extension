@@ -52,7 +52,9 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql
         //list unsupported data types
         public static HashSet<string> UnsupportedColumnDataTypes = new HashSet<string>()
         { "point", "multipoint", "linestring", "multilinestring",
-           "polygon", "multipolygon", "geometry", "geometrycollection"
+           "polygon", "multipolygon", "geometry", "geometrycollection",
+           // MySQL 8.0+ reports GEOMETRYCOLLECTION columns as 'geomcollection'.
+           "geomcollection"
         };
     }
 }
