@@ -457,7 +457,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.MySql.Tests.Integration
                 true,
                 null);
 
-            // MySQL 5.7 reports GEOMETRYCOLLECTION as 'geometrycollection' and MySQL 8.0+ as 'geomcollection'.
+            // Column order isn't guaranteed. MySQL 5.7 reports GEOMETRYCOLLECTION as 'geometrycollection' and MySQL 8.0+ as 'geomcollection'.
             Assert.StartsWith("Found column(s) with unsupported type(s): ", errorMessage);
             Assert.EndsWith(" in table: 'ProductsWithUnsupportedColumnTypes'.", errorMessage);
             foreach (string column in new[] { "'Point' (type: point)", "'MultiPoint' (type: multipoint)", "'LineString' (type: linestring)",
